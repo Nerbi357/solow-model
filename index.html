@@ -7,29 +7,28 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23FBFAF6'/%3E%3Cg stroke='%23DCE9E4' stroke-width='1'%3E%3Cpath d='M4 0V32M12 0V32M20 0V32M28 0V32M0 4H32M0 12H32M0 20H32M0 28H32'/%3E%3C/g%3E%3Cpath d='M3 29L29 5' fill='none' stroke='%232E4A66' stroke-width='2'/%3E%3Cpath d='M3 29Q10 8 30 6' fill='none' stroke='%2316283C' stroke-width='3.2' stroke-linecap='round'/%3E%3Ccircle cx='17.5' cy='16.5' r='3' fill='%23B03A2E'/%3E%3C/svg%3E">
 <style>
   :root{
-    --paper:#FBFAF6;
-    --ink:#16283C;
-    --ink-soft:#2E4A66;
-    --pencil:#A3ADA8;
-    --ochre:#A8832C;
-    --graphite:#68727C;
-    --rule:#D8D6CC;
-    --rule-soft:#E8E6DE;
-    --note-bg:#F6F2E6;
-    --export-paper:#FFFFFF;
-    --serif:"PT Serif","Georgia","Times New Roman",serif;
+    --paper:#FFFFFF;
+    --card:#F7F8FA;
+    --card-2:#FCFCFD;
+    --ink:#12161C;
+    --ink-2:#2A323D;
+    --muted:#6B7280;
+    --rule:#E3E6EB;
+    --rule-2:#EEF0F3;
 
-    /* Цвет шока. Исходное состояние всегда чернильное. */
-    --sh1:#B03A2E;
-    --sh2:#1F6F63;
-    --sh3:#A2621C;
-    --sh4:#2A5EA8;
-    --sh5:#7C7A24;
-    --sh6:#6B4C8A;
-    --result:#8E2F6B;
+    /* Цвет шока. Исходное состояние всегда чёрное. Шоков не больше трёх. */
+    --sh1:#C2402F;
+    --sh2:#17786A;
+    --sh3:#3A5BA8;
+    --res:#8C3A79;
+    --gold:#A8832B;
 
-    --up:#1F6F4A;
-    --down:#B03A2E;
+    --up:#1C7350;
+    --down:#C2402F;
+    --dunno:#A8832B;
+
+    --sans:Aptos,'Segoe UI',Arial,'Helvetica Neue',Helvetica,sans-serif;
+    --r:8px;
   }
 
   *{box-sizing:border-box}
@@ -37,279 +36,275 @@
   body{
     background:var(--paper);
     color:var(--ink);
-    font-family:var(--serif);
-    font-size:16px;
-    line-height:1.5;
+    font-family:var(--sans);
+    font-size:15.5px;
+    line-height:1.55;
     -webkit-font-smoothing:antialiased;
   }
-  .vh{
-    position:absolute;width:1px;height:1px;overflow:hidden;
-    clip:rect(0 0 0 0);white-space:nowrap;
-  }
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-  .sheet{max-width:1560px;margin:0 auto;padding:28px 30px 44px}
+  .sheet{max-width:1580px;margin:0 auto;padding:26px 30px 48px}
 
   .masthead{
-    border-bottom:1.5px solid var(--ink);
-    padding-bottom:12px;margin-bottom:22px;
-    display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap;
+    border-bottom:1px solid var(--rule);
+    padding-bottom:16px;margin-bottom:24px;
+    display:flex;align-items:flex-start;justify-content:space-between;gap:30px;flex-wrap:wrap;
   }
-  .masthead h1{font-size:27px;font-weight:700;margin:0;letter-spacing:-.01em}
-  .masthead p{margin:0;color:var(--graphite);font-size:15px;max-width:56ch}
+  .masthead h1{font-size:25px;font-weight:700;margin:0 0 3px;letter-spacing:-.015em}
+  .masthead .lead{margin:0;color:var(--muted);font-size:14.5px;max-width:62ch}
 
-  .work{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0}
-  .plots{padding-right:32px;min-width:0}
-  .panel{border-left:1px solid var(--rule);padding-left:26px;min-width:0}
+  .work{display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:34px}
+  .plots{min-width:0}
+  .panel{min-width:0}
 
   /* ---------- plot ---------- */
-  .plot-head{
+  .phead{
     display:flex;align-items:baseline;justify-content:space-between;
-    gap:16px;margin-bottom:8px;flex-wrap:wrap;
+    gap:16px;margin-bottom:9px;flex-wrap:wrap;
   }
-  .plot-head h2{font-size:18px;font-weight:700;margin:0}
-  .plot-note{color:var(--graphite);font-size:13.5px;font-style:italic}
+  .phead h2{font-size:17px;font-weight:700;margin:0}
+  .pnote{color:var(--muted);font-size:13.5px}
   canvas{
     display:block;width:100%;
-    border:1px solid var(--rule);
-    background:var(--paper);
-    touch-action:none;cursor:crosshair;
+    border:1px solid var(--rule);border-radius:var(--r);
+    background:var(--paper);touch-action:none;cursor:crosshair;
   }
   canvas:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
   .legend{
-    display:flex;gap:18px;flex-wrap:wrap;
-    font-size:13.5px;color:var(--graphite);margin-top:8px;
+    display:flex;gap:16px;flex-wrap:wrap;
+    font-size:13px;color:var(--muted);margin-top:9px;
   }
   .legend span{display:inline-flex;align-items:center;gap:6px}
-  .legend i{width:20px;height:0;border-top:2px solid;display:inline-block}
+  .legend i{width:18px;height:0;border-top:2px solid;display:inline-block}
 
   /* ---------- coordinate readout ---------- */
   .coords{
-    margin:16px 0 22px;border:1px solid var(--rule);
-    background:#fff;padding:12px 14px;
+    margin:18px 0 24px;border:1px solid var(--rule);border-radius:var(--r);
+    background:var(--card-2);padding:13px 15px;
   }
-  .coords-head{
-    display:flex;align-items:baseline;justify-content:space-between;gap:12px;
-    margin-bottom:8px;flex-wrap:wrap;
-  }
-  .coords-head h3{margin:0;font-size:15px;font-weight:700}
-  .coords .empty{margin:0;color:var(--graphite);font-size:14px}
-  .ctab{width:100%;border-collapse:collapse;font-size:14px}
-  .ctab th,.ctab td{
-    padding:4px 8px;border-bottom:1px solid var(--rule-soft);text-align:right;
-    font-variant-numeric:tabular-nums;
-  }
+  .coords-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .coords-head h3{margin:0;font-size:14.5px;font-weight:700}
+  .coords .empty{margin:6px 0 0;color:var(--muted);font-size:13.5px;max-width:86ch}
+  .ctab{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:9px}
+  .ctab th,.ctab td{padding:5px 8px;border-bottom:1px solid var(--rule-2);text-align:right;
+    font-variant-numeric:tabular-nums}
   .ctab th:first-child,.ctab td:first-child{text-align:left;font-weight:400}
-  .ctab thead th{
-    font-size:12.5px;color:var(--graphite);font-weight:700;
-    border-bottom:1px solid var(--rule);
-  }
+  .ctab thead th{font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--rule)}
   .ctab tr:last-child td{border-bottom:none}
-  .ctab .dot{
-    display:inline-block;width:9px;height:9px;border-radius:50%;
-    border:2px solid var(--live);background:#fff;margin-right:7px;vertical-align:-1px;
-  }
-  .ctab td.delta{color:var(--graphite)}
-  .ctab td.delta b{color:var(--ink);font-weight:700}
+  .ctab .dot{display:inline-block;width:9px;height:9px;border-radius:50%;
+    border:2px solid var(--live);background:var(--paper);margin-right:7px;vertical-align:-1px}
 
   /* ---------- effects table ---------- */
-  .fx-wrap{overflow-x:auto;margin-bottom:6px}
-  .fx{border-collapse:collapse;font-size:14px;width:100%;min-width:600px}
-  .fx caption{text-align:left;font-weight:700;font-size:17px;padding-bottom:6px}
-  .fx th,.fx td{border-bottom:1px solid var(--rule-soft);padding:5px 6px;text-align:center}
-  .fx thead th{
-    font-size:13px;font-weight:700;color:var(--graphite);
-    border-bottom:1px solid var(--ink);white-space:nowrap;
-  }
+  .fx-wrap{overflow-x:auto}
+  .fx{border-collapse:collapse;font-size:14px;width:100%;min-width:620px}
+  .fx caption{text-align:left;font-weight:700;font-size:17px;padding-bottom:8px}
+  .fx th,.fx td{border-bottom:1px solid var(--rule-2);padding:6px;text-align:center}
+  .fx thead th{font-size:12.5px;font-weight:700;color:var(--muted);
+    border-bottom:1px solid var(--ink);white-space:nowrap}
   .fx thead tr:first-child th{border-bottom:none;padding-bottom:1px}
   .fx thead th.grp{border-bottom:1px solid var(--rule)}
-  .fx th.who{text-align:left;font-weight:400;font-size:13.5px;min-width:190px}
-  .fx th.who .sw{
-    display:inline-block;width:15px;height:0;vertical-align:middle;
-    border-top:3px solid var(--live);margin-right:8px;
-  }
-  .fx td.v{font-size:16px;width:8.5%}
+  .fx th.who{text-align:left;font-weight:400;font-size:13.5px;min-width:210px}
+  .fx th.who .sw{display:inline-block;width:16px;height:0;border-top:3px solid var(--live);
+    margin-right:9px;vertical-align:middle}
+  .fx td.v{font-size:16px;width:8%}
   .fx td.up{color:var(--up)}
   .fx td.down{color:var(--down)}
-  .fx td.same{color:var(--graphite)}
-  .fx td.dunno{color:var(--ochre);font-weight:700}
+  .fx td.same{color:var(--muted)}
+  .fx td.dunno{color:var(--dunno);font-weight:700}
   .fx td.sr{border-left:1px solid var(--rule)}
   .fx tr.total th,.fx tr.total td{border-top:1px solid var(--ink);font-weight:700}
-  .fx-legend{
-    font-size:13px;color:var(--graphite);margin:0 0 20px;
-    display:flex;gap:16px;flex-wrap:wrap;
-  }
+  .fx-legend{font-size:12.5px;color:var(--muted);margin:9px 0 0;display:flex;gap:16px;flex-wrap:wrap}
   .fx-legend b{font-weight:400}
-  .fx-legend .up{color:var(--up)}
-  .fx-legend .down{color:var(--down)}
-  .fx-legend .dunno{color:var(--ochre)}
+  .fx-legend .up{color:var(--up)} .fx-legend .down{color:var(--down)}
+  .fx-legend .dunno{color:var(--dunno)}
+
+  /* ---------- notes under the table ---------- */
+  .notes{margin:20px 0 0;display:flex;flex-direction:column;gap:10px}
+  .note{
+    border-left:3px solid var(--dunno);background:rgba(168,131,43,.06);
+    border-radius:0 var(--r) var(--r) 0;padding:11px 15px;max-width:96ch;
+  }
+  .note > b{display:block;font-size:14px;margin-bottom:3px}
+  .note p{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+  .note code{font-family:var(--sans);font-weight:700;font-variant-numeric:tabular-nums}
+
+  .solution{
+    border:1px solid var(--rule);border-radius:var(--r);background:var(--card-2);
+    padding:15px 18px;margin:0 0 22px;max-width:96ch;
+  }
+  .solution h3{margin:0 0 6px;font-size:16px}
+  .solution .ask{margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--ink-2)}
+  .solution .why{margin:0;font-size:14px;line-height:1.6}
+  .solution .why b{font-weight:700}
+  .solution .src{margin:10px 0 0;font-size:12.5px;color:var(--muted)}
 
   /* ---------- right panel ---------- */
-  .block{margin-bottom:24px}
+  .block{margin-bottom:22px}
   .block > h3{
-    font-size:13px;font-weight:700;margin:0 0 10px;
-    text-transform:uppercase;letter-spacing:.09em;color:var(--graphite);
+    font-size:11.5px;font-weight:700;margin:0 0 9px;
+    text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
   }
 
-  .card{border:1px solid var(--rule);background:#fff}
-  .card-head{
-    display:flex;align-items:center;gap:9px;
-    padding:7px 11px;border-bottom:1px solid var(--rule);
+  .card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);margin-bottom:9px}
+  .chead{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--rule)}
+  .card.base > .chead{
+    background:var(--ink);border-color:var(--ink);border-radius:var(--r) var(--r) 0 0;
   }
-  .card-head .sw{flex:0 0 auto;width:17px;height:0;border-top:2px solid var(--live)}
-  .card-head .ttl{flex:1 1 auto;min-width:0;font-size:14.5px;font-weight:700}
-  .card-head .ttl em{font-style:normal;font-weight:400;color:var(--graphite)}
-  .base-card .card-head{background:var(--ink);border-color:var(--ink)}
-  .base-card .card-head .ttl{color:var(--paper)}
-  .base-card .card-head .sw{border-top-color:var(--paper)}
-  .card-body{padding:10px 11px 12px}
+  .card.base > .chead .ctitle,.card.base > .chead .idx{color:var(--paper)}
+  .card.base > .chead .chip{background:var(--paper)}
+  .card.off{opacity:.5}
+  .idx{font-size:11.5px;color:var(--muted);min-width:9px;font-variant-numeric:tabular-nums}
+  .chip{width:12px;height:12px;border-radius:50%;background:var(--live);flex:0 0 auto}
+  .ctitle{flex:1;min-width:0;font-size:14.5px}
+  .ctitle .arr{color:var(--muted);margin:0 3px}
+  .ctitle .to{color:var(--live);font-weight:700;font-variant-numeric:tabular-nums}
+  .ctitle .sym{font-style:italic;font-weight:700}
+  .acts{display:flex;gap:3px;flex:0 0 auto}
+  .acts button{
+    font:inherit;font-size:12px;background:none;border:1px solid var(--rule);
+    color:var(--muted);padding:2px 7px;border-radius:5px;cursor:pointer;
+  }
+  .acts button:hover{color:var(--ink);border-color:var(--muted);background:var(--paper)}
+  .acts button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+  .cbody{padding:10px 11px 12px}
+  .touch{margin:0 0 8px;font-size:12.5px;color:var(--muted)}
 
   .prow{margin-bottom:11px}
   .prow:last-child{margin-bottom:2px}
-  .prow-top{display:flex;align-items:center;gap:8px;margin-bottom:2px}
-  .prow-top label{flex:1 1 auto;min-width:0;font-size:14px}
-  .prow-top label b{font-weight:700;font-style:italic;margin-right:5px}
-  .prow-top label span{color:var(--graphite);font-size:13px}
-  .prow-top .from{
-    color:var(--graphite);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;
-  }
+  .prow-top{display:flex;align-items:center;gap:7px;margin-bottom:1px}
+  .prow-top .sym{font-style:italic;font-weight:700;min-width:15px}
+  .prow-top .nm{flex:1;min-width:0;font-size:13px;color:var(--muted)}
+  .prow-top .frm{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 
   .numbox{
-    flex:0 0 auto;width:62px;font-family:var(--serif);font-size:14.5px;
-    font-variant-numeric:tabular-nums;text-align:right;
-    padding:2px 6px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);
+    flex:0 0 auto;width:60px;font:inherit;font-size:14px;font-variant-numeric:tabular-nums;
+    text-align:right;padding:2px 6px;border:1px solid var(--rule);border-radius:5px;
+    background:var(--paper);color:var(--ink);
   }
   .numbox:focus-visible{outline:2px solid var(--live,var(--ink));outline-offset:0}
   .numbox.bad{border-color:var(--down);color:var(--down)}
+  .numbox.free{color:var(--muted);background:var(--card-2)}
+
+  .pin{
+    flex:0 0 auto;font:inherit;font-size:11px;padding:2px 7px;border-radius:5px;cursor:pointer;
+    border:1px solid var(--rule);background:var(--paper);color:var(--muted);white-space:nowrap;
+  }
+  .pin[aria-pressed="false"]{border-style:dashed;color:var(--dunno);border-color:var(--dunno)}
+  .pin:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 
   input[type=range]{
     -webkit-appearance:none;appearance:none;
-    width:100%;height:18px;background:none;margin:0;cursor:pointer;display:block;
+    width:100%;height:16px;background:none;margin:0;cursor:pointer;display:block;
   }
-  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--rule)}
-  input[type=range]::-moz-range-track{height:2px;background:var(--rule)}
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--rule);border-radius:2px}
+  input[type=range]::-moz-range-track{height:2px;background:var(--rule);border-radius:2px}
   input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;appearance:none;
-    width:13px;height:13px;margin-top:-5.5px;border-radius:50%;
-    background:#fff;border:2px solid var(--live,var(--ink));
+    -webkit-appearance:none;appearance:none;width:12px;height:12px;margin-top:-5px;
+    border-radius:50%;background:var(--paper);border:2px solid var(--live,var(--ink));
   }
   input[type=range]::-moz-range-thumb{
-    width:13px;height:13px;border-radius:50%;
-    background:#fff;border:2px solid var(--live,var(--ink));
+    width:12px;height:12px;border-radius:50%;
+    background:var(--paper);border:2px solid var(--live,var(--ink));
   }
-  input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(22,40,60,.22)}
-  input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px rgba(22,40,60,.22)}
+  input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(18,22,28,.2)}
+  input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px rgba(18,22,28,.2)}
 
-  .shocks{list-style:none;margin:0 0 10px;padding:0}
-  .shocks > li{margin-bottom:8px}
-  .shocks .card.off{opacity:.5}
-  .sh-acts{display:flex;gap:2px;flex:0 0 auto}
-  .sh-acts button{
-    font-family:var(--serif);font-size:12.5px;line-height:1;
-    background:none;border:1px solid var(--rule);color:var(--graphite);
-    padding:3px 7px;cursor:pointer;
+  .forms{display:flex;gap:0;flex:0 0 auto}
+  .forms button{
+    font:inherit;font-size:12.5px;line-height:1;padding:3px 8px;cursor:pointer;
+    border:1px solid var(--rule);background:var(--paper);color:var(--muted);margin-left:-1px;
   }
-  .sh-acts button:hover{color:var(--ink);border-color:var(--graphite);background:var(--paper)}
-  .sh-acts button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
-
-  .add-row{display:flex;gap:7px;align-items:stretch}
-  .add-row select{
-    flex:1 1 auto;min-width:0;font-family:var(--serif);font-size:14px;
-    padding:5px 7px;border:1px solid var(--rule);background:#fff;color:var(--ink);
+  .forms button:first-child{border-radius:5px 0 0 5px;margin-left:0}
+  .forms button:last-child{border-radius:0 5px 5px 0}
+  .forms button[aria-pressed="true"]{
+    background:var(--live);border-color:var(--live);color:var(--paper);font-weight:700;position:relative;
   }
-  .add-row select:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+  .forms button:focus-visible{outline:2px solid var(--ink);outline-offset:1px;z-index:1}
 
+  .shocks{list-style:none;margin:0 0 9px;padding:0}
+  .addbar{display:flex;gap:6px}
+  .addbar select{
+    flex:1;min-width:0;font:inherit;font-size:13.5px;padding:5px 7px;
+    border:1px solid var(--rule);border-radius:5px;background:var(--paper);color:var(--ink);
+  }
+  .addbar select:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
   .btn{
-    font-family:var(--serif);font-size:14px;
-    background:var(--paper);color:var(--ink);
-    border:1px solid var(--ink);padding:5px 11px;cursor:pointer;text-align:left;
+    font:inherit;font-size:13.5px;background:var(--ink);color:var(--paper);
+    border:1px solid var(--ink);border-radius:5px;padding:5px 13px;cursor:pointer;
   }
-  .btn:hover{background:#EFEDE4}
+  .btn:hover{background:#000}
+  .btn.ghost{background:var(--paper);color:var(--ink);border-color:var(--rule)}
+  .btn.ghost:hover{background:var(--card)}
   .btn:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
   .btn[disabled]{opacity:.4;cursor:default}
   .btn-row{display:flex;gap:7px;flex-wrap:wrap}
-  .btn-row .btn{flex:1 1 auto}
+  .btn-row .btn{flex:1 1 auto;text-align:center}
+
+  .hintline{margin:8px 0 0;font-size:12.5px;color:var(--muted);line-height:1.45}
 
   .probs{display:flex;flex-direction:column;gap:6px}
-  .probs .btn{padding-left:11px;line-height:1.35}
-  .probs .btn small{display:block;color:var(--graphite);font-size:12.5px}
-  .probs .btn:hover small{color:var(--ink-soft)}
-  .probs .btn[aria-pressed="true"]{background:#EFEDE4;font-weight:700}
-
-  .solution{
-    border-left:3px solid var(--ink);background:var(--note-bg);
-    padding:13px 16px;margin:0 0 22px;max-width:92ch;
+  .probs button{
+    font:inherit;font-size:13.5px;text-align:left;line-height:1.35;cursor:pointer;
+    background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);padding:7px 11px;
+    color:var(--ink);
   }
-  .solution h3{margin:0 0 4px;font-size:16px}
-  .solution .ask{margin:0 0 9px;font-size:14.5px;line-height:1.5}
-  .solution .why{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink-soft)}
-  .solution .why b{color:var(--ink)}
-  .solution .src{margin:9px 0 0;font-size:13px;color:var(--graphite);font-style:italic}
+  .probs button small{display:block;color:var(--muted);font-size:12px}
+  .probs button:hover{background:var(--card)}
+  .probs button[aria-pressed="true"]{background:var(--card);border-color:var(--muted);font-weight:700}
+  .probs button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 
-  .readout{width:100%;border-collapse:collapse;font-size:14.5px}
-  .readout th,.readout td{
-    padding:3.5px 0;border-bottom:1px solid var(--rule-soft);text-align:left;font-weight:400;
-  }
-  .readout td{font-variant-numeric:tabular-nums;text-align:right;width:44%}
+  .readout{width:100%;border-collapse:collapse;font-size:13.5px}
+  .readout th,.readout td{padding:4px 0;border-bottom:1px solid var(--rule-2);text-align:left;font-weight:400}
+  .readout td{font-variant-numeric:tabular-nums;text-align:right;width:46%}
   .readout tr:last-child th,.readout tr:last-child td{border-bottom:none}
 
-  .verdict{
-    margin-top:10px;padding:9px 11px;font-size:14px;line-height:1.45;
-    border-left:3px solid var(--ochre);background:var(--note-bg);
-  }
-  .verdict b{display:block;margin-bottom:1px}
-
   .foot{
-    margin-top:30px;padding-top:13px;border-top:1px solid var(--rule);
-    color:var(--graphite);font-size:14px;max-width:88ch;
+    margin-top:34px;padding-top:15px;border-top:1px solid var(--rule);
+    color:var(--muted);font-size:13.5px;max-width:92ch;line-height:1.6;
   }
-  .foot code{font-family:var(--serif);font-style:italic;background:#F2F0E8;padding:0 3px}
+  .foot code{font-weight:700;color:var(--ink-2)}
 
-  @media (max-width:1100px){
+  @media (max-width:1140px){
     .work{grid-template-columns:1fr}
-    .plots{padding-right:0}
-    .panel{
-      border-left:none;border-top:1px solid var(--rule);
-      padding-left:0;padding-top:22px;margin-top:8px;
-    }
-    .sheet{padding:20px 18px 34px}
-    .masthead h1{font-size:23px}
+    .panel{border-top:1px solid var(--rule);padding-top:22px;margin-top:6px}
+    .sheet{padding:20px 16px 36px}
+    .masthead h1{font-size:22px}
     .fx th.who{min-width:150px}
   }
-  @media (prefers-reduced-motion:reduce){
-    *{transition:none!important}
-  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="sheet">
 
   <header class="masthead">
-    <h1>Модель Солоу</h1>
-    <p>Исходное состояние и шоки к нему. Все шоки происходят одновременно:
-       каждый двигает ровно один параметр и перекрашивает ровно ту линию,
-       на которую влияет. Запас капитала при этом не двигается — он
-       предопределён прошлым.</p>
+    <div>
+      <h1>Модель Солоу</h1>
+      <p class="lead">Задаёте исходное состояние и шоки к нему. Шоки происходят
+         одновременно, каждый двигает ровно один параметр. Параметр, который условие
+         не называет, помечается «свободно»: он двигает картинку, но в таблице
+         перебирается по всему диапазону — и если знак от него зависит, честный
+         ответ «нельзя определить».</p>
+    </div>
   </header>
 
   <div class="work">
 
     <div class="plots">
 
-      <div class="plot">
-        <div class="plot-head">
-          <h2>Диаграмма накопления</h2>
-          <span class="plot-note" id="phase"></span>
-        </div>
-        <canvas id="main" data-h="700" tabindex="0"
-                aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
-        <div class="legend" id="legend"></div>
+      <div class="phead">
+        <h2>Диаграмма накопления</h2>
+        <span class="pnote" id="phase"></span>
       </div>
+      <canvas id="main" data-h="620" tabindex="0"
+              aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
+      <div class="legend" id="legend"></div>
 
       <div class="coords">
         <div class="coords-head">
           <h3>Координаты точек</h3>
-          <button class="btn" id="clearpts" hidden>Снять выделение</button>
+          <button class="btn ghost" id="clearpts" hidden>Снять отметки</button>
         </div>
         <div id="coords-body"></div>
       </div>
@@ -342,29 +337,35 @@
               c — подушевое потребление, i — подушевые инвестиции</span>
       </p>
 
+      <div class="notes" id="notes"></div>
+
     </div>
 
     <div class="panel">
 
       <div class="block">
         <h3>Исходное состояние</h3>
-        <div class="card base-card">
-          <div class="card-head">
-            <i class="sw"></i>
-            <span class="ttl">До шоков</span>
+        <div class="card base">
+          <div class="chead">
+            <span class="idx">0</span><i class="chip"></i>
+            <span class="ctitle">До шоков</span>
           </div>
-          <div class="card-body" id="base-params"></div>
+          <div class="cbody" id="base-params"></div>
         </div>
+        <p class="hintline">«задано» — значение названо в условии и в таблице стоит
+           на месте. «свободно» — условие о нём молчит: ползунок двигает только
+           картинку, а таблица перебирает весь диапазон.</p>
       </div>
 
       <div class="block">
-        <h3>Шоки</h3>
+        <h3>Шоки — происходят одновременно</h3>
         <ol class="shocks" id="shocks"></ol>
-        <div class="add-row">
-          <label class="vh" for="addsel">Параметр нового шока</label>
+        <div class="addbar">
+          <label class="vh" for="addsel">Что меняет новый шок</label>
           <select id="addsel"></select>
           <button class="btn" id="add">Добавить</button>
         </div>
+        <p class="hintline" id="addhint"></p>
       </div>
 
       <div class="block">
@@ -375,218 +376,322 @@
       <div class="block">
         <h3>Поделиться</h3>
         <div class="btn-row">
-          <button class="btn" id="copy">Скопировать ссылку</button>
-          <button class="btn" id="png">Сохранить PNG</button>
+          <button class="btn ghost" id="copy">Скопировать ссылку</button>
+          <button class="btn ghost" id="png">Сохранить PNG</button>
         </div>
       </div>
 
       <div class="block">
-        <h3 id="ro-cap">Итоговое состояние</h3>
+        <h3 id="ro-cap">Показатели</h3>
         <table class="readout"><tbody id="ro"></tbody></table>
-        <div class="verdict" id="verdict"></div>
       </div>
 
     </div>
   </div>
 
   <p class="foot">
-    Производственная функция — CES:
-    <code>f(k) = [α·k<sup>(σ−1)/σ</sup> + (1−α)]<sup>σ/(σ−1)</sup></code>, накопление
-    <code>Δk = s·f(k) − (δ+n+g)·k</code>. При <code>σ = 1</code> показатель обращается
-    в бесконечность, и функция вырождается в привычного Кобба — Дугласа
-    <code>f(k) = k<sup>α</sup></code>; этот случай считается отдельно.
-    <b>σ — эластичность замещения</b>, а не сумма степеней при K и L: это
-    процентное изменение отношения <code>K/L</code> в ответ на однопроцентное
-    изменение предельной нормы замещения,
-    <code>σ = d ln(K/L) / d ln(MPL/MPK)</code>. Сумма степеней у Кобба — Дугласа
-    равна единице — это постоянная отдача от масштаба, совсем другое свойство,
-    и оно у CES выполняется при любой <code>σ</code>. У Кобба — Дугласа
-    <code>σ = 1</code> при любой <code>α</code>.
-    Стационар там, где инвестиции ровно покрывают выбытие, — но он существует
-    не всегда. При <code>σ &gt; 1</code> средний продукт капитала не падает ниже
-    <code>α<sup>σ/(σ−1)</sup></code>, и при достаточно большой <code>s</code> линия
-    <code>s·f(k)</code> уже нигде не пересечёт линию выбытия — капитал растёт без
-    предела. При <code>σ &lt; 1</code> бывает зеркальная беда: отдача капитала
-    ограничена сверху, и при малой <code>s</code> инвестиции нигде не покрывают
-    выбытие. Золотое правило достигается при
-    <code>s = α<sup>σ</sup>(δ+n+g)<sup>1−σ</sup></code>, что при <code>σ = 1</code> даёт
-    знакомое <code>s = α</code>. Скорость сходимости <code>λ = (1−θ*)(δ+n+g)</code>,
-    где <code>θ* = α(s/(δ+n+g))<sup>(σ−1)/σ</sup></code> — доля капитала в доходе;
-    при CES она не равна <code>α</code> и меняется вместе с <code>k</code>.
-    Про роль низкой <code>σ</code> в затухании советского роста — Easterly &amp;
-    Fischer, «The Soviet Economic Decline» (NBER WP 4735 / World Bank Economic
-    Review, 1995).
+    Производственная функция — Кобб — Дуглас, <code>f(k) = k<sup>α</sup></code>;
+    накопление <code>Δk = s·f(k) − (δ+n+g)·k</code>; стационар
+    <code>k* = (s/(δ+n+g))<sup>1/(1−α)</sup></code>. В коротком периоде запас
+    капитала предопределён прошлым и не двигается — меняются только кривые;
+    в длинном экономика доходит до нового стационара.
+    Знаки в таблице считаются перебором: свободные параметры прогоняются по всей
+    области допустимых значений, и если знак где-то переворачивается, ответом
+    становится «нельзя определить», а под таблицей появляется пояснение с порогом.
+    Всё считается в логарифмах — при <code>α</code> близких к единице обычная
+    арифметика переполняется и перебор начинает выдумывать ответы.
   </p>
 
 </div>
 <script>
 "use strict";
 
-/* ===================== model (CES) ===================== */
-/* CES with σ = 1 splits by 0/0, so that case gets its own branch. */
-const SG_TOL = 1e-3;
-const sgOne  = p => Math.abs(p.sg - 1) < SG_TOL;
-const rho    = p => (p.sg - 1) / p.sg;
-const dep    = p => p.d + p.n + p.g;
+/* ===================== модель: Кобб — Дуглас ===================== */
+/* f(k) = k^α,  Δk = s·f(k) − (δ+n+g)·k,  k* = (s/(δ+n+g))^(1/(1−α)).
+   Всё, что сравнивается, считается в логарифмах: при α, близких к единице,
+   показатель 1/(1−α) огромен, обычная арифметика молча переполняется,
+   и перебор начинает выдумывать «не изменилось». */
 
-/* f(k) = [α·k^ρ + (1−α)]^(1/ρ),  ρ = (σ−1)/σ;  at σ = 1 it is k^α. */
-function f(k, p){
-  const x = Math.max(k, 1e-12);
-  if (sgOne(p)) return Math.pow(x, p.a);
-  const r = rho(p);
-  return Math.pow(p.a * Math.pow(x, r) + (1 - p.a), 1 / r);
-}
-
-/* f(k)/k falls monotonically, so every level of the average product is hit
-   at most once. Both k* and the golden rule are such levels. */
-function kAtAPK(q, p){
-  if (!(q > 0) || !isFinite(q)) return NaN;
-  if (sgOne(p)) return Math.pow(q, 1 / (p.a - 1));
-  const r = rho(p), den = Math.pow(q, r) - p.a;
-  if (!(den > 0)) return NaN;             // that level of f(k)/k is never reached
-  return Math.pow((1 - p.a) / den, 1 / r);
-}
-
-const kStar = p => kAtAPK(dep(p) / p.s, p);
-const kGold = p => kAtAPK(Math.pow(dep(p) / p.a, p.sg), p);
-const sGold = p => Math.pow(p.a, p.sg) * Math.pow(dep(p), 1 - p.sg);
-const mpk   = (k, p) => p.a * Math.pow(f(k, p) / Math.max(k, 1e-12), 1 / p.sg);
-const share = (k, p) =>
-  sgOne(p) ? p.a : p.a * Math.pow(Math.max(k, 1e-12) / f(k, p), rho(p));
-const lambda = p => {
-  const ks = kStar(p);
-  return isFinite(ks) ? (1 - share(ks, p)) * dep(p) : NaN;
-};
-const regime = p => isFinite(kStar(p)) ? "ok" : (p.sg > 1 ? "explosive" : "collapse");
-
-/* ===================== formatting ===================== */
-const num = (x, dg = 2) => (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ","));
-const pct = (x, dg = 1) =>
-  (!isFinite(x) ? "—" : (x * 100).toFixed(dg).replace(".", ",") + "%");
-const esc = s => String(s).replace(/[&<>"]/g,
-  c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
-/* Accepts both «0,25» and «0.25» — Russian keyboards type the comma. */
-const parseRu = s => {
-  const v = parseFloat(String(s).trim().replace(",", ".").replace(/\s/g, ""));
-  return isFinite(v) ? v : NaN;
-};
-
-/* ===================== parameters ===================== */
-/* n and g keep a floor of 0, not 0.01: «без роста населения» is a standard
-   baseline and every seminar problem starts from it. s, δ and α start at 0.01,
-   where zero really is degenerate (no investment / no decay / no capital). */
-const META = {
-  s : {sym:"s", name:"норма сбережений",       min:0.01, max:0.99, step:0.001, dig:3},
-  d : {sym:"δ", name:"амортизация",            min:0.01, max:0.99, step:0.001, dig:3},
-  n : {sym:"n", name:"рост населения",         min:0,    max:0.99, step:0.001, dig:3},
-  g : {sym:"g", name:"техпрогресс",            min:0,    max:0.99, step:0.001, dig:3},
-  a : {sym:"α", name:"доля капитала",          min:0.01, max:0.99, step:0.01,  dig:2},
-  sg: {sym:"σ", name:"эластичность замещения", min:0.3,  max:2,    step:0.05,  dig:2},
-  mk: {sym:"K ×", name:"разовый шок запаса капитала",  min:0.05, max:3, step:0.01, dig:2},
-  ml: {sym:"L ×", name:"разовый шок числа работников", min:0.05, max:3, step:0.01, dig:2}
-};
-const PKEYS = ["s", "d", "n", "g", "a", "sg"];   // move the curves
-const SKEYS = ["mk", "ml"];                      // move the point only
+const PKEYS = ["s", "d", "n", "g", "a"];       // двигают кривые
+const SKEYS = ["K", "L"];                      // двигают точку
 const ALLKEYS = PKEYS.concat(SKEYS);
+const VARS = ["y", "k", "c", "i"];
+const MAXSHOCKS = 3;
 
-/* Which curve each parameter actually moves — a shock recolours nothing else. */
-const AFFECTS = {
-  s:["inv"], d:["dep"], n:["dep"], g:["dep"],
-  a:["out","inv"], sg:["out","inv"], mk:[], ml:[]
+const META = {
+  s:{sym:"s", name:"норма сбережений", min:0.01, max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
+  d:{sym:"δ", name:"амортизация",      min:0.01, max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
+  n:{sym:"n", name:"рост населения",   min:0,    max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
+  g:{sym:"g", name:"техпрогресс",      min:0,    max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
+  a:{sym:"α", name:"доля капитала",    min:0.01, max:0.99, step:0.005, dig:3, forms:["set","add","mul"]},
+  K:{sym:"K", name:"запас капитала",   min:0.05, max:3, step:0.01, dig:2, forms:["mul"], stock:true},
+  L:{sym:"L", name:"число работников", min:0.05, max:3, step:0.01, dig:2, forms:["mul"], stock:true}
 };
-/* What a curve is determined by, for telling two versions of it apart. */
-const DET = {out:["a","sg"], inv:["s","a","sg"], dep:["d","n","g"]};
+
+/* Три формы, потому что в задачах встречаются все три:
+   «s: 0,10 → 0,20», «δ + 5 п.п.», «K ×0,80». */
+const FORM = {
+  set:{glyph:"→", word:"новое значение", rng:k => [META[k].min, META[k].max], dig:k => META[k].dig},
+  add:{glyph:"+", word:"приращение",     rng:()  => [-0.5, 0.5],              dig:()  => 3},
+  mul:{glyph:"×", word:"множитель",      rng:()  => [0.05, 3],                dig:()  => 2}
+};
+
+/* какую линию двигает параметр — шок красит только её */
+const AFFECTS = {s:["inv"], d:["dep"], n:["dep"], g:["dep"], a:["out","inv"], K:[], L:[]};
+const DET = {out:["a"], inv:["s","a"], dep:["d","n","g"]};
 const CURVES = ["out", "inv", "dep"];
 const CURVE_LABEL = {out:"f(k)", inv:"s·f(k)", dep:"(δ+n+g)k"};
+
+const dep   = p => p.d + p.n + p.g;
+const f     = (k, p) => Math.pow(Math.max(k, 1e-300), p.a);
+const lnK   = p => (Math.log(p.s) - Math.log(dep(p))) / (1 - p.a);
+const kStar = p => Math.exp(lnK(p));
+const sGold = p => p.a;                        // при Коббе — Дугласе s* = α
 const curveFn = (c, p) =>
   c === "out" ? k => f(k, p) : c === "inv" ? k => p.s * f(k, p) : k => dep(p) * k;
 const sigOf = (p, c) => DET[c].map(k => p[k]).join("|");
 
-const clampKey = (key, v) => {
-  const m = META[key];
-  return Math.min(m.max, Math.max(m.min, v));
+const OK = p =>
+  p.s > 0 && p.s < 1 && p.a > 0 && p.a < 1 &&
+  p.d >= 0 && p.d < 1 && p.n >= 0 && p.n < 1 && p.g >= 0 && p.g < 1 &&
+  dep(p) > 0;
+
+/* логарифмы четырёх переменных при запасе e^lnk и параметрах p */
+const bundle = (lnk, p) => ({
+  y: p.a * lnk,
+  k: lnk,
+  c: Math.log(1 - p.s) + p.a * lnk,
+  i: Math.log(p.s)     + p.a * lnk
+});
+
+const TOL = 1e-11;
+const sgn = d => (!isFinite(d) ? "dunno" : Math.abs(d) < TOL ? "same" : (d > 0 ? "up" : "down"));
+
+/* ===================== форматирование ===================== */
+const num = (x, dg = 2) => (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ","));
+const pct = (x, dg = 1) => (!isFinite(x) ? "—" : (x * 100).toFixed(dg).replace(".", ",") + "%");
+const esc = s => String(s).replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+const parseRu = s => {
+  const v = parseFloat(String(s).trim().replace(",", ".").replace(/\s/g, ""));
+  return isFinite(v) ? v : NaN;
+};
+const clampKey = (key, v, form) => {
+  const [lo, hi] = form ? FORM[form].rng(key) : [META[key].min, META[key].max];
+  return Math.min(hi, Math.max(lo, v));
 };
 
-/* ===================== state ===================== */
-let base   = {s:0.20, d:0.10, n:0, g:0, a:1/3, sg:1};
-let shocks = [];        // {key, value, on, ci} — at most one per key, all at once
+/* ===================== состояние ===================== */
+/* У параметра два независимых свойства: значение — им рисуется картинка,
+   и статус — им считается таблица. */
+let base = {};
+let shocks = [];        // {key, form, value, on, ci}
 let probIdx = -1;
-let picked = [];        // ids of points whose coordinates are pinned
-let nextCi = 0;
+let picked = [];
 
-const colVar = ci => "var(--sh" + ((ci % 6) + 1) + ")";
-const colHex = ci => col("--sh" + ((ci % 6) + 1));
-
-const freeCi = () => {
-  const used = new Set(shocks.map(s => s.ci));
-  let i = 0; while (used.has(i)) i++;
-  return i;
+const DEFAULT_BASE = {
+  s:{v:0.20, fixed:true},  d:{v:0.10, fixed:true},
+  n:{v:0,    fixed:true},  g:{v:0,    fixed:true},
+  a:{v:1/3,  fixed:false}
 };
-const resetAll = () => { shocks = []; probIdx = -1; picked = []; };
+const resetAll = () => {
+  base = {}; PKEYS.forEach(k => base[k] = {...DEFAULT_BASE[k]});
+  shocks = []; probIdx = -1; picked = [];
+};
 
-const isStock = k => SKEYS.indexOf(k) >= 0;
-const paramsOf = sh => isStock(sh.key) ? {...base} : {...base, [sh.key]: sh.value};
-/* A shock still sitting on the starting value moves nothing, so it colours
-   nothing: the line stays black until the shock actually says something. */
-const bites = sh => Math.abs(sh.value - (isStock(sh.key) ? 1 : base[sh.key])) > 1e-9;
+const colVar = ci => "var(--sh" + ((ci % 3) + 1) + ")";
+const colHex = ci => col("--sh" + ((ci % 3) + 1));
+const freeCi = () => { const u = new Set(shocks.map(s => s.ci)); let i = 0; while (u.has(i)) i++; return i; };
+
+const isStock = k => !!META[k].stock;
+/* Шок, стоящий на «ничего не меняю», не красит ни одной линии. */
+const bites = sh => sh.form === "set" ? Math.abs(sh.value - base[sh.key].v) > 1e-12
+                  : sh.form === "add" ? Math.abs(sh.value) > 1e-12
+                  :                     Math.abs(sh.value - 1) > 1e-12;
 const active = () => shocks.filter(s => s.on && bites(s));
 
-function finalP(){
-  const P = {...base};
-  active().forEach(s => { if (!isStock(s.key)) P[s.key] = s.value; });
+const dispVals = () => { const o = {}; PKEYS.forEach(k => o[k] = base[k].v); return o; };
+const freeKeys = () => PKEYS.filter(k => !base[k].fixed);
+
+function applyTo(p, sh){
+  if (isStock(sh.key)) return p;
+  const out = {...p};
+  out[sh.key] = sh.form === "set" ? sh.value
+              : sh.form === "add" ? p[sh.key] + sh.value
+              :                     p[sh.key] * sh.value;
+  return out;
+}
+const stockMulOf = list => {
+  let m = 1;
+  list.forEach(sh => { if (sh.key === "K") m *= sh.value; if (sh.key === "L") m /= sh.value; });
+  return m;
+};
+function finalP(pv){
+  let P = {...pv};
+  active().forEach(sh => { P = applyTo(P, sh); });
   return P;
 }
-function stockMult(){
-  let m = 1;
-  active().forEach(s => {
-    if (s.key === "mk") m *= s.value;
-    if (s.key === "ml") m /= s.value;
-  });
-  return m;
-}
-const shockMult = sh =>
-  sh.key === "mk" ? sh.value : sh.key === "ml" ? 1 / sh.value : 1;
+const paramsOf = sh => applyTo(dispVals(), sh);
 
 function shockName(sh){
-  const m = META[sh.key];
-  return isStock(sh.key)
-    ? m.sym + " " + num(sh.value, m.dig)
-    : m.sym + ": " + num(base[sh.key], m.dig) + " → " + num(sh.value, m.dig);
+  const m = META[sh.key], fm = FORM[sh.form], d = fm.dig(sh.key);
+  if (sh.form === "set") return m.sym + ": " + num(base[sh.key].v, d) + " → " + num(sh.value, d);
+  if (sh.form === "add") return m.sym + " " + (sh.value >= 0 ? "+ " : "− ") + num(Math.abs(sh.value), d);
+  return m.sym + " ×" + num(sh.value, d);
 }
 
-/* Values of the four variables at a capital stock, under one parameter set. */
-const at = (k, p) => {
-  const y = f(k, p);
-  return {k, y, c: (1 - p.s) * y, i: p.s * y};
-};
+/* ===================== перебор ===================== */
+/* Сравнение одного состояния с исходным, целиком в логарифмах. */
+function compare(P0, P1, m){
+  const l0 = lnK(P0), l1 = lnK(P1), lS = l0 + Math.log(m);
+  const B = bundle(l0, P0), S = bundle(lS, P1), L = bundle(l1, P1);
+  return {sr: VARS.map(v => sgn(S[v] - B[v])),
+          lr: VARS.map(v => sgn(L[v] - B[v]))};
+}
 
-/* ===================== canvas helpers ===================== */
+/* Строки таблицы при конкретном наборе параметров: каждый шок по отдельности
+   и, если шоков больше одного, все вместе. */
+function rowsAt(pv){
+  const act = active();
+  if (!act.length || !OK(pv)) return null;
+  const out = [];
+  for (const sh of act){
+    const P1 = applyTo(pv, sh);
+    if (!OK(P1)) return null;
+    out.push(compare(pv, P1, isStock(sh.key) ? stockMulOf([sh]) : 1));
+  }
+  if (act.length > 1){
+    let P1 = {...pv};
+    for (const sh of act){ P1 = applyTo(P1, sh); if (!OK(P1)) return null; }
+    out.push(compare(pv, P1, stockMulOf(act)));
+  }
+  return out;
+}
+
+const gridN = n => n <= 1 ? 1401 : n === 2 ? 121 : n === 3 ? 29 : n === 4 ? 15 : 11;
+const cartesian = lists => lists.reduce((acc, l) => acc.flatMap(a => l.map(x => a.concat([x]))), [[]]);
+
+function sweep(){
+  const act = active();
+  const nrows = act.length + (act.length > 1 ? 1 : 0);
+  if (!nrows) return [];
+  const free = freeKeys(), N = gridN(free.length);
+  const acc = Array.from({length: nrows}, () => ({
+    sr: VARS.map(() => new Set()), lr: VARS.map(() => new Set())
+  }));
+  let seen = 0;
+  const take = pv => {
+    const r = rowsAt(pv);
+    if (!r || r.length !== nrows) return;
+    seen++;
+    r.forEach((row, i) => VARS.forEach((_, j) => {
+      acc[i].sr[j].add(row.sr[j]);
+      acc[i].lr[j].add(row.lr[j]);
+    }));
+  };
+
+  /* грубая полная сетка — ловит совместные эффекты нескольких параметров */
+  const total = Math.pow(N, free.length);
+  for (let idx = 0; idx < total; idx++){
+    const pv = dispVals();
+    let r = idx;
+    for (const k of free){
+      const j = r % N; r = (r - j) / N;
+      pv[k] = META[k].min + (META[k].max - META[k].min) * j / (N - 1);
+    }
+    take(pv);
+  }
+
+  /* тонкая пристрелка вдоль каждой свободной оси: грубая сетка проскакивает
+     узкие полосы, где знак переворачивается. Остальные свободные параметры
+     берутся из фиксированной выборки, а не из текущих значений, — иначе
+     результат зависел бы от положения ползунка и кэш бы врал. */
+  const fine = free.length <= 1 ? 1200 : free.length === 2 ? 900 : 700;
+  const spots = free.length <= 2 ? [0.12, 0.5, 0.88] : [0.15, 0.85];
+  free.forEach(k => {
+    const others = free.filter(o => o !== k);
+    const grids = others.map(o => spots.map(
+      t => META[o].min + (META[o].max - META[o].min) * t));
+    cartesian(grids).forEach(combo => {
+      for (let j = 0; j < fine; j++){
+        const pv = dispVals();
+        others.forEach((o, oi) => { pv[o] = combo[oi]; });
+        pv[k] = META[k].min + (META[k].max - META[k].min) * j / (fine - 1);
+        take(pv);
+      }
+    });
+  });
+
+  const pick = st => (seen && st.size === 1) ? [...st][0] : "dunno";
+  return acc.map(a => ({sr: a.sr.map(pick), lr: a.lr.map(pick)}));
+}
+
+/* Перебор зависит только от заданных значений, набора свободных и самих шоков —
+   значит, таскать его на каждое движение свободного ползунка не нужно. */
+let sweepCache = {key: null, val: null};
+const sweepKey = () =>
+  PKEYS.map(k => base[k].fixed ? "f" + base[k].v : "x").join(",") + "|" +
+  active().map(s => s.key + s.form + s.value).join(";");
+function sweepCached(){
+  const key = sweepKey();
+  if (sweepCache.key !== key) sweepCache = {key, val: sweep()};
+  return sweepCache.val;
+}
+
+/* Где именно переворачивается знак: двигаем один свободный параметр,
+   остальные оставляем как на картинке, и бисекцией ищем порог. */
+function thresholds(rowIdx, per, vi){
+  const out = [];
+  freeKeys().forEach(k => {
+    const m = META[k], N = 500;
+    let prevX = null, prevS = null;
+    for (let j = 0; j <= N; j++){
+      const x = m.min + (m.max - m.min) * j / N;
+      const pv = dispVals(); pv[k] = x;
+      const r = rowsAt(pv);
+      const s = (r && r[rowIdx]) ? r[rowIdx][per][vi] : null;
+      if (s === null){ prevX = null; prevS = null; continue; }
+      if (prevS !== null && s !== prevS){
+        let lo = prevX, hi = x, lv = prevS;
+        for (let t = 0; t < 60; t++){
+          const mid = (lo + hi) / 2, p2 = dispVals(); p2[k] = mid;
+          const r2 = rowsAt(p2);
+          const s2 = (r2 && r2[rowIdx]) ? r2[rowIdx][per][vi] : lv;
+          if (s2 === lv) lo = mid; else hi = mid;
+        }
+        out.push({key: k, at: (lo + hi) / 2, below: prevS, above: s});
+      }
+      prevX = x; prevS = s;
+    }
+  });
+  return out;
+}
+
+/* ===================== canvas ===================== */
 function fitCanvas(cv){
   const dpr = window.devicePixelRatio || 1;
   const w = cv.clientWidth, h = parseInt(cv.dataset.h, 10);
-  cv.width  = Math.round(w * dpr);
+  cv.width = Math.round(w * dpr);
   cv.height = Math.round(h * dpr);
   cv.style.height = h + "px";
   const ctx = cv.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return {ctx, w, h};
 }
-
 const C = getComputedStyle(document.documentElement);
 const col = n => C.getPropertyValue(n).trim();
+const FONT = () => col("--sans");
 
-function arrowAxes(ctx, L, B, R, T){
-  ctx.strokeStyle = col("--ink"); ctx.fillStyle = col("--ink"); ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(L, T - 10); ctx.lineTo(L, B); ctx.lineTo(R + 10, B); ctx.stroke();
+function axes(ctx, L, B, R, T){
+  ctx.strokeStyle = col("--ink"); ctx.fillStyle = col("--ink"); ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(L, T - 12); ctx.lineTo(L, B); ctx.lineTo(R + 14, B); ctx.stroke();
   const head = (x, y, dx, dy) => {
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x - dx * 8 - dy * 4, y - dy * 8 - dx * 4);
-    ctx.lineTo(x - dx * 8 + dy * 4, y - dy * 8 + dx * 4);
+    ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.lineTo(x - dx*8 - dy*4, y - dy*8 - dx*4);
+    ctx.lineTo(x - dx*8 + dy*4, y - dy*8 + dx*4);
     ctx.closePath(); ctx.fill();
   };
-  head(R + 10, B, 1, 0);
-  head(L, T - 10, 0, -1);
+  head(R + 14, B, 1, 0); head(L, T - 12, 0, -1);
 }
 
 function curve(ctx, fn, kMax, X, Y, color, w){
@@ -596,218 +701,247 @@ function curve(ctx, fn, kMax, X, Y, color, w){
   ctx.beginPath();
   const N = 420;
   for (let i = 0; i <= N; i++){
-    const k = kMax * i / N;
-    const px = X(k), py = Y(fn(k));
+    const k = kMax * i / N, px = X(k), py = Y(fn(k));
+    if (!isFinite(py)) continue;
     i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
   }
-  ctx.stroke();
-  ctx.restore();
+  ctx.stroke(); ctx.restore();
 }
 
-function tag(ctx, x, y, text, color, align, size, weight){
+function tag(ctx, x, y, text, color, align, size, bold){
   ctx.save();
-  const sz = size || 13.5;
-  ctx.font = (weight ? weight + " " : "") + sz + "px " + col("--serif");
-  ctx.textAlign = align || "left";
-  ctx.textBaseline = "middle";
+  const sz = size || 13;
+  ctx.font = (bold ? "700 " : "") + sz + "px " + FONT();
+  ctx.textAlign = align || "left"; ctx.textBaseline = "middle";
   const pad = 3, m = ctx.measureText(text);
-  const bx = align === "right"  ? x - m.width - pad
-           : align === "center" ? x - m.width / 2 - pad : x - pad;
-  ctx.fillStyle = "rgba(251,250,246,.88)";
-  ctx.fillRect(bx, y - sz * .64, m.width + pad * 2, sz * 1.28);
-  ctx.fillStyle = color;
-  ctx.fillText(text, x, y);
+  const bx = align === "right" ? x - m.width - pad
+           : align === "center" ? x - m.width/2 - pad : x - pad;
+  ctx.fillStyle = "rgba(255,255,255,.9)";
+  ctx.fillRect(bx, y - sz*.66, m.width + pad*2, sz*1.32);
+  ctx.fillStyle = color; ctx.fillText(text, x, y);
   ctx.restore();
 }
 
-/* Boxed note: paper fill, coloured rule down the left. */
-function noteBox(ctx, x, y, text, maxW, accent){
+function dashed(ctx, x1, y1, x2, y2, color, w, dash){
   ctx.save();
-  const size = 13.5, lh = 18, pad = 9, bar = 3;
-  ctx.font = size + "px " + col("--serif");
-  const fits = t => ctx.measureText(t).width + pad * 2 + bar <= maxW;
-  let lines = [text];
-  if (!fits(text)){
-    lines = [];
-    let cur = "";
-    text.split(" ").forEach(word => {
-      const t = cur ? cur + " " + word : word;
-      if (cur && !fits(t)){ lines.push(cur); cur = word; } else cur = t;
-    });
-    if (cur) lines.push(cur);
-  }
-  const bw = Math.max(...lines.map(t => ctx.measureText(t).width)) + pad * 2 + bar;
-  const bh = lines.length * lh + pad * 2 - 4;
-  ctx.fillStyle = col("--note-bg"); ctx.fillRect(x, y, bw, bh);
-  ctx.fillStyle = accent;           ctx.fillRect(x, y, bar, bh);
-  ctx.fillStyle = col("--ink");
-  ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  lines.forEach((t, i) => ctx.fillText(t, x + bar + pad, y + pad - 2 + lh * (i + 0.5)));
+  ctx.strokeStyle = color; ctx.lineWidth = w; ctx.setLineDash(dash || [5, 4]);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
   ctx.restore();
 }
 
-/* Push labels apart vertically so several of them stay readable. */
-function spread(items, gap){
-  const out = items.slice().sort((a, b) => a.y - b.y);
-  for (let i = 1; i < out.length; i++)
-    if (out[i].y - out[i - 1].y < gap) out[i].y = out[i - 1].y + gap;
+/* цепочка маленьких стрелок — направление подстройки */
+function adjust(ctx, x0, x1, y, color, label){
+  if (Math.abs(x1 - x0) < 26) return;
+  const dir = Math.sign(x1 - x0), n = Math.max(3, Math.min(9, Math.round(Math.abs(x1 - x0) / 34)));
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.1;
+  ctx.beginPath(); ctx.moveTo(x0 + dir*5, y); ctx.lineTo(x1 - dir*5, y); ctx.stroke();
+  const span = (x1 - x0) - dir*10, step = span / n;
+  for (let i = 0; i < n; i++){
+    const x = x0 + dir*5 + step*(i + 0.55);
+    ctx.beginPath();
+    ctx.moveTo(x + dir*4, y);
+    ctx.lineTo(x - dir*3, y - 3.2); ctx.lineTo(x - dir*3, y + 3.2);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  if (label) tag(ctx, (x0 + x1)/2, y - 11, label, color, "center", 12);
+}
+
+/* вертикальная скобка с засечками */
+function bracket(ctx, x, yTop, yBot, color, label){
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x - 4, yTop); ctx.lineTo(x, yTop);
+  ctx.lineTo(x, yBot); ctx.lineTo(x - 4, yBot);
+  ctx.stroke(); ctx.restore();
+  tag(ctx, x + 6, (yTop + yBot)/2, label, color, "left", 13, true);
+}
+
+/* развести подписи по двум строкам под осью */
+function place(items, gap){
+  const rows = [[], []], out = [];
+  items.slice().sort((a,b) => a.x - b.x).forEach(it => {
+    let r = 0;
+    while (r < rows.length && rows[r].some(x => Math.abs(x - it.x) < (gap || 42))) r++;
+    if (r >= rows.length) r = rows.length - 1;
+    rows[r].push(it.x);
+    out.push({...it, row: r});
+  });
   return out;
 }
+const SUBS = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
+const sub = i => String(i).split("").map(d => SUBS[+d]).join("");
 
-/* ===================== what to draw ===================== */
-/* One shock moves one parameter, so it repaints only the curve that parameter
-   actually shifts. Everything it does not touch stays black. */
-function drawPlan(){
-  const act = active(), items = [];
-  CURVES.forEach(c =>
-    items.push({curve:c, p:base, color:col("--ink"), w:1.7, kind:"base"}));
-  act.forEach(sh =>
-    AFFECTS[sh.key].forEach(c =>
-      items.push({curve:c, p:paramsOf(sh), color:colHex(sh.ci), w:2.9, kind:"shock", sh})));
-
-  /* A combined curve is only worth drawing when two shocks pull the same line
-     and the joint version differs from either one alone. */
-  const PF = finalP();
-  CURVES.forEach(c => {
-    const seen = new Set([sigOf(base, c)].concat(act.map(sh => sigOf(paramsOf(sh), c))));
-    if (!seen.has(sigOf(PF, c)))
-      items.push({curve:c, p:PF, color:col("--result"), w:3.3, kind:"result"});
-  });
-  return items;
-}
-
-/* Every intersection worth reading off the picture: for each state the point
-   where s·f(k) meets the depreciation line, and the output level above it. */
-function pointList(){
-  const act = active(), out = [], seen = new Set();
-  const kb = kStar(base);
-  const push = (id, label, k, p, color) => {
-    if (!isFinite(k) || k <= 0) return;
-    [["out", f(k, p)], ["inv", p.s * f(k, p)]].forEach(([kind, y]) => {
-      if (!isFinite(y)) return;
-      const key = kind + "|" + k.toPrecision(9) + "|" + y.toPrecision(9);
-      if (seen.has(key)) return;
-      seen.add(key);
-      out.push({id: id + "-" + kind, label, kind, k, y, color});
-    });
+/* ===================== состояния на картинке ===================== */
+function statesOf(){
+  const pv = dispVals(), act = active(), out = [], seen = new Set();
+  const push = st => {
+    if (!isFinite(st.k) || st.k <= 0) return;
+    const key = st.k.toPrecision(10) + "|" + PKEYS.map(k => st.P[k]).join(",");
+    if (seen.has(key)) return;
+    seen.add(key); out.push(st);
   };
-  push("base", "исходное", kb, base, col("--ink"));
-  act.forEach(sh => {
-    if (isStock(sh.key)) push("s" + sh.key, shockName(sh), kb * shockMult(sh), base, colHex(sh.ci));
-    else                 push("s" + sh.key, shockName(sh), kStar(paramsOf(sh)), paramsOf(sh), colHex(sh.ci));
+  const k0 = kStar(pv);
+  push({id:"base", label:"исходное", mark:"k" + sub(0) + "*", P:pv, k:k0,
+        color:col("--ink"), weight:1.4});
+  act.forEach((sh, i) => {
+    const P = paramsOf(sh);
+    push({id:"sh" + sh.ci, label:shockName(sh), mark:"k*" + sub(i + 1),
+          P, k: isStock(sh.key) ? k0 * stockMulOf([sh]) : kStar(P),
+          color: colHex(sh.ci), weight:1.1});
   });
-  const PF = finalP();
-  push("short", "сразу после шоков", kb * stockMult(), PF, col("--result"));
-  push("final", "итог", kStar(PF), PF, col("--result"));
+  if (act.length){
+    const PF = finalP(pv), m = stockMulOf(act);
+    push({id:"short", label:"сразу после шоков", mark:"k′", P:PF, k:k0*m,
+          color:col("--res"), weight:1.1, short:true});
+    push({id:"final", label:"итог", mark:"k*" + (act.length > 1 ? "∑" : ""),
+          P:PF, k:kStar(PF), color:col("--res"), weight:1.5, final:true});
+  }
   return out;
 }
 
-/* ===================== main diagram ===================== */
-let HITS = [];          // screen positions of the points, for click testing
+/* Точки, которые имеет смысл читать: на каждом перпендикуляре — пересечения
+   с тремя линиями своего состояния. В равновесии s·f(k) и линия выбытия
+   сходятся в одну, поэтому там точек две, а не три. */
+function pointList(){
+  const out = [], seen = new Set();
+  statesOf().forEach(st => {
+    [["out", f(st.k, st.P)], ["inv", st.P.s * f(st.k, st.P)], ["dep", dep(st.P) * st.k]]
+      .forEach(([kind, y]) => {
+        if (!isFinite(y) || y <= 0) return;
+        const key = kind + "|" + st.k.toPrecision(9) + "|" + y.toPrecision(9);
+        const pos = st.k.toPrecision(9) + "|" + y.toPrecision(9);
+        if (seen.has(pos)) return;
+        seen.add(pos);
+        out.push({id: st.id + "-" + kind, label: st.label, kind, k: st.k, y, color: st.color});
+      });
+  });
+  return out;
+}
+
+/* ===================== главная диаграмма ===================== */
+let HITS = [], FRAME = {gold:false, points:0};
 
 function renderMain(ctx, w, h, capture){
-  const L = 54, R = w - 96, T = 26, B = h - 46;
-  const act = active(), PF = finalP();
-  const items = drawPlan(), pts = pointList();
+  const L = 58, R = w - 104, T = 28, B = h - 52;
+  const pv = dispVals(), act = active(), PF = finalP(pv);
+  const sts = statesOf(), pts = pointList();
 
-  /* frame around everything that matters */
-  const ks = pts.map(q => q.k).filter(v => isFinite(v) && v > 0);
-  const kgold = kGold(PF);
-  const anyOpen = [base].concat(act.map(paramsOf)).concat([PF]).some(p => !isFinite(kStar(p)));
+  const ks = sts.map(s => s.k).filter(v => isFinite(v) && v > 0);
   const span = ks.length ? Math.max(...ks) : 1;
-  let kMax = span * (anyOpen ? 2.2 : 1.5);
-  /* The golden rule is a reference mark, not the subject: let it widen the
-     frame, but never so far that the shocks themselves get squeezed. */
-  if (isFinite(kgold)) kMax = Math.min(span * 2.8, Math.max(kMax, kgold * 1.12));
+  let kMax = span * 1.45;
+  const kg = Math.pow(PF.a / dep(PF), 1/(1 - PF.a));
+  const gold = isFinite(kg) && kg > 0 && kg < span * 2.6;
+  if (gold) kMax = Math.max(kMax, kg * 1.12);
   if (!(kMax > 0) || !isFinite(kMax)) kMax = 1;
-  const goldShown = isFinite(kgold) && kgold < kMax;
 
-  let yMax = 1e-9;
-  items.forEach(it => { yMax = Math.max(yMax, curveFn(it.curve, it.p)(kMax)); });
+  /* что рисуем: чёрное исходное, поверх — только те линии, которые шок двигает */
+  const items = [];
+  CURVES.forEach(c => items.push({c, P:pv, color:col("--ink"), w:1.5, kind:"base"}));
+  act.forEach(sh => AFFECTS[sh.key].forEach(c =>
+    items.push({c, P:paramsOf(sh), color:colHex(sh.ci), w:2.6, kind:"shock"})));
+  CURVES.forEach(c => {
+    const known = new Set([sigOf(pv, c)].concat(act.map(sh => sigOf(paramsOf(sh), c))));
+    if (!known.has(sigOf(PF, c)))
+      items.push({c, P:PF, color:col("--res"), w:3, kind:"res"});
+  });
+
+  let yMax = 1e-12;
+  items.forEach(it => { yMax = Math.max(yMax, curveFn(it.c, it.P)(kMax)); });
   pts.forEach(q => { yMax = Math.max(yMax, q.y); });
-  yMax *= 1.08;
+  yMax *= 1.1;
   if (!(yMax > 0) || !isFinite(yMax)) yMax = 1;
 
   const X = k => L + (k / kMax) * (R - L);
   const Y = y => B - (y / yMax) * (B - T);
 
-  arrowAxes(ctx, L, B, R, T);
-  tag(ctx, R + 16, B + 16, "k", col("--ink"), "center", 15);
-  tag(ctx, L - 18, T - 6, "y", col("--ink"), "center", 15);
+  axes(ctx, L, B, R, T);
+  tag(ctx, R + 22, B + 18, "k", col("--ink"), "center", 15, true);
+  tag(ctx, L - 22, T - 8, "y", col("--ink"), "center", 15, true);
 
-  /* golden rule of the final state */
-  if (goldShown){
-    ctx.save();
-    ctx.strokeStyle = col("--ochre"); ctx.lineWidth = 1.3; ctx.setLineDash([2, 4]);
-    ctx.beginPath(); ctx.moveTo(X(kgold), B); ctx.lineTo(X(kgold), Y(f(kgold, PF))); ctx.stroke();
-    ctx.restore();
-    ctx.fillStyle = col("--ochre");
-    ctx.beginPath(); ctx.arc(X(kgold), Y(f(kgold, PF)), 4.5, 0, 7); ctx.fill();
-    tag(ctx, X(kgold), B - 14, "golden rule", col("--ochre"), "center", 12.5);
+  if (gold){
+    dashed(ctx, X(kg), B, X(kg), Y(f(kg, PF)), col("--gold"), 1.2, [2, 4]);
+    ctx.fillStyle = col("--gold");
+    ctx.beginPath(); ctx.arc(X(kg), Y(f(kg, PF)), 4, 0, 7); ctx.fill();
+    tag(ctx, X(kg), B - 26, "golden rule", col("--gold"), "center", 12);
   }
 
-  /* black first, colours on top */
-  items.filter(it => it.kind === "base").forEach(it =>
-    curve(ctx, curveFn(it.curve, it.p), kMax, X, Y, it.color, it.w));
-  items.filter(it => it.kind !== "base").forEach(it =>
-    curve(ctx, curveFn(it.curve, it.p), kMax, X, Y, it.color, it.w));
+  items.filter(i => i.kind === "base").forEach(i => curve(ctx, curveFn(i.c, i.P), kMax, X, Y, i.color, i.w));
+  items.filter(i => i.kind !== "base").forEach(i => curve(ctx, curveFn(i.c, i.P), kMax, X, Y, i.color, i.w));
 
-  /* right-hand labels, nudged apart */
-  const labels = spread(items.map(it => ({
-    y: Y(curveFn(it.curve, it.p)(kMax)),
-    text: CURVE_LABEL[it.curve],
-    color: it.color,
-    bold: it.kind !== "base"
-  })), 17);
-  labels.forEach(l =>
-    tag(ctx, R + 8, Math.max(T - 4, Math.min(B + 10, l.y)), l.text, l.color, "left",
-        l.bold ? 13.5 : 12.5, l.bold ? "700" : ""));
+  /* подписи линий у правого края */
+  const lab = items.map(i => ({y: Y(curveFn(i.c, i.P)(kMax)), t: CURVE_LABEL[i.c],
+                               c: i.color, b: i.kind !== "base"}));
+  lab.sort((p, q) => p.y - q.y);
+  for (let i = 1; i < lab.length; i++)
+    if (lab[i].y - lab[i-1].y < 16) lab[i].y = lab[i-1].y + 16;
+  lab.forEach(l => tag(ctx, R + 9, Math.max(T - 6, Math.min(B + 12, l.y)), l.t, l.c, "left", 12.5, l.b));
 
-  /* states with no steady state deserve a sentence, not a silent gap */
-  let notes = 0;
-  const said = new Set();
-  [{p: base, c: col("--ink")}]
-    .concat(act.map(sh => ({p: paramsOf(sh), c: colHex(sh.ci)})))
-    .concat([{p: PF, c: col("--result")}])
-    .forEach(({p, c}) => {
-      if (isFinite(kStar(p))) return;
-      const r = regime(p);
-      if (said.has(r)) return;
-      said.add(r);
-      noteBox(ctx, L + 14, T + 14 + notes * 46,
-              r === "explosive"
-                ? "стационара нет: капитал растёт бесконечно"
-                : "стационара нет: капитал вырождается к нулю",
-              R - L - 28, c);
-      notes++;
-    });
+  /* перпендикуляры на всю высоту + точки на каждой пересечённой линии */
+  const marks = [];
+  sts.forEach(st => {
+    if (st.k > kMax) return;
+    const top = f(st.k, st.P);
+    dashed(ctx, X(st.k), B, X(st.k), Y(top), st.color, st.weight, st.short ? [3, 4] : [5, 4]);
+    if (st.id === "base" || st.final)
+      dashed(ctx, L, Y(top), X(st.k), Y(top), st.color, 1.1, [5, 4]);
+    marks.push({x: X(st.k), t: st.mark, c: st.color, b: st.id === "base" || st.final});
+  });
+  place(marks, 44).forEach(m =>
+    tag(ctx, m.x, B + 18 + m.row * 17, m.t, m.c, "center", 13, m.b));
 
-  /* the readable points */
+  /* скобка инвестиций у итогового равновесия */
+  const fin = sts.find(s => s.final) || sts[0];
+  if (fin && fin.k <= kMax){
+    const iv = fin.P.s * f(fin.k, fin.P);
+    if (iv > 0) bracket(ctx, X(fin.k) + 11, Y(iv), Y(0), fin.color, "i*");
+    tag(ctx, L - 9, Y(f(fin.k, fin.P)), fin.id === "base" ? "y" + sub(0) + "*" : "y*",
+        fin.color, "right", 13, true);
+  }
+  const b0 = sts.find(s => s.id === "base");
+  if (b0 && fin !== b0) tag(ctx, L - 9, Y(f(b0.k, b0.P)), "y" + sub(0) + "*", b0.color, "right", 13, true);
+
+  /* стрелки подстройки: из точки сразу после шоков в новый стационар */
+  const sh0 = sts.find(s => s.short), f0 = sts.find(s => s.final);
+  if (sh0 && f0 && sh0.k <= kMax && f0.k <= kMax){
+    const grows = f0.k > sh0.k;
+    adjust(ctx, X(sh0.k), X(f0.k), B - 13, col("--res"), grows ? "k растёт" : "k падает");
+    const gap = PF.s * f(sh0.k, PF) - dep(PF) * sh0.k;
+    const txt = ["Короткий период: запас k на месте,",
+                 (gap > 0 ? "но инвестиции выше выбытия ⇒ k растёт"
+                          : "но выбытие выше инвестиций ⇒ k падает")];
+    ctx.save();
+    ctx.font = "12.5px " + FONT(); ctx.fillStyle = col("--muted");
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const tx = Math.min(X(sh0.k) + 16, R - 250);
+    txt.forEach((t, i) => ctx.fillText(t, tx, T + 20 + i*17));
+    ctx.restore();
+    dashed(ctx, tx - 5, T + 30, X(sh0.k) + 2, Y(PF.s * f(sh0.k, PF)) - 9, col("--muted"), 1, [3, 3]);
+  }
+
+  /* сами точки */
   const hits = [];
   pts.forEach(q => {
     if (q.k > kMax || q.y > yMax) return;
     const px = X(q.k), py = Y(q.y), on = picked.indexOf(q.id) >= 0;
     if (on){
-      ctx.save();
-      ctx.strokeStyle = q.color; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
-      ctx.globalAlpha = .75;
-      ctx.beginPath();
-      ctx.moveTo(L, py); ctx.lineTo(px, py); ctx.lineTo(px, B);
-      ctx.stroke();
-      ctx.restore();
+      dashed(ctx, L, py, px, py, q.color, 1, [3, 3]);
+      dashed(ctx, px, py, px, B, q.color, 1, [3, 3]);
     }
     ctx.save();
-    ctx.lineWidth = on ? 2.6 : 1.8;
+    ctx.lineWidth = on ? 2.4 : 1.7;
     ctx.strokeStyle = q.color;
-    ctx.fillStyle = on ? q.color : "#fff";
-    ctx.beginPath(); ctx.arc(px, py, on ? 6 : 4.2, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = on ? q.color : col("--paper");
+    ctx.beginPath(); ctx.arc(px, py, on ? 5.6 : 4, 0, 7); ctx.fill(); ctx.stroke();
     ctx.restore();
-    if (on) tag(ctx, px + 11, py - 12, coordText(q), q.color, "left", 12.5, "700");
+    if (on) tag(ctx, px + 10, py - 12, coordText(q), q.color, "left", 12, true);
     hits.push({id: q.id, x: px, y: py});
   });
-  if (capture){ HITS = hits; FRAME = {kMax, yMax, goldShown, points: pts.length}; }
+
+  if (capture){ HITS = hits; FRAME = {gold, points: hits.length}; }
 }
-let FRAME = {goldShown: false, points: 0};
 
 function drawMain(){
   const cv = document.getElementById("main");
@@ -816,205 +950,128 @@ function drawMain(){
   renderMain(ctx, w, h, true);
 }
 
-/* ===================== relative coordinates ===================== */
-/* The picture has no units, so everything is read against the starting
-   steady state: that point is (1; 1) and the rest is «во сколько раз». */
+/* ===================== относительные координаты ===================== */
+/* Картинка безразмерная, поэтому всё читается в долях от исходного стационара:
+   он равен (1; 1), остальное — во сколько раз. */
 function refs(){
-  const kb = kStar(base);
-  const yb = isFinite(kb) ? f(kb, base) : NaN;
-  return {
-    k: (isFinite(kb) && kb > 0) ? kb : 1,
-    y: (isFinite(yb) && yb > 0) ? yb : 1,
-    real: isFinite(kb) && kb > 0
-  };
+  const pv = dispVals(), k = kStar(pv);
+  const ok = isFinite(k) && k > 0;
+  return {k: ok ? k : 1, y: ok ? f(k, pv) : 1, ok};
 }
 const relOf = q => { const r = refs(); return {k: q.k / r.k, y: q.y / r.y}; };
 const coordText = q => { const r = relOf(q); return "(" + num(r.k, 2) + "; " + num(r.y, 2) + ")"; };
 
+/* ===================== координаты отмеченных точек ===================== */
 function renderCoords(){
-  const body = document.getElementById("coords-body");
-  const clear = document.getElementById("clearpts");
+  const body = document.getElementById("coords-body"), clear = document.getElementById("clearpts");
   const pts = pointList(), chosen = picked.map(id => pts.find(q => q.id === id)).filter(Boolean);
-  clear.hidden = chosen.length === 0;
-
+  clear.hidden = !chosen.length;
   if (!chosen.length){
-    body.innerHTML = '<p class="empty">Щёлкните по точке на диаграмме — появятся её координаты. ' +
-      'Отметьте вторую, чтобы сравнить: график безразмерный, поэтому всё считается ' +
-      'в долях от исходного стационара, который равен (1; 1). Повторный щелчок снимает отметку.</p>';
+    body.innerHTML = '<p class="empty">Щёлкните по кружку на диаграмме — появятся его координаты. ' +
+      'Отметьте второй, чтобы увидеть разницу. Картинка безразмерная, поэтому всё считается ' +
+      'в долях от исходного стационара: он равен (1; 1). Повторный щелчок снимает отметку.</p>';
     return;
   }
-  const r = refs();
   const first = relOf(chosen[0]);
-  const cell = (v, ref) => {
-    if (!isFinite(v) || !isFinite(ref) || ref === 0) return '<td class="delta">—</td>';
-    const ratio = v / ref, d = (ratio - 1) * 100;
-    if (Math.abs(d) < 0.05) return '<td class="delta">—</td>';
-    return '<td class="delta"><b>×' + num(ratio, 3) + "</b> " +
-           (d > 0 ? "+" : "−") + num(Math.abs(d), 1) + "%</td>";
+  const d = (v, r) => {
+    const x = v - r;
+    return Math.abs(x) < 5e-4 ? "0" : (x > 0 ? "+" : "−") + num(Math.abs(x), 3);
   };
+  const what = {out:"выпуск", inv:"инвестиции", dep:"выбытие"};
   const rows = chosen.map((q, i) => {
     const rel = relOf(q);
     return '<tr style="--live:' + q.color + '">' +
-      "<td><span class=\"dot\"></span>" + esc(q.label) +
-        ' <span style="color:var(--graphite)">· ' +
-        (q.kind === "out" ? "уровень y" : "уровень i") + "</span></td>" +
+      '<td><span class="dot"></span>' + esc(q.label) +
+      ' <span style="color:var(--muted)">· ' + what[q.kind] + "</span></td>" +
       "<td>" + num(rel.k, 3) + "</td><td>" + num(rel.y, 3) + "</td>" +
-      (i === 0 ? '<td class="delta">—</td><td class="delta">—</td>'
-               : cell(rel.k, first.k) + cell(rel.y, first.y)) +
+      (i === 0 ? "<td>—</td><td>—</td>"
+               : "<td>" + d(rel.k, first.k) + "</td><td>" + d(rel.y, first.y) + "</td>") +
       "</tr>";
   }).join("");
-
-  body.innerHTML =
-    '<table class="ctab"><thead><tr>' +
-    "<th>точка</th><th>k</th><th>y</th><th>k к первой</th><th>y к первой</th>" +
-    "</tr></thead><tbody>" + rows + "</tbody></table>" +
-    (r.real ? "" : '<p class="empty" style="margin-top:8px">У исходного состояния нет ' +
-      "стационара, поэтому координаты показаны в абсолютных единицах.</p>");
+  body.innerHTML = '<table class="ctab"><thead><tr><th>точка</th><th>k</th><th>y</th>' +
+    "<th>Δk к первой</th><th>Δy к первой</th></tr></thead><tbody>" + rows + "</tbody></table>";
 }
 
-/* ===================== the verdict table ===================== */
+/* ===================== таблица ===================== */
 const FX = {
-  up   : {gl:"↑", cls:"up",    word:"увеличилось"},
-  down : {gl:"↓", cls:"down",  word:"уменьшилось"},
-  same : {gl:"=", cls:"same",  word:"не изменилось"},
-  dunno: {gl:"?", cls:"dunno", word:"нельзя определить"}
+  up:   {gl:"↑", cls:"up",    word:"увеличилось"},
+  down: {gl:"↓", cls:"down",  word:"уменьшилось"},
+  same: {gl:"=", cls:"same",  word:"не изменилось"},
+  dunno:{gl:"?", cls:"dunno", word:"нельзя определить"}
 };
-const VARS = ["y", "k", "c", "i"];
-
-function cmp(now, before){
-  if (!isFinite(now) || !isFinite(before)) return "dunno";
-  const rel = (now - before) / Math.max(1e-12, Math.abs(before));
-  if (Math.abs(rel) < 2e-4) return "same";
-  return rel > 0 ? "up" : "down";
-}
-
-function fxRows(){
-  const act = active(), kb = kStar(base);
-  if (!isFinite(kb)) return [];
-  const B = at(kb, base), out = [];
-
-  /* Each shock on its own: everything else stays at the starting values. */
-  act.forEach(sh => {
-    const p = paramsOf(sh);
-    const kShort = kb * shockMult(sh);
-    const kLong  = isStock(sh.key) ? kb : kStar(p);   // a stock shock leaves k* alone
-    const S = at(kShort, p);
-    const Lg = isFinite(kLong) ? at(kLong, p) : null;
-    out.push({
-      ci: sh.ci, name: shockName(sh),
-      short: VARS.map(v => cmp(S[v], B[v])),
-      long : VARS.map(v => Lg ? cmp(Lg[v], B[v]) : "dunno")
-    });
-  });
-
-  if (act.length > 1){
-    const PF = finalP(), kShort = kb * stockMult(), kLong = kStar(PF);
-    const S = at(kShort, PF), Lg = isFinite(kLong) ? at(kLong, PF) : null;
-    out.push({
-      total: true, name: "Итого, все шоки вместе",
-      short: VARS.map(v => cmp(S[v], B[v])),
-      long : VARS.map(v => Lg ? cmp(Lg[v], B[v]) : "dunno")
-    });
-  }
-  return out;
-}
+const rowNames = () => {
+  const act = active();
+  return act.map(shockName).concat(act.length > 1 ? ["Итого, все шоки вместе"] : []);
+};
 
 function renderFx(){
-  const data = fxRows(), body = document.getElementById("fx");
-  if (!data.length){
-    body.innerHTML = '<tr><td colspan="9" style="text-align:left;color:var(--graphite);' +
-      'padding:9px 6px">Пока нет ни одного шока — добавьте его справа или откройте ' +
-      "готовую задачу.</td></tr>";
+  const rows = sweepCached(), act = active(), names = rowNames(), body = document.getElementById("fx");
+  if (!rows.length){
+    body.innerHTML = '<tr><td colspan="9" style="text-align:left;color:var(--muted);padding:10px 6px">' +
+      "Пока нет ни одного шока — добавьте его справа или откройте готовую задачу.</td></tr>";
     return;
   }
   const cell = (code, first) => {
-    const c = FX[code];
+    const c = FX[code] || FX.dunno;
     return '<td class="v ' + c.cls + (first ? " sr" : "") + '" title="' + c.word + '">' + c.gl + "</td>";
   };
-  body.innerHTML = data.map(r =>
-    '<tr class="' + (r.total ? "total" : "") + '"' +
-    (r.total ? "" : ' style="--live:' + colVar(r.ci) + '"') + ">" +
-    '<th class="who">' + (r.total ? "" : '<i class="sw"></i>') + esc(r.name) + "</th>" +
-    r.short.map((c, j) => cell(c, j === 0)).join("") +
-    r.long.map((c, j) => cell(c, j === 0)).join("") +
-    "</tr>").join("");
-}
-
-/* ===================== right panel ===================== */
-function paramRow(key, value, idPrefix, live, fromValue){
-  const m = META[key];
-  const id = idPrefix + key;
-  return '<div class="prow" style="--live:' + live + '">' +
-    '<div class="prow-top">' +
-      '<label for="' + id + '"><b>' + m.sym + "</b><span>" + m.name + "</span></label>" +
-      (fromValue === undefined ? ""
-        : '<span class="from" data-from="' + key + '">' + num(fromValue, m.dig) + " →</span>") +
-      '<input class="numbox" id="n' + id + '" data-num="' + key + '" data-scope="' +
-        idPrefix + '" inputmode="decimal" value="' + num(value, m.dig) +
-        '" aria-label="' + m.sym + " — значение числом\">" +
-    "</div>" +
-    '<input type="range" id="' + id + '" data-rng="' + key + '" data-scope="' + idPrefix +
-      '" min="' + m.min + '" max="' + m.max + '" step="' + m.step + '" value="' + value + '">' +
-    "</div>";
-}
-
-function renderBase(){
-  document.getElementById("base-params").innerHTML =
-    PKEYS.map(k => paramRow(k, base[k], "b-", "var(--ink)")).join("");
-}
-
-function renderShocks(){
-  document.getElementById("shocks").innerHTML = shocks.map((sh, i) => {
-    const live = colVar(sh.ci), m = META[sh.key];
-    const touches = AFFECTS[sh.key].length
-      ? "двигает " + AFFECTS[sh.key].map(c => CURVE_LABEL[c]).join(" и ")
-      : "двигает саму точку k";
-    return "<li>" +
-      '<div class="card' + (sh.on ? "" : " off") + '" data-card="' + i +
-              '" style="--live:' + live + '">' +
-        '<div class="card-head">' +
-          '<i class="sw"></i>' +
-          '<span class="ttl">' + esc(m.sym) + " <em>" + esc(touches) + "</em></span>" +
-          '<span class="sh-acts">' +
-            '<button data-eye="' + i + '" aria-pressed="' + sh.on + '">' +
-              (sh.on ? "скрыть" : "показать") + "</button>" +
-            '<button data-del="' + i + '">убрать</button>' +
-          "</span>" +
-        "</div>" +
-        '<div class="card-body">' +
-          paramRow(sh.key, sh.value, "k" + i + "-", live, isStock(sh.key) ? undefined : base[sh.key]) +
-        "</div>" +
-      "</div></li>";
+  body.innerHTML = rows.map((r, i) => {
+    const total = i >= act.length;
+    return '<tr class="' + (total ? "total" : "") + '"' +
+      (total ? "" : ' style="--live:' + colVar(act[i].ci) + '"') + ">" +
+      '<th class="who">' + (total ? "" : '<i class="sw"></i>') + esc(names[i]) + "</th>" +
+      r.sr.map((c, j) => cell(c, j === 0)).join("") +
+      r.lr.map((c, j) => cell(c, j === 0)).join("") + "</tr>";
   }).join("");
-
-  const used = new Set(shocks.map(s => s.key));
-  const free = ALLKEYS.filter(k => !used.has(k));
-  const sel = document.getElementById("addsel");
-  sel.innerHTML = free.map(k =>
-    '<option value="' + k + '">' + esc(META[k].sym) + " — " + esc(META[k].name) + "</option>").join("");
-  sel.disabled = !free.length;
-  document.getElementById("add").disabled = !free.length;
 }
 
+/* Под таблицей — почему именно «нельзя определить» и где проходит граница. */
+function renderNotes(){
+  const rows = sweepCached(), names = rowNames(), host = document.getElementById("notes");
+  const word = c => c === "up" ? "растёт" : c === "down" ? "падает" : "не меняется";
+  const out = [];
+  rows.forEach((row, ri) => {
+    const lines = [];
+    [["sr", "короткий период"], ["lr", "длинный период"]].forEach(([per, perName]) => {
+      row[per].forEach((code, vi) => {
+        if (code !== "dunno") return;
+        const v = VARS[vi], th = thresholds(ri, per, vi);
+        if (!th.length){
+          lines.push("<b>" + v + "</b>, " + perName +
+            " — знак зависит от того, какие значения принимают свободные параметры.");
+          return;
+        }
+        const t = th[0], sym = META[t.key].sym;
+        lines.push("<b>" + v + "</b>, " + perName + ": " + word(t.above) + " при " + sym +
+          " &gt; <code>" + num(t.at, 3) + "</code> и " + word(t.below) + " при " + sym +
+          " &lt; <code>" + num(t.at, 3) + "</code>" +
+          (freeKeys().length > 1 ? " (остальные свободные — как на картинке)" : "") + ".");
+      });
+    });
+    if (lines.length)
+      out.push('<div class="note"><b>' + esc(names[ri]) + " — что осталось неопределённым</b><p>" +
+               lines.join("<br>") + "</p></div>");
+  });
+  host.innerHTML = out.join("");
+}
+
+/* ===================== легенда и заголовок ===================== */
 function renderLegend(){
-  const parts = [
-    '<span><i style="border-color:' + col("--ink") + '"></i> исходное состояние</span>'
-  ];
+  const parts = ['<span><i style="border-color:' + col("--ink") + '"></i> исходное состояние</span>'];
   active().forEach(sh => {
     if (!AFFECTS[sh.key].length) return;
     parts.push('<span><i style="border-color:' + colHex(sh.ci) +
       ';border-top-width:3px"></i> ' + esc(shockName(sh)) + "</span>");
   });
-  const PF = finalP(), act = active();
-  const anyResult = CURVES.some(c => {
-    const seen = new Set([sigOf(base, c)].concat(act.map(sh => sigOf(paramsOf(sh), c))));
-    return !seen.has(sigOf(PF, c));
-  });
-  if (anyResult)
-    parts.push('<span><i style="border-color:' + col("--result") +
+  const pv = dispVals(), act = active(), PF = finalP(pv);
+  if (CURVES.some(c => {
+        const known = new Set([sigOf(pv, c)].concat(act.map(sh => sigOf(paramsOf(sh), c))));
+        return !known.has(sigOf(PF, c));
+      }))
+    parts.push('<span><i style="border-color:' + col("--res") +
       ';border-top-width:3px"></i> все шоки вместе</span>');
-  if (FRAME.goldShown)
-    parts.push('<span><i style="border-color:' + col("--ochre") +
+  if (FRAME.gold)
+    parts.push('<span><i style="border-color:' + col("--gold") +
       ';border-top-style:dotted"></i> golden rule</span>');
   if (FRAME.points)
     parts.push("<span>кружки — пересечения линий, щелчок показывает координаты</span>");
@@ -1022,216 +1079,254 @@ function renderLegend(){
 }
 
 function renderPhase(){
-  const PF = finalP(), kb = kStar(base), kf = kStar(PF), reg = regime(PF);
-  const kShort = kb * stockMult();
-  let txt;
-  if (reg !== "ok"){
-    txt = reg === "explosive" ? "стационара нет — k растёт без предела"
-                              : "стационара нет — k сходит к нулю";
-  } else if (!active().length){
-    txt = "экономика в стационаре";
-  } else {
-    const gap = PF.s * f(kShort, PF) - dep(PF) * kShort;
-    txt = Math.abs(kShort / kf - 1) < 4e-3 ? "шоки не сдвинули стационар"
-        : gap > 0 ? "инвестиции больше выбытия — k растёт"
-                  : "выбытие больше инвестиций — k падает";
-  }
-  document.getElementById("phase").textContent = txt;
+  const pv = dispVals(), act = active(), PF = finalP(pv);
+  const k0 = kStar(pv), kSR = k0 * stockMulOf(act), k1 = kStar(PF);
+  let t;
+  if (!act.length) t = "экономика в стационаре";
+  else if (Math.abs(kSR / k1 - 1) < 4e-3) t = "шоки не сдвинули стационар";
+  else t = (PF.s * f(kSR, PF) - dep(PF) * kSR) > 0
+      ? "короткий период: инвестиции выше выбытия — k растёт"
+      : "короткий период: выбытие выше инвестиций — k падает";
+  document.getElementById("phase").textContent = t;
 }
 
 function renderReadout(){
-  const PF = finalP(), kf = kStar(PF), lam = lambda(PF);
-  const hl = (isFinite(lam) && lam > 0) ? Math.log(2) / lam : NaN;
-  const kb = kStar(base), kShort = kb * stockMult();
-  const Lg = isFinite(kf) ? at(kf, PF) : null;
-
+  const pv = dispVals(), act = active(), PF = finalP(pv);
+  const k0 = kStar(pv), kSR = k0 * stockMulOf(act), k1 = kStar(PF);
+  const y1 = f(k1, PF);
   document.getElementById("ro-cap").textContent =
-    active().length ? "Показатели итогового состояния" : "Показатели исходного состояния";
-
+    act.length ? "Показатели при значениях с картинки" : "Показатели исходного состояния";
   const rows = [
-    ["k сразу после шоков", num(kShort)],
-    ["k* — стационар",      num(kf)],
-    ["y* — выпуск",         num(Lg ? Lg.y : NaN)],
-    ["c* — потребление",    num(Lg ? Lg.c : NaN)],
-    ["i* — инвестиции",     num(Lg ? Lg.i : NaN)],
-    ["r — отдача капитала", pct(mpk(Lg ? Lg.k : kShort, PF) - PF.d)],
-    ["θ — доля капитала в Y", pct(share(Lg ? Lg.k : kShort, PF))],
-    ["λ — скорость схождения", pct(lam)],
-    ["период полураспада",  isFinite(hl) ? num(hl, 0) + " лет" : "—"]
+    ["k" + sub(0) + "* — исходный стационар", num(k0, 3)],
+    ["k′ — сразу после шоков",  num(kSR, 3)],
+    ["k* — новый стационар",    num(k1, 3)],
+    ["y* — выпуск",             num(y1, 3)],
+    ["c* — потребление",        num((1 - PF.s) * y1, 3)],
+    ["i* — инвестиции",         num(PF.s * y1, 3)],
+    ["s* — золотое правило",    num(sGold(PF), 3)],
+    ["λ — скорость схождения",  pct((1 - PF.a) * dep(PF))]
   ];
   document.getElementById("ro").innerHTML =
     rows.map(([k, v]) => "<tr><th>" + k + "</th><td>" + v + "</td></tr>").join("");
-
-  const sg = sGold(PF), reg = regime(PF);
-  let title, body;
-  if (reg === "explosive"){
-    title = "Стационара нет";
-    body = "При σ &gt; 1 капитал слишком легко замещает труд: средний продукт не " +
-           "опускается ниже α^(σ/(σ−1)), и при такой s инвестиции навсегда остаются " +
-           "выше линии выбытия. Модель вырождается в AK — рост не затухает.";
-  } else if (reg === "collapse"){
-    title = "Стационара нет";
-    body = "При σ &lt; 1 отдача капитала ограничена сверху: даже в самой бедной точке " +
-           "f(k)/k не превышает α^(σ/(σ−1)). При такой s инвестиции нигде не покрывают " +
-           "выбытие, и капитал сходит к нулю.";
-  } else if (!isFinite(sg) || sg >= 1){
-    title = "Золотое правило недостижимо";
-    body = "Норма сбережений золотого правила s* = α^σ·(δ+n+g)^(1−σ) здесь выше единицы: " +
-           "сберегать пришлось бы больше, чем производится.";
-  } else if (Math.abs(PF.s - sg) < 0.012){
-    title = "Золотое правило";
-    body = "s совпадает с s* = " + num(sg) + ": потребление на душу в стационаре максимально.";
-  } else if (PF.s < sg){
-    title = "Недонакопление";
-    body = "s ниже s* = " + num(sg) + ", значит r &gt; δ+n+g. Потребление можно поднять, " +
-           "но только ценой жертвы сегодняшнего поколения. Динамически эффективно.";
-  } else {
-    title = "Перенакопление";
-    body = "s выше s* = " + num(sg) + ", значит r &lt; δ+n+g. Можно проесть часть капитала — " +
-           "и выиграют сразу все поколения. Динамически неэффективно.";
-  }
-  document.getElementById("verdict").innerHTML = "<b>" + title + "</b>" + body;
 }
 
-/* ===================== solved problems ===================== */
-/* Чтобы добавить разбор, скопируйте один элемент и заполните поля:
+/* ===================== панель ===================== */
+function paramRow(key, value, idp, live, fixed, fromVal, form){
+  const m = META[key], id = idp + key;
+  const dig = form ? FORM[form].dig(key) : m.dig;
+  const [lo, hi] = form ? FORM[form].rng(key) : [m.min, m.max];
+  const pin = fixed === undefined ? "" :
+    '<button class="pin" data-pin="' + key + '" aria-pressed="' + fixed + '">' +
+    (fixed ? "задано" : "свободно") + "</button>";
+  const forms = (form && m.forms.length > 1)
+    ? '<span class="forms">' + m.forms.map(fk =>
+        '<button data-form="' + fk + '" data-fscope="' + idp + '" aria-pressed="' + (fk === form) +
+        '" title="' + FORM[fk].word + '">' + FORM[fk].glyph + "</button>").join("") + "</span>"
+    : "";
+  return '<div class="prow" style="--live:' + live + '">' +
+    '<div class="prow-top">' +
+      (form ? "" : '<span class="sym">' + m.sym + '</span><span class="nm">' + m.name + "</span>") +
+      forms +
+      (fromVal === undefined ? "" :
+        '<span class="frm" data-from="' + key + '">' + num(fromVal, dig) + " →</span>") +
+      (form ? '<span class="nm"></span>' : "") +
+      '<input class="numbox' + (fixed === false ? " free" : "") + '" id="n' + id +
+        '" data-num="' + key + '" data-scope="' + idp + '" inputmode="decimal" value="' +
+        num(value, dig) + '" aria-label="' + m.sym + ' — значение числом">' +
+      pin +
+    "</div>" +
+    '<input type="range" id="' + id + '" data-rng="' + key + '" data-scope="' + idp +
+      '" min="' + lo + '" max="' + hi + '" step="' + m.step + '" value="' + value + '">' +
+    "</div>";
+}
+
+function renderBase(){
+  document.getElementById("base-params").innerHTML =
+    PKEYS.map(k => paramRow(k, base[k].v, "b-", "var(--ink)", base[k].fixed)).join("");
+}
+
+function renderShocks(){
+  document.getElementById("shocks").innerHTML = shocks.map((sh, i) => {
+    const live = colVar(sh.ci), m = META[sh.key];
+    const touches = AFFECTS[sh.key].length
+      ? "двигает " + AFFECTS[sh.key].map(c => CURVE_LABEL[c]).join(" и ")
+      : "двигает саму точку k, кривые стоят";
+    const head = sh.form === "set"
+      ? '<span class="sym">' + m.sym + '</span>: ' + num(base[sh.key].v, FORM.set.dig(sh.key)) +
+        ' <span class="arr">→</span> <span class="to">' + num(sh.value, FORM.set.dig(sh.key)) + "</span>"
+      : '<span class="sym">' + m.sym + '</span> <span class="arr">' + FORM[sh.form].glyph +
+        '</span> <span class="to">' + num(sh.value, FORM[sh.form].dig(sh.key)) + "</span>";
+    return "<li>" +
+      '<div class="card' + (sh.on ? "" : " off") + '" data-card="' + i + '" style="--live:' + live + '">' +
+        '<div class="chead"><span class="idx">' + (i + 1) + '</span><i class="chip"></i>' +
+          '<span class="ctitle">' + head + "</span>" +
+          '<span class="acts">' +
+            '<button data-eye="' + i + '" aria-pressed="' + sh.on + '">' +
+              (sh.on ? "скрыть" : "показать") + "</button>" +
+            '<button data-del="' + i + '">убрать</button></span>' +
+        "</div>" +
+        '<div class="cbody"><p class="touch">' + touches + "</p>" +
+          paramRow(sh.key, sh.value, "k" + i + "-", live, undefined,
+                   sh.form === "set" ? base[sh.key].v : undefined, sh.form) +
+        "</div>" +
+      "</div></li>";
+  }).join("");
+
+  const used = new Set(shocks.map(s => s.key));
+  const free = ALLKEYS.filter(k => !used.has(k));
+  const full = shocks.length >= MAXSHOCKS;
+  const sel = document.getElementById("addsel");
+  sel.innerHTML = free.map(k =>
+    '<option value="' + k + '">' + esc(META[k].sym) + " — " + esc(META[k].name) + "</option>").join("");
+  sel.disabled = !free.length || full;
+  document.getElementById("add").disabled = !free.length || full;
+  document.getElementById("addhint").textContent = full
+    ? "Больше трёх шоков не добавить — иначе картинку не прочитать."
+    : "Один шок меняет ровно один параметр. Нужно больше изменений — больше шоков, максимум три.";
+}
+
+/* ===================== задачи с семинара ===================== */
+/* Чтобы добавить разбор, скопируйте элемент и заполните поля:
      title  — как называется задача
      hint   — строка под названием в списке
-     ask    — постановка (можно с HTML-разметкой)
-     why    — объяснение, показывается над таблицей
-     src    — откуда задача, необязательно
-     base   — исходное состояние: {s, d, n, g, a, sg}
-     shocks — список одновременных шоков, в каждом ровно один параметр:
-              {key: "s"|"d"|"n"|"g"|"a"|"sg"|"mk"|"ml", value: число}  */
+     ask    — постановка, дословно из листка (можно с HTML)
+     why    — разбор, показывается над таблицей
+     base   — исходное состояние: {ключ: [значение, задано]}, где задано —
+              1, если условие называет это значение, и 0, если молчит.
+              Свободный параметр двигает картинку, но в таблице перебирается.
+     shocks — одновременные шоки, в каждом ровно один параметр:
+              {key:"s"|"d"|"n"|"g"|"a"|"K"|"L", form:"set"|"add"|"mul", value:число}  */
 const PROBLEMS = [
   {
-    title: "Задача 1.i — миграция",
-    hint : "K ×0,8 и L ×1,25 одновременно",
-    ask  : "Экономика в стационаре. Единовременно приезжают мигранты: число " +
-           "работников вырастает на 25%, а запас капитала за тот же момент падает " +
-           "на 20%. Что происходит с y, k, c и i в коротком и длинном периоде?",
-    why  : "<b>Короткий период.</b> Технология и норма сбережений не менялись, " +
-           "поэтому все три кривые стоят на месте — оба шока двигают только точку. " +
-           "k = K/L падает в 0,8/1,25 = 0,64 раза, то есть на 36%. За ней вниз идут " +
-           "y = f(k), c и i. " +
-           "<b>Длинный период.</b> Стационар k* зависит только от s, δ, n, g и α — " +
-           "ни один из них не тронут, значит k* остался прежним. Экономика оказалась " +
-           "ниже него, инвестиции превышают выбытие, и капитал возвращается ровно " +
-           "туда, где был. В длинном периоде не изменилось ничего.",
-    base  : {s:.20, d:.10, n:0, g:0, a:1/3, sg:1},
-    shocks: [{key:"mk", value:.8}, {key:"ml", value:1.25}]
+    title: "Листок 1 · i — миграция",
+    hint : "L ×1,25 и K ×0,80 одновременно",
+    ask  : "Модель Солоу без трендового технического прогресса и роста населения. " +
+           "Экономика изначально в стационарном режиме. Количество людей в экономике " +
+           "за счёт миграции увеличилось на 25%, а объём капитала упал на 20%. " +
+           "Что произойдёт с выпуском, инвестициями, потреблением и капиталом " +
+           "в краткосрочном и долгосрочном периоде?",
+    why  : "<b>Короткий период.</b> Ни s, ни δ, ни α не тронуты — все три кривые стоят " +
+           "на месте. Двигается только точка: k = K/L падает в 0,8 / 1,25 = 0,64 раза, " +
+           "то есть на 36%. За ней вниз идут y = f(k), c = (1−s)·y и i = s·f(k). " +
+           "Ответ не зависит ни от одного неизвестного параметра: во сколько бы раз ни " +
+           "упал k, все четыре величины падают вместе с ним. " +
+           "<b>Длинный период.</b> Стационар k* = (s/(δ+n+g))^(1/(1−α)) определяют " +
+           "только те параметры, которых шок не коснулся, значит он остался прежним. " +
+           "Экономика оказалась ниже него, инвестиции превышают выбытие, капитал " +
+           "возвращается ровно туда, где был. Не изменилось ничего.",
+    base : {s:[.20,0], d:[.10,0], n:[0,1], g:[0,1], a:[1/3,0]},
+    shocks: [{key:"K", form:"mul", value:.8}, {key:"L", form:"mul", value:1.25}]
   },
   {
-    title: "Задача 1.ii — δ и s вверх",
-    hint : "s 0,10 → 0,20 и δ 0,10 → 0,12 вместе",
-    ask  : "Экономика в стационаре при s = 0,10 и δ = 0,10. Норма сбережений " +
-           "удваивается до 0,20, одновременно амортизация растёт до 0,12. " +
-           "Что происходит с переменными?",
+    title: "Листок 1 · ii — δ и s вверх",
+    hint : "δ 10 → 12% и s 10 → 20% одновременно",
+    ask  : "Та же модель, экономика в стационаре. Амортизация капитала растёт с 10% " +
+           "до 12%, а уровень сбережений увеличивается с 10% до 20%. Что произойдёт " +
+           "с переменными в краткосрочном и долгосрочном периоде?",
     why  : "<b>Короткий период.</b> Запас капитала предопределён прошлым, поэтому k " +
-           "и вслед за ним y = f(k) не меняются вовсе. А вот распределение выпуска " +
-           "меняется сразу: i = s·f(k) удваивается, c = (1−s)·f(k) падает. " +
+           "и вслед за ним y = f(k) не меняются вовсе — амортизация на выпуск при " +
+           "данном k не влияет. А распределение выпуска меняется сразу: i = s·f(k) " +
+           "удваивается, c = (1−s)·f(k) падает. " +
            "<b>Длинный период.</b> Кривая инвестиций поднялась сильнее, чем повернулась " +
-           "вверх линия выбытия, поэтому новый стационар правее: " +
-           "k* = (s/δ)^(1/(1−α)) растёт с 1 до (0,2/0,12)^1,5 ≈ 2,15 — на 115%. " +
-           "Выше k* — выше y*, i* и, поскольку s = 0,20 всё ещё ниже золотого " +
-           "правила s* = α = 1/3, выше и c*. Сегодняшнее поколение заплатило " +
-           "потреблением за то, чтобы выиграли следующие.",
-    base  : {s:.10, d:.10, n:0, g:0, a:1/3, sg:1},
-    shocks: [{key:"s", value:.20}, {key:"d", value:.12}]
+           "вверх линия выбытия: s/(δ+n+g) выросло с 1 до 0,20/0,12 ≈ 1,67, значит k* " +
+           "растёт при любой α — а с ним y* и i*. " +
+           "<b>А вот c* определить нельзя.</b> Потребление тянут в разные стороны: " +
+           "выпуск вырос, но доля сберегаемого тоже. Что перевесит, зависит от α, " +
+           "которую условие не называет. Порог считает сам инструмент — он под таблицей. " +
+           "Экономический смысл порога: золотое правило при Коббе — Дугласе даёт " +
+           "s* = α, и если α мала, новая s = 0,20 оказывается уже правее оптимума.",
+    base : {s:[.10,1], d:[.10,1], n:[0,1], g:[0,1], a:[1/3,0]},
+    shocks: [{key:"s", form:"set", value:.20}, {key:"d", form:"set", value:.12}]
   },
   {
-    title: "Демографический бум",
-    hint : "n 0 → 3%: линия выбытия круче",
-    ask  : "Экономика в стационаре. Рост населения ускоряется с нуля до 3% в год. " +
-           "Что происходит с переменными?",
-    why  : "<b>Короткий период.</b> Ни s, ни технология не изменились, запас капитала " +
-           "на работника в момент шока тот же — y, k, c и i стоят на месте. Меняется " +
-           "только наклон линии выбытия: теперь каждый год нужно оснащать ещё и новых " +
-           "работников. " +
-           "<b>Длинный период.</b> Линия (δ+n+g)k стала круче, её пересечение с s·f(k) " +
-           "уехало влево: k* падает, а с ним y*, c* и i*. Это классический аргумент " +
-           "«население растёт — душевой доход падает»: в модели Солоу он держится " +
-           "именно на разбавлении капитала.",
-    base  : {s:.20, d:.10, n:0, g:0, a:1/3, sg:1},
-    shocks: [{key:"n", value:.03}]
+    title: "Листок 2 · i — отток и амортизация",
+    hint : "L ×0,90 и δ + 5 п.п.",
+    ask  : "Та же модель, экономика в стационаре. Количество людей в экономике за счёт " +
+           "миграции уменьшилось на 10%, а коэффициент амортизации вырос на 5 п.п. " +
+           "Что произойдёт с подушевыми выпуском, инвестициями, потреблением и капиталом?",
+    why  : "<b>Короткий период.</b> Работников на 10% меньше, капитал тот же, значит " +
+           "k = K/L вырос в 1/0,9 ≈ 1,111 раза. Множитель по L двигает точку, а не " +
+           "линии, а рост амортизации при данном k на выпуск не влияет — поэтому вверх " +
+           "идут все четыре величины. " +
+           "<b>Длинный период.</b> Линия выбытия стала круче, её пересечение с s·f(k) " +
+           "уехало влево: k* падает, а с ним y*, c* и i*. " +
+           "Исходная δ в условии не названа — и не нужна: важно только, что она выросла. " +
+           "Знак не меняется ни при какой δ, s или α, поэтому здесь всё определено.",
+    base : {s:[.20,0], d:[.10,0], n:[0,1], g:[0,1], a:[1/3,0]},
+    shocks: [{key:"L", form:"mul", value:.9}, {key:"d", form:"add", value:.05}]
   },
   {
-    title: "Золотое правило",
-    hint : "s 0,20 → α = 1/3 — максимум c*",
-    ask  : "Экономика в стационаре при s = 0,20 и α = 1/3. Норма сбережений " +
-           "поднимается до золотого правила. Что происходит с потреблением?",
-    why  : "<b>Короткий период.</b> k не двигается, y не двигается, но доля сберегаемого " +
-           "выросла: i вверх, c вниз. Поколение, которое проводит реформу, платит за неё. " +
-           "<b>Длинный период.</b> k* и y* растут, и поскольку стартовали мы слева от " +
-           "золотого правила (s = 0,20 &lt; α = 1/3), потребление в новом стационаре выше " +
-           "прежнего. s = α максимизирует c*, потому что там разрыв между f(k) и линией " +
-           "выбытия наибольший.",
-    base  : {s:.20, d:.10, n:0, g:0, a:1/3, sg:1},
-    shocks: [{key:"s", value:1/3}]
+    title: "Листок 2 · ii — s и α вверх",
+    hint : "s 20 → 22% и α 30 → 35%",
+    ask  : "Та же модель, экономика в стационаре. Доля сбережений растёт с 20% до 22%, " +
+           "а доля рабочей силы в производственной функции Кобба — Дугласа (1−α) " +
+           "снижается с 70% до 65%, то есть α растёт с 30% до 35%. Что произойдёт " +
+           "с подушевыми переменными?",
+    why  : "<b>Здесь почти всё не определено, и это правильный ответ.</b> " +
+           "Как только меняется α, меняется сама форма f(k) = k^α. Две степенные " +
+           "функции с разными показателями пересекаются ровно в k = 1: правее этой " +
+           "точки выигрывает бо́льшая степень, левее — меньшая. Поэтому при старом " +
+           "запасе k₀ выпуск вырастет, если k₀ > 1, и упадёт, если k₀ < 1. " +
+           "А k₀ = (s/δ)^(1/(1−α)) = (0,20/δ)^(1/0,7), и это больше единицы ровно " +
+           "тогда, когда δ &lt; 0,20. Про δ условие молчит — значит, знак y не определён, " +
+           "и за ним тянутся c и i, а в длинном периоде и сам k*. " +
+           "<b>Что определено.</b> Только одно: в коротком периоде запас капитала " +
+           "не меняется, он предопределён прошлым. " +
+           "Если задать δ числом (кнопка «свободно» рядом с δ), таблица тут же покажет " +
+           "конкретные стрелки — и видно, как ответ переворачивается при переходе " +
+           "через δ = 0,20.",
+    base : {s:[.20,1], d:[.10,0], n:[0,1], g:[0,1], a:[.30,1]},
+    shocks: [{key:"s", form:"set", value:.22}, {key:"a", form:"set", value:.35}]
   },
   {
-    title: "Перенакопление",
-    hint : "s 1/3 → 0,55 — вправо от оптимума",
-    ask  : "Экономика уже стоит в золотом правиле: s = α = 1/3. Плановик поднимает " +
-           "норму сбережений до 0,55. Стало ли лучше?",
-    why  : "<b>Короткий период.</b> Как всегда: k и y на месте, i вверх, c вниз. " +
-           "<b>Длинный период.</b> k* и y* выросли, а c* упал — мы ушли вправо от " +
-           "золотого правила. Справа от s* отдача капитала r опускается ниже δ+n+g: " +
-           "очередной рубль капитала не окупает даже собственного выбытия. Снизив s " +
-           "обратно, выиграли бы сразу все поколения — и сегодняшнее (c вырастет тут же), " +
-           "и все будущие (c* тоже выше). Не проиграл бы никто. Это и есть динамическая " +
-           "неэффективность. " +
-           "<b>Осторожно с интуицией.</b> Сам факт «s больше α» ещё не значит, что " +
-           "потребление упало по сравнению с исходной точкой: сравнивать надо не с α, " +
-           "а с тем, где экономика стояла. Шаг с 0,20 сразу на 0,40 поднял бы c*, " +
-           "хотя 0,40 тоже правее оптимума.",
-    base  : {s:1/3, d:.10, n:0, g:0, a:1/3, sg:1},
-    shocks: [{key:"s", value:.55}]
+    title: "Листок 3 · i — дожди и отток",
+    hint : "K ×0,95 и L ×0,90",
+    ask  : "Та же модель, экономика в стационаре. Капитал в экономике из-за дождей " +
+           "уменьшился на 5%, а количество мигрантов снизилось на 10%. Что произойдёт " +
+           "с подушевыми переменными?",
+    why  : "<b>Короткий период.</b> k = K/L вырос в 0,95/0,9 ≈ 1,056 раза: капитала " +
+           "стало меньше, но работников — ещё меньше. Кривые стоят на месте, поэтому " +
+           "вверх идут все четыре величины. " +
+           "<b>Длинный период.</b> Стационар зависит только от s, δ, n, g и α, а их шок " +
+           "не тронул — не изменилось ничего, экономика возвращается в ту же точку. " +
+           "<b>Оговорка к условию.</b> «Количество мигрантов снизилось на 10%» читается " +
+           "двояко. Мы берём буквальное «рабочая сила уменьшилась на 10%». Если имелось " +
+           "в виду, что на 10% сократился только приток мигрантов, а не вся рабочая " +
+           "сила, множитель по L нужен другой — и если он окажется меньше 0,95, знаки " +
+           "в коротком периоде перевернутся.",
+    base : {s:[.20,0], d:[.10,0], n:[0,1], g:[0,1], a:[1/3,0]},
+    shocks: [{key:"K", form:"mul", value:.95}, {key:"L", form:"mul", value:.9}]
   },
   {
-    title: "СССР: низкая эластичность замещения",
-    hint : "σ 1 → 0,6 при s = 0,30",
-    ask  : "Экономика с очень высокой нормой сбережений s = 0,30 в стационаре при " +
-           "σ = 1. Оказывается, что капитал и труд замещают друг друга хуже, чем " +
-           "считалось: σ = 0,6. Что это меняет?",
-    why  : "<b>Короткий период.</b> Запас капитала уже накоплен, он не меняется. Меняется " +
-           "оценка того, сколько он приносит: при σ &lt; 1 отдача капитала падает гораздо " +
-           "быстрее, поэтому и y, и c, и i в той же точке оказываются ниже, чем считали " +
-           "при σ = 1. " +
-           "<b>Длинный период.</b> Новый стационар лежит левее: k* падает с 5,20 до 4,24. " +
-           "Экономика оказалась выше своего настоящего стационара и обязана к нему " +
-           "сползать — рост затухает, сколько бы ни вкладывали. Обратите внимание на " +
-           "строку θ: доля капитала в доходе здесь всего 16%, а не 33%. При CES α — это " +
-           "параметр распределения, а не доля.",
-    src  : "Easterly W., Fischer S. The Soviet Economic Decline. NBER WP 4735 / " +
-           "World Bank Economic Review, 1995.",
-    base  : {s:.30, d:.10, n:0, g:0, a:1/3, sg:1},
-    shocks: [{key:"sg", value:.6}]
-  },
-  {
-    title: "Замещение без предела",
-    hint : "s 0,20 → 0,60 и σ 1 → 2 вместе",
-    ask  : "Что будет, если капитал замещает труд слишком легко — σ = 2 при α = 0,5 " +
-           "и высокой норме сбережений?",
-    why  : "При σ &gt; 1 средний продукт капитала f(k)/k не падает до нуля, а упирается " +
-           "снизу в α^(σ/(σ−1)) = 0,25. Если s·0,25 больше, чем δ+n+g, линия s·f(k) уже " +
-           "нигде не пересечёт линию выбытия: инвестиции всегда обгоняют выбытие, и " +
-           "капитал растёт без предела. Стационара просто нет, и в длинном периоде про " +
-           "переменные ничего сказать нельзя — отсюда «?» в таблице. Модель Солоу в этом " +
-           "случае вырождается в AK, и рост становится эндогенным. " +
-           "Заметьте, что шок по σ перекрашивает и f(k), и s·f(k) — σ входит в обе; " +
-           "а шок по s трогает только s·f(k).",
-    base  : {s:.20, d:.10, n:0, g:0, a:.5, sg:1},
-    shocks: [{key:"s", value:.60}, {key:"sg", value:2}]
+    title: "Листок 3 · ii — δ вниз, α вверх",
+    hint : "δ 5 → 4% и α 40 → 45%",
+    ask  : "Та же модель, экономика в стационаре. Амортизация снижается с 5% до 4%, " +
+           "а доля капитала в производственной функции Кобба — Дугласа (α) растёт " +
+           "с 40% до 45%. Что произойдёт с подушевыми переменными?",
+    why  : "<b>Длинный период — единственное, что здесь определено полностью: k* растёт.</b> " +
+           "Оба изменения толкают стационар вправо: амортизация упала, значит линия " +
+           "выбытия стала положе, а рост α делает показатель 1/(1−α) больше. " +
+           "<b>Остальное упирается в ту же развилку, что и в листке 2.</b> Меняется α, " +
+           "а функции k^0,40 и k^0,45 пересекаются в k = 1. Здесь " +
+           "k₀ = (s/0,05)^(1/0,6), и это больше единицы ровно тогда, когда s &gt; 0,05. " +
+           "Про s условие молчит, поэтому знаки y, c и i не определены ни в коротком, " +
+           "ни в длинном периоде. " +
+           "Задайте s числом — и таблица сразу покажет конкретный ответ.",
+    base : {s:[.20,0], d:[.05,1], n:[0,1], g:[0,1], a:[.40,1]},
+    shocks: [{key:"d", form:"set", value:.04}, {key:"a", form:"set", value:.45}]
   }
 ];
 
 function loadProblem(i){
   const q = PROBLEMS[i];
   if (!q) return;
-  base = {...q.base};
-  nextCi = 0;
-  shocks = q.shocks.map(s => ({key: s.key, value: s.value, on: true, ci: nextCi++}));
+  base = {};
+  PKEYS.forEach(k => {
+    const [v, fx] = q.base[k] || [DEFAULT_BASE[k].v, 1];
+    base[k] = {v: clampKey(k, v), fixed: !!fx};
+  });
+  shocks = q.shocks.slice(0, MAXSHOCKS).map((s, j) =>
+    ({key: s.key, form: s.form, value: clampKey(s.key, s.value, s.form), on: true, ci: j}));
   probIdx = i;
   picked = [];
 }
@@ -1239,16 +1334,18 @@ function loadProblem(i){
 function problemIntact(){
   const q = PROBLEMS[probIdx];
   if (!q || q.shocks.length !== shocks.length) return false;
-  if (!PKEYS.every(k => Math.abs(base[k] - q.base[k]) < 1e-9)) return false;
-  return q.shocks.every((s, i) =>
-    shocks[i].key === s.key && Math.abs(shocks[i].value - s.value) < 1e-9 && shocks[i].on);
+  if (!PKEYS.every(k => {
+        const [v, fx] = q.base[k] || [DEFAULT_BASE[k].v, 1];
+        return Math.abs(base[k].v - clampKey(k, v)) < 1e-12 && base[k].fixed === !!fx;
+      })) return false;
+  return q.shocks.every((s, i) => shocks[i].key === s.key && shocks[i].form === s.form &&
+    Math.abs(shocks[i].value - clampKey(s.key, s.value, s.form)) < 1e-12 && shocks[i].on);
 }
 
 function renderProblems(){
   document.getElementById("probs").innerHTML = PROBLEMS.map((q, i) =>
-    '<button class="btn" data-p="' + i + '" aria-pressed="' + (i === probIdx) + '">' +
-    esc(q.title) + "<small>" + esc(q.hint || "") + "</small></button>").join("");
-
+    '<button data-p="' + i + '" aria-pressed="' + (i === probIdx) + '">' + esc(q.title) +
+    "<small>" + esc(q.hint || "") + "</small></button>").join("");
   const el = document.getElementById("solution"), q = PROBLEMS[probIdx];
   if (!q){ el.hidden = true; el.innerHTML = ""; return; }
   el.hidden = false;
@@ -1260,13 +1357,14 @@ function renderProblems(){
       '<p class="src">Конфигурация изменена вручную — разбор относится к исходной постановке.</p>');
 }
 
-/* ===================== state in the URL ===================== */
+/* ===================== ссылка ===================== */
 const trim = v => String(+v);
-
 function stateToHash(){
-  const q = ["v=3", "b=" + PKEYS.map(k => trim(base[k])).join(",")];
+  const q = ["v=4",
+    "b=" + PKEYS.map(k => k + ":" + trim(base[k].v) + ":" + (base[k].fixed ? 1 : 0)).join(","),
+  ];
   if (shocks.length)
-    q.push("k=" + shocks.map(s => s.key + ":" + trim(s.value) + ":" + (s.on ? 1 : 0)).join(";"));
+    q.push("k=" + shocks.map(s => [s.key, s.form, trim(s.value), s.on ? 1 : 0].join(":")).join(";"));
   if (probIdx >= 0) q.push("p=" + probIdx);
   if (picked.length) q.push("pts=" + picked.join(","));
   return "#" + q.join("&");
@@ -1277,30 +1375,30 @@ function readHash(){
   const raw = location.hash.replace(/^#/, "");
   if (!raw) return false;
   const q = {};
-  raw.split("&").forEach(kv => {
-    const i = kv.indexOf("=");
-    if (i > 0) q[kv.slice(0, i)] = kv.slice(i + 1);
-  });
+  raw.split("&").forEach(kv => { const i = kv.indexOf("="); if (i > 0) q[kv.slice(0, i)] = kv.slice(i + 1); });
   if (!q.b) return false;
-
-  const v = q.b.split(",").map(parseFloat);
-  if (v.length !== PKEYS.length || !v.every(x => isFinite(x))) return false;
   const nb = {};
-  PKEYS.forEach((k, i) => { nb[k] = clampKey(k, v[i]); });
+  PKEYS.forEach(k => nb[k] = {...DEFAULT_BASE[k]});
+  q.b.split(",").forEach(chunk => {
+    const [k, v, fx] = chunk.split(":");
+    if (PKEYS.indexOf(k) < 0) return;
+    const num = parseFloat(v);
+    if (!isFinite(num)) return;
+    nb[k] = {v: clampKey(k, num), fixed: fx !== "0"};
+  });
   base = nb;
-
-  nextCi = 0;
   shocks = [];
   const used = new Set();
   (q.k || "").split(";").filter(Boolean).forEach(chunk => {
-    const [key, val, on] = chunk.split(":");
-    if (ALLKEYS.indexOf(key) < 0 || used.has(key)) return;   // one shock per parameter
-    const value = parseFloat(val);
-    if (!isFinite(value)) return;
+    if (shocks.length >= MAXSHOCKS) return;
+    const [key, form, v, on] = chunk.split(":");
+    if (ALLKEYS.indexOf(key) < 0 || used.has(key)) return;      // один шок на параметр
+    if (!META[key].forms.includes(form)) return;
+    const val = parseFloat(v);
+    if (!isFinite(val)) return;
     used.add(key);
-    shocks.push({key, value: clampKey(key, value), on: on !== "0", ci: nextCi++});
+    shocks.push({key, form, value: clampKey(key, val, form), on: on !== "0", ci: shocks.length});
   });
-
   const p = parseInt(q.p, 10);
   probIdx = (isFinite(p) && p >= 0 && p < PROBLEMS.length) ? p : -1;
   picked = (q.pts || "").split(",").filter(Boolean);
@@ -1313,74 +1411,57 @@ function syncHash(){
   hashTimer = setTimeout(() => {
     lastHash = stateToHash();
     try { history.replaceState(null, "", lastHash); }
-    catch (e) { location.hash = lastHash; }   // file:// refuses replaceState
+    catch (e) { location.hash = lastHash; }       // file:// не даёт replaceState
   }, 150);
 }
 window.addEventListener("hashchange", () => {
-  if (location.hash === lastHash) return;     // our own write
+  if (location.hash === lastHash) return;
   if (readHash()) refreshAll();
 });
 
-/* ===================== share and export ===================== */
+/* ===================== поделиться и экспорт ===================== */
 function flash(btn, text){
   if (btn.dataset.busy) return;
   btn.dataset.busy = "1";
   btn.style.minWidth = btn.offsetWidth + "px";
   const orig = btn.textContent;
   btn.textContent = text;
-  setTimeout(() => {
-    btn.textContent = orig;
-    btn.style.minWidth = "";
-    delete btn.dataset.busy;
-  }, 1600);
+  setTimeout(() => { btn.textContent = orig; btn.style.minWidth = ""; delete btn.dataset.busy; }, 1600);
 }
-
-/* navigator.clipboard is absent outside secure contexts — the page is meant to
-   run from file:// too, so keep the old selection trick around. */
 function legacyCopy(text){
   const ta = document.createElement("textarea");
-  ta.value = text;
-  ta.setAttribute("readonly", "");
+  ta.value = text; ta.setAttribute("readonly", "");
   ta.style.cssText = "position:fixed;top:-1000px;left:0;opacity:0";
   document.body.appendChild(ta);
-  ta.select();
-  ta.setSelectionRange(0, text.length);
+  ta.select(); ta.setSelectionRange(0, text.length);
   let ok = false;
   try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
   ta.remove();
   return ok;
 }
-
 document.getElementById("copy").addEventListener("click", async e => {
   const btn = e.currentTarget, url = shareURL();
   lastHash = stateToHash();
   try { history.replaceState(null, "", lastHash); } catch (err) { /* file:// */ }
   let ok = false;
   try {
-    if (navigator.clipboard && window.isSecureContext){
-      await navigator.clipboard.writeText(url);
-      ok = true;
-    }
+    if (navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(url); ok = true; }
   } catch (err) { ok = false; }
   if (!ok) ok = legacyCopy(url);
   flash(btn, ok ? "Скопировано" : "Ссылка — в адресной строке");
 });
-
 document.getElementById("png").addEventListener("click", e => {
   const btn = e.currentTarget, src = document.getElementById("main");
   const scale = 2, w = src.clientWidth, h = parseInt(src.dataset.h, 10);
   const out = document.createElement("canvas");
-  out.width = Math.round(w * scale);
-  out.height = Math.round(h * scale);
+  out.width = Math.round(w * scale); out.height = Math.round(h * scale);
   const ctx = out.getContext("2d");
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  ctx.fillStyle = col("--export-paper");      // white, for slides
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, w, h);
   renderMain(ctx, w, h, false);
-
-  const name = "solow-" + PKEYS.map(k => k + trim(base[k])).join("-").replace(/\./g, "_") +
-               (shocks.length ? "-" + shocks.map(s => s.key + trim(s.value)).join("-").replace(/\./g, "_") : "") +
-               ".png";
+  const name = "solow-" + PKEYS.map(k => k + trim(base[k].v)).join("-").replace(/\./g, "_") +
+    (shocks.length ? "-" + shocks.map(s => s.key + s.form + trim(s.value)).join("-").replace(/\./g, "_") : "") +
+    ".png";
   const save = href => {
     const a = document.createElement("a");
     a.href = href; a.download = name;
@@ -1390,46 +1471,41 @@ document.getElementById("png").addEventListener("click", e => {
     out.toBlob(blob => {
       if (!blob){ flash(btn, "Не вышло"); return; }
       const url = URL.createObjectURL(blob);
-      save(url);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      save(url); setTimeout(() => URL.revokeObjectURL(url), 2000);
       flash(btn, "Готово");
     }, "image/png");
-  } else {
-    save(out.toDataURL("image/png"));
-    flash(btn, "Готово");
-  }
+  } else { save(out.toDataURL("image/png")); flash(btn, "Готово"); }
 });
 
-/* ===================== refresh ===================== */
-/* Values are synced in place: rebuilding the inputs on every «input» event
-   would rip the slider out from under the cursor mid-drag. */
+/* ===================== обновление ===================== */
+/* Значения синхронизируются на месте: пересборка разметки во время
+   перетаскивания вырывает ползунок из-под курсора. */
 function syncValues(){
-  const put = (scope, key, val) => {
-    const r = document.getElementById(scope + key);
-    const n = document.getElementById("n" + scope + key);
+  const put = (scope, key, val, form) => {
+    const r = document.getElementById(scope + key), n = document.getElementById("n" + scope + key);
+    const dig = form ? FORM[form].dig(key) : META[key].dig;
     if (r && document.activeElement !== r) r.value = val;
-    if (n && document.activeElement !== n){
-      n.value = num(val, META[key].dig);
-      n.classList.remove("bad");
-    }
+    if (n && document.activeElement !== n){ n.value = num(val, dig); n.classList.remove("bad"); }
   };
-  PKEYS.forEach(k => put("b-", k, base[k]));
-  shocks.forEach((sh, i) => put("k" + i + "-", sh.key, sh.value));
+  PKEYS.forEach(k => put("b-", k, base[k].v));
+  shocks.forEach((sh, i) => put("k" + i + "-", sh.key, sh.value, sh.form));
   document.querySelectorAll("[data-from]").forEach(el => {
     const k = el.dataset.from;
-    el.textContent = num(base[k], META[k].dig) + " →";
-  });
-  shocks.forEach((sh, i) => {
-    const card = document.querySelector('[data-card="' + i + '"]');
-    if (card) card.classList.toggle("off", !sh.on);
+    el.textContent = num(base[k].v, META[k].dig) + " →";
   });
 }
-
-function refreshLive(){
+let heavyTimer = 0;
+function renderHeavy(){ renderFx(); renderNotes(); }
+function refreshLive(defer){
   syncValues();
-  renderPhase(); renderFx(); renderReadout();
-  drawMain();                 // fills FRAME, which the legend reads
+  renderPhase(); renderReadout();
+  drawMain();                       // заполняет FRAME, его читает легенда
   renderLegend(); renderCoords();
+  /* Перебор дороже отрисовки, поэтому во время перетаскивания таблица
+     обновляется с паузой — иначе ползунок начинает спотыкаться. */
+  clearTimeout(heavyTimer);
+  if (defer) heavyTimer = setTimeout(renderHeavy, 140);
+  else renderHeavy();
   syncHash();
 }
 function refreshAll(){
@@ -1437,55 +1513,59 @@ function refreshAll(){
   refreshLive();
 }
 
-/* ===================== wiring ===================== */
+/* ===================== события ===================== */
 const panel = document.querySelector(".panel");
 
 function applyValue(scope, key, raw, fromBox){
   let v = fromBox ? parseRu(raw) : parseFloat(raw);
   const boxEl = document.getElementById("n" + scope + key);
   if (!isFinite(v)){ if (boxEl) boxEl.classList.add("bad"); return false; }
-  v = clampKey(key, v);
-  if (scope === "b-") base[key] = v;
-  else {
-    const i = parseInt(scope.slice(1), 10);
-    if (!shocks[i]) return false;
-    shocks[i].value = v;
-  }
+  if (scope === "b-"){ base[key].v = clampKey(key, v); return true; }
+  const i = parseInt(scope.slice(1), 10);
+  if (!shocks[i]) return false;
+  shocks[i].value = clampKey(key, v, shocks[i].form);
   return true;
 }
 
 panel.addEventListener("input", e => {
   const el = e.target;
-  if (el.dataset.rng !== undefined){
-    if (applyValue(el.dataset.scope, el.dataset.rng, el.value, false)) refreshLive();
-  }
+  if (el.dataset.rng !== undefined && applyValue(el.dataset.scope, el.dataset.rng, el.value, false))
+    refreshLive(true);
 });
 panel.addEventListener("change", e => {
   const el = e.target;
   if (el.dataset.num === undefined) return;
-  /* An unreadable value changes nothing and keeps its marker until the box
-     is left — silently snapping it back would hide the typo. */
   if (applyValue(el.dataset.scope, el.dataset.num, el.value, true)) refreshLive();
 });
 panel.addEventListener("focusout", e => {
   const el = e.target;
   if (el.dataset.num === undefined || !el.classList.contains("bad")) return;
-  el.classList.remove("bad");
-  syncValues();
+  el.classList.remove("bad"); syncValues();
 }, true);
 panel.addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.dataset.num !== undefined){
-    e.preventDefault();
-    e.target.blur();
-  }
+  if (e.key === "Enter" && e.target.dataset.num !== undefined){ e.preventDefault(); e.target.blur(); }
+});
+
+document.getElementById("base-params").addEventListener("click", e => {
+  const b = e.target.closest("[data-pin]");
+  if (!b) return;
+  base[b.dataset.pin].fixed = !base[b.dataset.pin].fixed;
+  refreshAll();
 });
 
 document.getElementById("shocks").addEventListener("click", e => {
   const b = e.target.closest("button");
   if (!b) return;
-  if (b.dataset.eye !== undefined){
-    const i = +b.dataset.eye;
-    shocks[i].on = !shocks[i].on;
+  if (b.dataset.form !== undefined){
+    const i = parseInt(b.dataset.fscope.slice(1), 10);
+    if (!shocks[i]) return;
+    shocks[i].form = b.dataset.form;
+    /* Новая форма — новый смысл числа, поэтому ставим нейтральное значение:
+       шок снова ничего не меняет, пока его не подвинут. */
+    shocks[i].value = b.dataset.form === "set" ? base[shocks[i].key].v
+                    : b.dataset.form === "add" ? 0 : 1;
+  } else if (b.dataset.eye !== undefined){
+    shocks[+b.dataset.eye].on = !shocks[+b.dataset.eye].on;
   } else if (b.dataset.del !== undefined){
     shocks.splice(+b.dataset.del, 1);
   } else return;
@@ -1495,9 +1575,11 @@ document.getElementById("shocks").addEventListener("click", e => {
 
 document.getElementById("add").addEventListener("click", () => {
   const key = document.getElementById("addsel").value;
-  if (!key || shocks.some(s => s.key === key)) return;
-  const start = isStock(key) ? 1 : base[key];
-  shocks.push({key, value: clampKey(key, start), on: true, ci: freeCi()});
+  if (!key || shocks.length >= MAXSHOCKS || shocks.some(s => s.key === key)) return;
+  const form = META[key].forms[0];
+  shocks.push({key, form,
+    value: form === "set" ? base[key].v : form === "add" ? 0 : 1,
+    on: true, ci: freeCi()});
   refreshAll();
 });
 
@@ -1508,55 +1590,42 @@ document.getElementById("probs").addEventListener("click", e => {
   refreshAll();
 });
 
-/* ---------- picking points ---------- */
+/* ---------- отметки точек ---------- */
 function togglePoint(id){
   const i = picked.indexOf(id);
   if (i >= 0) picked.splice(i, 1); else picked.push(id);
   drawMain(); renderCoords(); syncHash();
 }
-
-const mainCv = document.getElementById("main");
-mainCv.addEventListener("click", e => {
-  const x = e.offsetX, y = e.offsetY;
+const cv = document.getElementById("main");
+const nearest = (x, y) => {
   let best = null, bd = 18;
-  HITS.forEach(h => {
-    const d = Math.hypot(h.x - x, h.y - y);
-    if (d < bd){ bd = d; best = h; }
-  });
-  if (best) togglePoint(best.id);
+  HITS.forEach(h => { const d = Math.hypot(h.x - x, h.y - y); if (d < bd){ bd = d; best = h; } });
+  return best;
+};
+cv.addEventListener("click", e => { const h = nearest(e.offsetX, e.offsetY); if (h) togglePoint(h.id); });
+cv.addEventListener("mousemove", e => {
+  cv.style.cursor = nearest(e.offsetX, e.offsetY) ? "pointer" : "crosshair";
 });
-mainCv.addEventListener("mousemove", e => {
-  const x = e.offsetX, y = e.offsetY;
-  mainCv.style.cursor = HITS.some(h => Math.hypot(h.x - x, h.y - y) < 18) ? "pointer" : "crosshair";
-});
-
-/* Points must be reachable without a mouse: arrows walk them, Enter pins. */
 let cursor = -1;
-mainCv.addEventListener("keydown", e => {
+cv.addEventListener("keydown", e => {
   if (!HITS.length) return;
-  if (e.key === "ArrowRight" || e.key === "ArrowDown"){
-    cursor = (cursor + 1) % HITS.length;
-  } else if (e.key === "ArrowLeft" || e.key === "ArrowUp"){
-    cursor = (cursor - 1 + HITS.length) % HITS.length;
-  } else if (e.key === "Enter" || e.key === " "){
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") cursor = (cursor + 1) % HITS.length;
+  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") cursor = (cursor - 1 + HITS.length) % HITS.length;
+  else if (e.key === "Enter" || e.key === " "){
     if (cursor >= 0 && HITS[cursor]) togglePoint(HITS[cursor].id);
-  } else if (e.key === "Escape"){
-    picked = []; drawMain(); renderCoords(); syncHash();
-    return;
-  } else return;
+    e.preventDefault(); return;
+  } else if (e.key === "Escape"){ picked = []; drawMain(); renderCoords(); syncHash(); return; }
+  else return;
   e.preventDefault();
-  if (cursor >= 0 && HITS[cursor] && picked.indexOf(HITS[cursor].id) < 0)
-    togglePoint(HITS[cursor].id);
+  if (HITS[cursor] && picked.indexOf(HITS[cursor].id) < 0) togglePoint(HITS[cursor].id);
 });
-
 document.getElementById("clearpts").addEventListener("click", () => {
-  picked = [];
-  drawMain(); renderCoords(); syncHash();
+  picked = []; drawMain(); renderCoords(); syncHash();
 });
 
-/* ===================== go ===================== */
+/* ===================== старт ===================== */
 window.addEventListener("resize", () => { drawMain(); });
-
+resetAll();
 readHash();
 refreshAll();
 </script>

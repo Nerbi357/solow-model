@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Независимая проверка таблиц по задачам семинара.
+
+Здесь нарочно НЕ используется ни строчки из index.html: модель выписана
+заново, по листкам. Если инструмент и этот скрипт расходятся — значит,
+кто-то из них врёт, и надо разбираться, а не подгонять.
+
+Запуск:  python3 check/seminar.py
+"""
+import itertools, math
+
+LN = math.log
+
+def compare(s0, d0, a0, s1, d1, a1, m):
+    """Знаки изменений y, k, c, i в коротком и длинном периоде.
+
+    Всё в логарифмах: при α, близких к единице, показатель 1/(1−α) огромен,
+    обычная арифметика переполняется и перебор начинает выдумывать «=».
+    """
+    lk0 = (LN(s0) - LN(d0)) / (1 - a0)        # исходный стационар
+    lk1 = (LN(s1) - LN(d1)) / (1 - a1)        # новый стационар
+    lkS = lk0 + LN(m)                         # короткий период: запас предопределён
+    val = lambda lk, a, s: {"y": a*lk, "k": lk,
+                            "c": LN(1-s) + a*lk, "i": LN(s) + a*lk}
+    B, S, L = val(lk0, a0, s0), val(lkS, a1, s1), val(lk1, a1, s1)
+    sg = lambda x: "=" if abs(x) < 1e-12 else ("↑" if x > 0 else "↓")
+    return ([sg(S[v] - B[v]) for v in "ykci"],
+            [sg(L[v] - B[v]) for v in "ykci"])
+
+FULL = (0.01, 0.99)
+
+def solve(free, build, n):
+    """Перебирает свободные параметры; если знак где-то переворачивается — «?»."""
+    axes = [(k, [lo + (hi-lo)*i/(n-1) for i in range(n)]) for k, (lo, hi) in free.items()]
+    got = [{v: set() for v in "ykci"} for _ in range(2)]
+    for combo in itertools.product(*[a[1] for a in axes]):
+        p = dict(zip([a[0] for a in axes], combo))
+        args = build(p)
+        if not all(0 < x < 1 for x in args[:6]):
+            continue
+        for per, signs in enumerate(compare(*args)):
+            for j, v in enumerate("ykci"):
+                got[per][v].add(signs[j])
+    cell = lambda st: (list(st)[0] if len(st) == 1 else "?")
+    return "".join(cell(got[0][v]) for v in "ykci") + "".join(cell(got[1][v]) for v in "ykci")
+
+# (название, свободные параметры, как собрать состояние, ожидаемая строка «итого»)
+CASES = [
+    ("Листок 1 · i   L ×1,25, K ×0,80",
+     {"s":FULL, "d":FULL, "a":FULL},
+     lambda p: (p["s"], p["d"], p["a"], p["s"], p["d"], p["a"], 0.8/1.25), 41,
+     "↓↓↓↓===="),
+    ("Листок 1 · ii  δ 0,10→0,12 и s 0,10→0,20",
+     {"a":FULL},
+     lambda p: (0.10, 0.10, p["a"], 0.20, 0.12, p["a"], 1.0), 981,
+     "==↓↑↑↑?↑"),
+    ("Листок 2 · i   L ×0,90 и δ +5 п.п.",
+     {"s":FULL, "d":(0.01, 0.94), "a":FULL},
+     lambda p: (p["s"], p["d"], p["a"], p["s"], p["d"]+0.05, p["a"], 1/0.9), 41,
+     "↑↑↑↑↓↓↓↓"),
+    ("Листок 2 · ii  s 0,20→0,22 и α 0,30→0,35",
+     {"d":FULL},
+     lambda p: (0.20, p["d"], 0.30, 0.22, p["d"], 0.35, 1.0), 981,
+     "?=??????"),
+    ("Листок 3 · i   K ×0,95 и L ×0,90",
+     {"s":FULL, "d":FULL, "a":FULL},
+     lambda p: (p["s"], p["d"], p["a"], p["s"], p["d"], p["a"], 0.95/0.9), 41,
+     "↑↑↑↑===="),
+    ("Листок 3 · ii  δ 0,05→0,04 и α 0,40→0,45",
+     {"s":FULL},
+     lambda p: (p["s"], 0.05, 0.40, p["s"], 0.04, 0.45, 1.0), 981,
+     "?=???↑??"),
+]
+
+if __name__ == "__main__":
+    bad = 0
+    print("       короткий       длинный")
+    print("       y k c i        y k c i")
+    for name, free, build, n, want in CASES:
+        got = solve(free, build, n)
+        ok = got == want
+        bad += not ok
+        print("%-8s %s   %s   %s" % (
+            "OK" if ok else "РАСХОД", " ".join(got[:4]), " ".join(got[4:]), name))
+        if not ok:
+            print("         ожидалось: %s   %s" % (" ".join(want[:4]), " ".join(want[4:])))
+    print()
+    print("Строка «итого» — все шоки задачи вместе. Сверьте с нижней строкой",
+          "таблицы в index.html.")
+    raise SystemExit(1 if bad else 0)
