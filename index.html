@@ -888,18 +888,18 @@ function statesOf(){
   });
   if (act.length){
     const PF = finalP(pv), kS = k0 * stockMulOf(act), kN = kStar(PF);
-    /* Итог всех шоков — это две точки: куда экономика попадает сразу и куда
-       приходит в итоге. Обычно одна из них совпадает с исходной и не нужна:
-       шоки по параметрам не двигают запас, шоки по запасу не двигают
-       стационар. Выжившая и называется new; если обе живые — new и new*. */
-    const sameS = Math.abs(kS / k0 - 1) < 1e-9;
-    const sameN = Math.abs(kN / k0 - 1) < 1e-9;
-    const both  = !sameS && !sameN && Math.abs(kS / kN - 1) > 1e-9;
-    push({id:"short", label:"сразу после шоков", mark:"new", P:PF, k:kS,
-          color:col("--res"), weight:1.2, short:true,
-          axis: !sameS && (both || sameN)});
-    push({id:"final", label:"итог", mark: both ? "new*" : "new", P:PF, k:kN,
-          color:col("--res"), weight:1.5, final:true, solid:true, axis: !sameN});
+    /* Итог всех шоков — это две разные вещи, и путать их нельзя.
+       «скачок» — куда экономику забросило сразу: равновесием он не является,
+       она из него уходит. «new» — новое равновесие, и это имя принадлежит
+       только ему. Каждая подпись появляется, лишь когда есть что подписывать:
+       не скакнул запас — нет «скачка», не уехал стационар — нет «new»,
+       и в задачах вроде листка 1.i экономика просто возвращается в old. */
+    const jumped = Math.abs(kS / k0 - 1) > 1e-9;
+    const moved  = Math.abs(kN / k0 - 1) > 1e-9;
+    push({id:"short", label:"скачок", mark:"скачок", P:PF, k:kS,
+          color:col("--res"), weight:1.2, short:true, axis: jumped});
+    push({id:"final", label:"новое равновесие", mark:"new", P:PF, k:kN,
+          color:col("--res"), weight:1.5, final:true, solid:true, axis: moved});
   }
   return out;
 }
@@ -1049,7 +1049,7 @@ function renderMain(ctx, w, h, capture){
     const x = X(st.k), hit = marks.find(m => Math.abs(m.x - x) < 2.5);
     if (hit){
       if (hit.parts.some(q => q.t === st.mark)) return;      // одно и то же имя дважды не нужно
-      hit.parts.push({t: " = ", c: col("--muted")}, {t: st.mark, c: st.color});
+      hit.parts.push({t: ", ", c: col("--muted")}, {t: st.mark, c: st.color});
       hit.b = true;
     } else {
       marks.push({x, parts: [{t: st.mark, c: st.color}],
@@ -1064,14 +1064,20 @@ function renderMain(ctx, w, h, capture){
 
   /* засечки уровня выпуска на оси y */
   const b0 = sts.find(s => s.id === "base"), fin = sts.find(s => s.final);
-  [[b0, "old"], [fin, "new"]].forEach(([st, low]) => {
+  const jmp = sts.find(s => s.short);
+  [[b0, "old"], [fin, "new"], [fin && fin.axis ? null : jmp, "скачок"]].forEach(([st, low]) => {
     if (!st || !st.axis) return;
     const yv = f(st.k, st.P);
     if (!onY(yv) || !onX(st.k)) return;
     tagSub(ctx, L - 24, Y(yv), "y", low, st.color, true);
   });
 
-  if (capture){ HITS = hits; FRAME = {gold: showGold && goldFits, points: hits.length}; }
+  if (capture){
+    HITS = hits;
+    FRAME = {gold: showGold && goldFits, points: hits.length,
+             jump: !!(jmp && jmp.axis),
+             res:  !!(fin && fin.axis) || items.some(i => i.kind === "res")};
+  }
 }
 
 function drawMain(){
@@ -1241,13 +1247,12 @@ function renderLegend(){
     parts.push('<span><i style="border-color:' + colHex(sh.ci) +
       ';border-top-width:3px"></i> ' + esc(shockName(sh)) + "</span>");
   });
-  const pv = dispVals(), act = active(), PF = finalP(pv);
-  if (CURVES.some(c => {
-        const known = new Set([sigOf(pv, c)].concat(act.map(sh => sigOf(paramsOf(sh), c))));
-        return !known.has(sigOf(PF, c));
-      }))
+  if (FRAME.res)
     parts.push('<span><i style="border-color:' + col("--res") +
-      ';border-top-width:3px"></i> все шоки вместе</span>');
+      ';border-top-width:3px"></i> новое равновесие</span>');
+  if (FRAME.jump)
+    parts.push('<span><i style="border-color:' + col("--res") +
+      ';border-top-style:dashed"></i> скачок — куда попали сразу</span>');
   if (FRAME.gold)
     parts.push('<span><i style="border-color:' + col("--gold") +
       ';border-top-style:dotted"></i> golden rule</span>');
