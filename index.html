@@ -1198,6 +1198,9 @@ function renderNotes(){
   const rows = sweepCached(), names = rowNames(), host = document.getElementById("notes");
   const word = c => c === "up" ? "растёт" : c === "down" ? "падает" : "не меняется";
   const out = [];
+  /* Шоков нет — перебор не запускался, и SWEEPSTAT остался нулевым.
+     Без этой строки на пустой странице загоралось «Модель не определена». */
+  if (!rows.length){ host.innerHTML = ""; return; }
   const cuts = rangeCuts(), dead = cuts.filter(c => c.none);
   if (dead.length || !SWEEPSTAT.seen){
     const who = dead.map(c => META[c.key].sym).join(", ");
