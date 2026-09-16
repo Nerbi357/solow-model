@@ -59,11 +59,10 @@
 
   /* ---------- plot ---------- */
   .phead{
-    display:flex;align-items:baseline;justify-content:space-between;
+    display:flex;align-items:center;justify-content:space-between;
     gap:16px;margin-bottom:9px;flex-wrap:wrap;
   }
   .phead h2{font-size:17px;font-weight:700;margin:0}
-  .pnote{color:var(--muted);font-size:13.5px}
   canvas{
     display:block;width:100%;
     border:1px solid var(--rule);border-radius:var(--r);
@@ -217,17 +216,15 @@
   input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(18,22,28,.2)}
   input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px rgba(18,22,28,.2)}
 
-  .forms{display:flex;gap:0;flex:0 0 auto}
-  .forms button{
-    font:inherit;font-size:12.5px;line-height:1;padding:3px 8px;cursor:pointer;
-    border:1px solid var(--rule);background:var(--paper);color:var(--muted);margin-left:-1px;
+  .ftabs{display:flex;margin:-10px -11px 11px;padding:0 6px;border-bottom:1px solid var(--rule)}
+  .ftabs button{
+    font:inherit;font-size:12.5px;padding:7px 9px 6px;cursor:pointer;background:none;
+    border:none;border-bottom:2px solid transparent;color:var(--muted);margin-bottom:-1px;
   }
-  .forms button:first-child{border-radius:5px 0 0 5px;margin-left:0}
-  .forms button:last-child{border-radius:0 5px 5px 0}
-  .forms button[aria-pressed="true"]{
-    background:var(--live);border-color:var(--live);color:var(--paper);font-weight:700;position:relative;
-  }
-  .forms button:focus-visible{outline:2px solid var(--ink);outline-offset:1px;z-index:1}
+  .ftabs button:hover{color:var(--ink)}
+  .ftabs button[aria-pressed="true"]{color:var(--live);border-bottom-color:var(--live);font-weight:700}
+  .ftabs button:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+  .ftabs .g{font-weight:700;margin-right:5px}
 
   .shocks{list-style:none;margin:0 0 9px;padding:0}
   .addbar{display:flex;gap:6px}
@@ -295,12 +292,11 @@
 
       <div class="phead">
         <h2>Диаграмма накопления</h2>
-        <span class="pnote" id="phase"></span>
+        <button class="btn ghost small" id="goldbtn" aria-pressed="false">Показать golden rule</button>
       </div>
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
       <div class="viewbar">
-        <button class="btn ghost small" id="goldbtn" aria-pressed="false">Показать golden rule</button>
         <button class="btn ghost small" id="zoomreset" hidden>Сбросить масштаб</button>
         <span class="viewhint">колесо — приблизить, перетаскивание — сдвинуть</span>
       </div>
@@ -439,9 +435,12 @@ const META = {
 /* Три формы, потому что в задачах встречаются все три:
    «s: 0,10 → 0,20», «δ + 5 п.п.», «K ×0,80». */
 const FORM = {
-  set:{glyph:"→", word:"новое значение", rng:k => [META[k].min, META[k].max], dig:k => META[k].dig},
-  add:{glyph:"+", word:"приращение",     rng:()  => [-0.5, 0.5],              dig:()  => 3},
-  mul:{glyph:"×", word:"множитель",      rng:()  => [0.05, 3],                dig:()  => 2}
+  set:{glyph:"→", tab:"новое",      word:"новое значение",
+       rng:k => [META[k].min, META[k].max], dig:k => META[k].dig},
+  add:{glyph:"+", tab:"на сколько", word:"приращение в пунктах",
+       rng:()  => [-0.5, 0.5],              dig:()  => 3},
+  mul:{glyph:"×", tab:"во сколько", word:"множитель",
+       rng:()  => [0.05, 3],                dig:()  => 2}
 };
 
 /* какую линию двигает параметр — шок красит только её */
@@ -1115,18 +1114,6 @@ function renderLegend(){
   document.getElementById("legend").innerHTML = parts.join("");
 }
 
-function renderPhase(){
-  const pv = dispVals(), act = active(), PF = finalP(pv);
-  const k0 = kStar(pv), kSR = k0 * stockMulOf(act), k1 = kStar(PF);
-  let t;
-  if (!act.length) t = "экономика в стационаре";
-  else if (Math.abs(kSR / k1 - 1) < 4e-3) t = "шоки не сдвинули стационар";
-  else t = (PF.s * f(kSR, PF) - dep(PF) * kSR) > 0
-      ? "короткий период: инвестиции выше выбытия — k растёт"
-      : "короткий период: выбытие выше инвестиций — k падает";
-  document.getElementById("phase").textContent = t;
-}
-
 function renderReadout(){
   const pv = dispVals(), act = active(), PF = finalP(pv);
   const k0 = kStar(pv), kSR = k0 * stockMulOf(act), k1 = kStar(PF);
@@ -1155,18 +1142,14 @@ function paramRow(key, value, idp, live, fixed, fromVal, form){
   const pin = fixed === undefined ? "" :
     '<button class="pin" data-pin="' + key + '" aria-pressed="' + fixed + '">' +
     (fixed ? "задано" : "свободно") + "</button>";
-  const forms = (form && m.forms.length > 1)
-    ? '<span class="forms">' + m.forms.map(fk =>
-        '<button data-form="' + fk + '" data-fscope="' + idp + '" aria-pressed="' + (fk === form) +
-        '" title="' + FORM[fk].word + '">' + FORM[fk].glyph + "</button>").join("") + "</span>"
-    : "";
+  const gl = form ? FORM[form].glyph : "→";
   return '<div class="prow" style="--live:' + live + '">' +
     '<div class="prow-top">' +
       (form ? "" : '<span class="sym">' + m.sym + '</span><span class="nm">' + m.name + "</span>") +
-      forms +
-      (fromVal === undefined ? "" :
-        '<span class="frm" data-from="' + key + '">' + num(fromVal, dig) + " →</span>") +
-      (form ? '<span class="nm"></span>' : "") +
+      (fromVal === undefined
+        ? (form ? '<span class="frm">' + m.sym + " " + gl + '</span><span class="nm"></span>' : "")
+        : '<span class="frm" data-from="' + key + '" data-glyph="' + gl + '">' +
+          num(fromVal, META[key].dig) + " " + gl + '</span><span class="nm"></span>') +
       '<input class="numbox' + (fixed === false ? " free" : "") + '" id="n' + id +
         '" data-num="' + key + '" data-scope="' + idp + '" inputmode="decimal" value="' +
         num(value, dig) + '" aria-label="' + m.sym + ' — значение числом">' +
@@ -1208,9 +1191,16 @@ function renderShocks(){
               (sh.on ? "скрыть" : "показать") + "</button>" +
             '<button data-del="' + i + '">убрать</button></span>' +
         "</div>" +
-        '<div class="cbody"><p class="touch">' + touches + "</p>" +
+        '<div class="cbody">' +
+          (m.forms.length > 1
+            ? '<div class="ftabs">' + m.forms.map(fk =>
+                '<button data-form="' + fk + '" data-fscope="k' + i + '-" aria-pressed="' +
+                (fk === sh.form) + '"><span class="g">' + FORM[fk].glyph + "</span>" +
+                FORM[fk].tab + "</button>").join("") + "</div>"
+            : "") +
+          '<p class="touch">' + touches + "</p>" +
           paramRow(sh.key, sh.value, "k" + i + "-", live, undefined,
-                   sh.form === "set" ? base[sh.key].v : undefined, sh.form) +
+                   isStock(sh.key) ? undefined : base[sh.key].v, sh.form) +
         "</div>" +
       "</div></li>";
   }).join("");
@@ -1535,7 +1525,7 @@ function syncValues(){
   shocks.forEach((sh, i) => put("k" + i + "-", sh.key, sh.value, sh.form));
   document.querySelectorAll("[data-from]").forEach(el => {
     const k = el.dataset.from;
-    el.textContent = num(base[k].v, META[k].dig) + " →";
+    el.textContent = num(base[k].v, META[k].dig) + " " + (el.dataset.glyph || "→");
   });
   document.querySelectorAll("[data-head]").forEach(el => {
     const sh = shocks[+el.dataset.head];
@@ -1546,7 +1536,7 @@ let heavyTimer = 0;
 function renderHeavy(){ renderFx(); renderNotes(); }
 function refreshLive(defer){
   syncValues();
-  renderPhase(); renderReadout();
+  renderReadout();
   drawMain();                       // заполняет FRAME, его читает легенда
   renderLegend(); renderCoords();
   /* Перебор дороже отрисовки, поэтому во время перетаскивания таблица
