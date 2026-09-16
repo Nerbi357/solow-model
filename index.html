@@ -741,26 +741,61 @@ function dashed(ctx, x1, y1, x2, y2, color, w, dash){
   ctx.restore();
 }
 
-/* Цепочка стрелок подстройки — идёт прямо по оси k. */
-function adjust(ctx, x0, x1, y, color, label){
-  if (Math.abs(x1 - x0) < 26) return;
-  const dir = Math.sign(x1 - x0), n = Math.max(3, Math.min(9, Math.round(Math.abs(x1 - x0) / 34)));
-  ctx.save();
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(x0 + dir*5, y); ctx.lineTo(x1 - dir*5, y); ctx.stroke();
-  const span = (x1 - x0) - dir*10, step = span / n;
-  for (let i = 0; i < n; i++){
-    const x = x0 + dir*5 + step*(i + 0.55);
-    ctx.beginPath();
-    ctx.moveTo(x + dir*4.5, y);
-    ctx.lineTo(x - dir*3.5, y - 3.6); ctx.lineTo(x - dir*3.5, y + 3.6);
-    ctx.closePath(); ctx.fill();
+/* Одна сводчатая стрелка: полукруг над осью с остриём на конце дуги. */
+function archArrow(ctx, xa, xb, y){
+  const r = Math.abs(xb - xa) / 2, cx = (xa + xb) / 2, dir = Math.sign(xb - xa);
+  if (r < 3) return;
+  const ang = t => dir > 0 ? Math.PI + t * Math.PI : -t * Math.PI;
+  const at = t => { const a = ang(t); return [cx + r * Math.cos(a), y + r * Math.sin(a)]; };
+  const stop = 0.86;                       // не доводим дугу до оси — там остриё
+  ctx.beginPath();
+  for (let i = 0; i <= 26; i++){
+    const [px, py] = at((i / 26) * stop);
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
   }
+  ctx.stroke();
+  const [hx, hy] = at(stop), a = ang(stop);
+  /* касательная к дуге в этой точке — вдоль неё и смотрит остриё */
+  const tx = -Math.sin(a) * dir, ty = Math.cos(a) * dir;
+  const nx = -ty, ny = tx, L2 = 5, W = 3;
+  ctx.beginPath();
+  ctx.moveTo(hx + tx * L2, hy + ty * L2);
+  ctx.lineTo(hx - nx * W, hy - ny * W);
+  ctx.lineTo(hx + nx * W, hy + ny * W);
+  ctx.closePath(); ctx.fill();
+}
+
+/* Цепочка сводчатых стрелок — подстройка идёт над самой осью k. */
+function adjust(ctx, x0, x1, y, color, label){
+  const dist = Math.abs(x1 - x0);
+  if (dist < 20) return;
+  const n = Math.max(1, Math.min(7, Math.round(dist / 30)));
+  const step = (x1 - x0) / n;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = 1.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (let i = 0; i < n; i++) archArrow(ctx, x0 + step * i, x0 + step * (i + 1), y);
   ctx.restore();
-  if (label) tag(ctx, (x0 + x1)/2, y - 13, label, color, "center", 12);
+  if (label)
+    tag(ctx, (x0 + x1) / 2, y - Math.abs(step) / 2 - 11, label, color, "center", 12);
 }
 
 /* Подпись с нижним индексом: k с «golden rule» под строкой. */
+/* Подпись из нескольких кусков, каждый своим цветом: «k₁ = new». */
+function tagParts(ctx, x, y, parts, bold){
+  ctx.save();
+  const sz = 13;
+  ctx.font = (bold ? "700 " : "") + sz + "px " + FONT();
+  const w = parts.map(p => ctx.measureText(p.t).width);
+  const total = w.reduce((a, b) => a + b, 0);
+  let px = x - total / 2;
+  ctx.fillStyle = "rgba(255,255,255,.9)";
+  ctx.fillRect(px - 3, y - sz * .66, total + 6, sz * 1.32);
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  parts.forEach((p, i) => { ctx.fillStyle = p.c; ctx.fillText(p.t, px, y); px += w[i]; });
+  ctx.restore();
+}
+
 function tagSub(ctx, x, y, main, low, color, bold){
   ctx.save();
   const s1 = 13, s2 = 9.5, f1 = (bold ? "700 " : "") + s1 + "px " + FONT();
@@ -792,16 +827,14 @@ const sub = i => String(i).split("").map(d => SUBS[+d]).join("");
 
 /* ===================== состояния на картинке ===================== */
 function statesOf(){
-  const pv = dispVals(), act = active(), out = [], seen = new Set();
-  const push = st => {
-    if (!isFinite(st.k) || st.k <= 0) return;
-    const key = st.k.toPrecision(10) + "|" + PKEYS.map(k => st.P[k]).join(",");
-    if (seen.has(key)) return;
-    seen.add(key); out.push(st);
-  };
+  const pv = dispVals(), act = active(), out = [];
+  /* Совпавшие состояния нарочно не схлопываются: иначе «новый стационар»
+     молча съедается шоком, который его и задал, и подпись «k₂ = new*»
+     никогда не появляется. Склейка живёт на уровне подписей. */
+  const push = st => { if (isFinite(st.k) && st.k > 0) out.push(st); };
   const k0 = kStar(pv);
   push({id:"base", label:"исходное", mark:"old", P:pv, k:k0,
-        color:col("--ink"), weight:1.4, axis:true});
+        color:col("--ink"), weight:1.5, axis:true, solid:true});
   act.forEach((sh, i) => {
     const P = paramsOf(sh);
     push({id:"sh" + sh.ci, label:shockName(sh), mark:"k" + sub(i + 1),
@@ -809,14 +842,19 @@ function statesOf(){
           color: colHex(sh.ci), weight:1.1, axis:true});
   });
   if (act.length){
-    const PF = finalP(pv), kS = k0 * stockMulOf(act);
-    /* Точка сразу после шоков заслуживает своего перпендикуляра только когда
-       она и правда в другом месте: шоки по параметрам запас не двигают. */
-    push({id:"short", label:"сразу после шоков", mark:"сразу", P:PF, k:kS,
-          color:col("--res"), weight:1.1, short:true,
-          axis: Math.abs(kS / k0 - 1) > 1e-9});
-    push({id:"final", label:"итог", mark:"new", P:PF, k:kStar(PF),
-          color:col("--res"), weight:1.5, final:true, axis:true});
+    const PF = finalP(pv), kS = k0 * stockMulOf(act), kN = kStar(PF);
+    /* Итог всех шоков — это две точки: куда экономика попадает сразу и куда
+       приходит в итоге. Обычно одна из них совпадает с исходной и не нужна:
+       шоки по параметрам не двигают запас, шоки по запасу не двигают
+       стационар. Выжившая и называется new; если обе живые — new и new*. */
+    const sameS = Math.abs(kS / k0 - 1) < 1e-9;
+    const sameN = Math.abs(kN / k0 - 1) < 1e-9;
+    const both  = !sameS && !sameN && Math.abs(kS / kN - 1) > 1e-9;
+    push({id:"short", label:"сразу после шоков", mark:"new", P:PF, k:kS,
+          color:col("--res"), weight:1.2, short:true,
+          axis: !sameS && (both || sameN)});
+    push({id:"final", label:"итог", mark: both ? "new*" : "new", P:PF, k:kN,
+          color:col("--res"), weight:1.5, final:true, solid:true, axis: !sameN});
   }
   return out;
 }
@@ -906,14 +944,22 @@ function renderMain(ctx, w, h, capture){
   items.filter(i => i.kind !== "base").forEach(i =>
     curve(ctx, curveFn(i.c, i.P), fr.k0, fr.k1, X, Y, i.color, i.w));
 
-  /* перпендикуляры на всю высоту + засечки к осям у old и new */
+  /* Перпендикуляры. У равновесий — old и new* — линия сплошная: это готовые
+     состояния, а не промежуточные отметки. */
   sts.forEach(st => {
-    if (!onX(st.k)) return;
-    const top = f(st.k, st.P);
-    dashed(ctx, X(st.k), B, X(st.k), Math.max(Y(top), T - 12), st.color,
-           st.weight, st.short ? [3, 4] : [5, 4]);
-    if ((st.id === "base" || st.final) && onY(top))
-      dashed(ctx, L, Y(top), X(st.k), Y(top), st.color, 1.1, [5, 4]);
+    /* Тот же флаг, что и у подписи: состояние, совпавшее с исходным, своей
+       линии не получает — иначе оно закрашивает чужую поверх. */
+    if (!st.axis || !onX(st.k)) return;
+    const top = f(st.k, st.P), yTop = Math.max(Y(top), T - 12);
+    if (st.solid){
+      ctx.save();
+      ctx.strokeStyle = st.color; ctx.lineWidth = st.weight;
+      ctx.beginPath(); ctx.moveTo(X(st.k), B); ctx.lineTo(X(st.k), yTop); ctx.stroke();
+      if (onY(top)){ ctx.beginPath(); ctx.moveTo(L, Y(top)); ctx.lineTo(X(st.k), Y(top)); ctx.stroke(); }
+      ctx.restore();
+    } else {
+      dashed(ctx, X(st.k), B, X(st.k), yTop, st.color, st.weight, st.short ? [3, 4] : [5, 4]);
+    }
   });
 
   /* подстройка — стрелками прямо по оси k */
@@ -956,22 +1002,28 @@ function renderMain(ctx, w, h, capture){
   sts.forEach(st => {
     if (!st.axis || !onX(st.k)) return;
     const x = X(st.k), hit = marks.find(m => Math.abs(m.x - x) < 2.5);
-    if (hit){ hit.t += " = " + st.mark; hit.c = col("--ink"); hit.b = true; }
-    else marks.push({x, t: st.mark, c: st.color, b: st.id === "base" || st.final});
+    if (hit){
+      if (hit.parts.some(q => q.t === st.mark)) return;      // одно и то же имя дважды не нужно
+      hit.parts.push({t: " = ", c: col("--muted")}, {t: st.mark, c: st.color});
+      hit.b = true;
+    } else {
+      marks.push({x, parts: [{t: st.mark, c: st.color}],
+                  b: st.id === "base" || st.final});
+    }
   });
-  place(marks, 48).forEach(m =>
-    tag(ctx, m.x, B + 18 + m.row * 17, m.t, m.c, "center", 13, m.b));
+  place(marks, 56).forEach(m =>
+    tagParts(ctx, m.x, B + 18 + m.row * 17, m.parts, m.b));
   if (showGold && goldFits && onX(kg))
     tagSub(ctx, X(kg), B + 18 + (marks.some(m => Math.abs(m.x - X(kg)) < 48) ? 17 : 0),
            "k", "golden rule", col("--gold"));
 
   /* засечки уровня выпуска на оси y */
   const b0 = sts.find(s => s.id === "base"), fin = sts.find(s => s.final);
-  [[b0, "y", "old"], [fin, "y", "new"]].forEach(([st, main, low]) => {
-    if (!st) return;
+  [[b0, "old"], [fin, "new"]].forEach(([st, low]) => {
+    if (!st || !st.axis) return;
     const yv = f(st.k, st.P);
     if (!onY(yv) || !onX(st.k)) return;
-    tagSub(ctx, L - 24, Y(yv), main, low, st.color, true);
+    tagSub(ctx, L - 24, Y(yv), "y", low, st.color, true);
   });
 
   if (capture){ HITS = hits; FRAME = {gold: showGold && goldFits, points: hits.length}; }
