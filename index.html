@@ -20,6 +20,17 @@
     --note-bg:#F6F2E6;
     --export-paper:#FFFFFF;
     --serif:"PT Serif","Georgia","Times New Roman",serif;
+
+    /* Цвета сдвигов. Слой 0 — исходное состояние — всегда чернильный. */
+    --sh1:#B03A2E;
+    --sh2:#1F6F63;
+    --sh3:#6B4C8A;
+    --sh4:#A2621C;
+    --sh5:#2A5EA8;
+    --sh6:#7C7A24;
+
+    --up:#1F6F4A;
+    --down:#B03A2E;
   }
 
   *{box-sizing:border-box}
@@ -33,7 +44,7 @@
     -webkit-font-smoothing:antialiased;
   }
 
-  .sheet{max-width:1400px;margin:0 auto;padding:28px 30px 44px}
+  .sheet{max-width:1480px;margin:0 auto;padding:28px 30px 44px}
 
   /* ---------- masthead ---------- */
   .masthead{
@@ -41,26 +52,19 @@
     padding-bottom:12px;margin-bottom:22px;
     display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap;
   }
-  .masthead h1{
-    font-size:27px;font-weight:700;margin:0;letter-spacing:-.01em;
-  }
-  .masthead p{
-    margin:0;color:var(--graphite);font-size:15px;max-width:52ch;
-  }
+  .masthead h1{font-size:27px;font-weight:700;margin:0;letter-spacing:-.01em}
+  .masthead p{margin:0;color:var(--graphite);font-size:15px;max-width:54ch}
 
   /* ---------- layout ---------- */
-  .work{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:0}
+  .work{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:0}
   .plots{padding-right:30px;min-width:0}
-  .margin{
-    border-left:1px solid var(--rule);
-    padding-left:26px;
-  }
+  .margin{border-left:1px solid var(--rule);padding-left:26px;min-width:0}
 
   /* ---------- canvases ---------- */
   .plot{margin-bottom:22px}
   .plot-head{
     display:flex;align-items:baseline;justify-content:space-between;
-    gap:16px;margin-bottom:7px;
+    gap:16px;margin-bottom:7px;flex-wrap:wrap;
   }
   .plot-head h2{font-size:17px;font-weight:700;margin:0}
   .plot-note{color:var(--graphite);font-size:13.5px;font-style:italic}
@@ -79,19 +83,15 @@
     color:var(--graphite);padding:4px 13px 3px;cursor:pointer;
   }
   .tabs button[aria-selected="true"]{
-    color:var(--ink);background:#F2F0E8;border-color:var(--grid-bold);
-    font-weight:700;
+    color:var(--ink);background:#F2F0E8;border-color:var(--grid-bold);font-weight:700;
   }
-  .tabs button:focus-visible{outline:2px solid var(--red);outline-offset:1px}
+  .tabs button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 
   /* ---------- margin column ---------- */
   .sect{margin-bottom:26px}
-  .sect > h3{
-    font-size:15px;font-weight:700;margin:0 0 3px;
-  }
+  .sect > h3{font-size:15px;font-weight:700;margin:0 0 3px}
   .sect > .hint{
-    font-size:13px;color:var(--graphite);margin:0 0 12px;font-style:italic;
-    line-height:1.4;
+    font-size:13px;color:var(--graphite);margin:0 0 12px;font-style:italic;line-height:1.4;
   }
 
   .ctl{margin-bottom:13px}
@@ -102,69 +102,148 @@
     min-width:58px;text-align:right;
   }
   .ctl-top .val.moved{color:var(--red)}
+  .ctl.off{opacity:.45}
 
   input[type=range]{
     -webkit-appearance:none;appearance:none;
     width:100%;height:20px;background:none;margin:1px 0 0;cursor:pointer;
   }
-  input[type=range]::-webkit-slider-runnable-track{
-    height:2px;background:var(--grid-bold);
-  }
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--grid-bold)}
   input[type=range]::-moz-range-track{height:2px;background:var(--grid-bold)}
   input[type=range]::-webkit-slider-thumb{
     -webkit-appearance:none;appearance:none;
     width:13px;height:13px;margin-top:-5.5px;border-radius:50%;
-    background:var(--paper);border:2px solid var(--ink);
+    background:var(--paper);border:2px solid var(--live,var(--ink));
   }
   input[type=range]::-moz-range-thumb{
     width:13px;height:13px;border-radius:50%;
-    background:var(--paper);border:2px solid var(--ink);
+    background:var(--paper);border:2px solid var(--live,var(--ink));
   }
   input[type=range]:focus-visible::-webkit-slider-thumb{
-    border-color:var(--red);box-shadow:0 0 0 3px rgba(176,58,46,.22);
+    box-shadow:0 0 0 3px rgba(22,40,60,.25);
   }
   input[type=range]:focus-visible::-moz-range-thumb{
-    border-color:var(--red);box-shadow:0 0 0 3px rgba(176,58,46,.22);
+    box-shadow:0 0 0 3px rgba(22,40,60,.25);
   }
 
   /* ---------- buttons ---------- */
   .btn{
     font-family:var(--serif);font-size:14px;
     background:var(--paper);color:var(--ink);
-    border:1px solid var(--ink);padding:5px 11px;cursor:pointer;
-    text-align:left;
+    border:1px solid var(--ink);padding:5px 11px;cursor:pointer;text-align:left;
   }
   .btn:hover{background:#EFEDE4}
-  .btn:focus-visible{outline:2px solid var(--red);outline-offset:1px}
+  .btn:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
   .btn[disabled]{opacity:.4;cursor:default}
   .btn.primary{background:var(--ink);color:var(--paper);font-weight:700}
   .btn.primary:hover{background:#0E1C2C}
   .btn-row{display:flex;gap:7px;flex-wrap:wrap}
   .btn-row .btn{flex:1 1 auto}
 
-  .scen{display:flex;flex-direction:column;gap:6px}
-  .scen .btn{position:relative;padding-left:11px}
-  .scen .btn small{display:block;color:var(--graphite);font-size:12.5px;line-height:1.35}
-  .scen .btn:hover small{color:var(--ink-soft)}
+  /* ---------- layer stack ---------- */
+  .layers{list-style:none;margin:0 0 9px;padding:0}
+  .layer{
+    display:flex;align-items:stretch;gap:0;
+    border:1px solid var(--rule);border-bottom:none;
+  }
+  .layer:last-child{border-bottom:1px solid var(--rule)}
+  .layer.sel{border-color:var(--live);box-shadow:inset 3px 0 0 var(--live)}
+  .layer.sel + .layer{border-top-color:var(--live)}
+  .layer.hidden .lay-pick{opacity:.42}
+
+  .lay-pick{
+    flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;
+    font-family:var(--serif);font-size:13.5px;text-align:left;line-height:1.3;
+    background:none;border:none;padding:6px 4px 6px 9px;cursor:pointer;color:var(--ink);
+  }
+  .layer.sel .lay-pick{font-weight:700}
+  .lay-pick .sw{
+    flex:0 0 auto;width:15px;height:0;border-top:3.5px solid var(--live);
+  }
+  .layer:first-child .lay-pick .sw{border-top-width:1.6px}
+  .lay-pick .nm{min-width:0;overflow-wrap:anywhere}
+  .lay-pick .ix{
+    flex:0 0 auto;font-size:11.5px;color:var(--graphite);font-variant-numeric:tabular-nums;
+  }
+  .lay-btn{
+    flex:0 0 auto;font-family:var(--serif);font-size:15px;line-height:1;
+    background:none;border:none;border-left:1px solid var(--rule);
+    color:var(--graphite);padding:0 8px;cursor:pointer;
+  }
+  .lay-btn:hover{color:var(--ink);background:#EFEDE4}
+  .lay-pick:focus-visible,.lay-btn:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+  .lay-btn[disabled]{opacity:.25;cursor:default}
+
+  /* ---------- effects table ---------- */
+  .fx-wrap{overflow-x:auto;margin-bottom:6px}
+  .fx{border-collapse:collapse;font-size:14px;width:100%;min-width:560px}
+  .fx caption{text-align:left;font-weight:700;font-size:17px;padding-bottom:6px}
+  .fx th,.fx td{border-bottom:1px solid var(--rule);padding:5px 6px;text-align:center}
+  .fx thead th{
+    font-size:13px;font-weight:700;color:var(--graphite);
+    border-bottom:1px solid var(--ink);white-space:nowrap;
+  }
+  .fx thead tr:first-child th{border-bottom:none;padding-bottom:1px}
+  .fx thead th.grp{border-bottom:1px solid var(--rule)}
+  .fx th.who{
+    text-align:left;font-weight:400;font-size:13.5px;min-width:190px;max-width:290px;
+  }
+  .fx th.who .sw{
+    display:inline-block;width:14px;height:0;vertical-align:middle;
+    border-top:3.5px solid var(--live);margin-right:7px;
+  }
+  .fx tr.base th.who .sw{border-top-width:1.6px}
+  .fx td.v{font-size:16px;font-variant-numeric:tabular-nums;width:8.5%}
+  .fx td.up{color:var(--up)}
+  .fx td.down{color:var(--down)}
+  .fx td.same{color:var(--graphite)}
+  .fx td.dunno{color:var(--ochre);font-weight:700}
+  .fx td.sr{border-left:1px solid var(--rule)}
+  .fx tr.total th,.fx tr.total td{border-top:1px solid var(--ink);font-weight:700}
+  .fx tr.total th.who{font-weight:700}
+  .fx-legend{
+    font-size:13px;color:var(--graphite);margin:0 0 20px;
+    display:flex;gap:16px;flex-wrap:wrap;
+  }
+  .fx-legend b{font-weight:400}
+  .fx-legend .up{color:var(--up)}
+  .fx-legend .down{color:var(--down)}
+  .fx-legend .dunno{color:var(--ochre)}
 
   /* ---------- readout ---------- */
   .readout{width:100%;border-collapse:collapse;font-size:14.5px}
-  .readout caption{
-    text-align:left;font-weight:700;font-size:15px;padding-bottom:5px;
-  }
+  .readout caption{text-align:left;font-weight:700;font-size:15px;padding-bottom:5px}
   .readout th,.readout td{
-    padding:3.5px 0;border-bottom:1px solid var(--rule);text-align:left;
-    font-weight:400;
+    padding:3.5px 0;border-bottom:1px solid var(--rule);text-align:left;font-weight:400;
   }
   .readout td{font-variant-numeric:tabular-nums;text-align:right;width:44%}
   .readout tr:last-child th,.readout tr:last-child td{border-bottom:none}
-  .readout td.hi{color:var(--red);font-weight:700}
+  .readout td.hi{color:var(--live);font-weight:700}
 
   .verdict{
     margin-top:10px;padding:9px 11px;font-size:14px;line-height:1.45;
     border-left:3px solid var(--ochre);background:var(--note-bg);
   }
   .verdict b{display:block;margin-bottom:1px}
+
+  /* ---------- problems ---------- */
+  .probs{display:flex;flex-direction:column;gap:6px}
+  .probs .btn{position:relative;padding-left:11px}
+  .probs .btn small{display:block;color:var(--graphite);font-size:12.5px;line-height:1.35}
+  .probs .btn:hover small{color:var(--ink-soft)}
+  .probs .btn[aria-pressed="true"]{background:#EFEDE4;font-weight:700}
+
+  .solution{
+    border-left:3px solid var(--ink);background:var(--note-bg);
+    padding:13px 16px;margin:0 0 22px;max-width:92ch;
+  }
+  .solution h3{margin:0 0 4px;font-size:16px}
+  .solution .ask{margin:0 0 9px;font-size:14.5px;line-height:1.5}
+  .solution .why{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink-soft)}
+  .solution .why b{color:var(--ink)}
+  .solution .src{
+    margin:9px 0 0;font-size:13px;color:var(--graphite);font-style:italic;
+  }
 
   /* ---------- legend ---------- */
   .legend{
@@ -179,17 +258,18 @@
     margin-top:30px;padding-top:13px;border-top:1px solid var(--rule);
     color:var(--graphite);font-size:14px;max-width:88ch;
   }
-  .foot code{
-    font-family:var(--serif);font-style:italic;
-    background:#F2F0E8;padding:0 3px;
-  }
+  .foot code{font-family:var(--serif);font-style:italic;background:#F2F0E8;padding:0 3px}
 
-  @media (max-width:980px){
+  @media (max-width:1060px){
     .work{grid-template-columns:1fr}
     .plots{padding-right:0}
-    .margin{border-left:none;border-top:1px solid var(--rule);padding-left:0;padding-top:22px;margin-top:8px}
+    .margin{
+      border-left:none;border-top:1px solid var(--rule);
+      padding-left:0;padding-top:22px;margin-top:8px;
+    }
     .sheet{padding:20px 18px 34px}
     .masthead h1{font-size:23px}
+    .fx th.who{min-width:150px}
   }
   @media (prefers-reduced-motion:reduce){
     *{transition:none!important}
@@ -201,8 +281,9 @@
 
   <header class="masthead">
     <h1>Модель Солоу</h1>
-    <p>Двигайте параметры и смотрите, куда уезжает стационарное состояние.
-       Запас капитала не прыгает вместе с кривыми — он доходит туда сам.</p>
+    <p>Стройте историю по шагам: исходное состояние, потом сдвиги один за другим.
+       Кривые двигаются сразу, запас капитала — нет: он предопределён прошлым
+       и доходит до нового стационара сам.</p>
   </header>
 
   <div class="work">
@@ -213,17 +294,10 @@
       <div class="plot">
         <div class="plot-head">
           <h2>Диаграмма накопления</h2>
-          <span class="plot-note" id="phase">экономика в стационаре</span>
+          <span class="plot-note" id="phase"></span>
         </div>
-        <canvas id="main" data-h="440"></canvas>
-        <div class="legend">
-          <span><i style="border-color:var(--ink);border-top-width:3.5px"></i> f(k) — выпуск</span>
-          <span><i style="border-color:var(--ink)"></i> s·f(k) — инвестиции</span>
-          <span><i style="border-color:var(--ink-soft)"></i> (δ+n+g)k — выбытие</span>
-          <span><i style="border-color:var(--red)"></i> текущее k</span>
-          <span><i style="border-color:var(--pencil);border-top-style:dashed"></i> как было</span>
-          <span><i style="border-color:var(--ochre);border-top-style:dotted"></i> золотое правило</span>
-        </div>
+        <canvas id="main" data-h="470"></canvas>
+        <div class="legend" id="legend"></div>
       </div>
 
       <div class="plot">
@@ -234,8 +308,36 @@
           </div>
           <span class="plot-note" id="subnote"></span>
         </div>
-        <canvas id="sub" data-h="260"></canvas>
+        <canvas id="sub" data-h="280"></canvas>
       </div>
+
+      <div class="solution" id="solution" hidden></div>
+
+      <div class="fx-wrap">
+        <table class="fx">
+          <caption>Что происходит с переменными</caption>
+          <thead>
+            <tr>
+              <th rowspan="2" class="who">Сдвиг</th>
+              <th colspan="4" class="grp">Короткий период</th>
+              <th colspan="4" class="grp">Длинный период</th>
+            </tr>
+            <tr>
+              <th class="sr">y</th><th>k</th><th>c</th><th>i</th>
+              <th class="sr">y</th><th>k</th><th>c</th><th>i</th>
+            </tr>
+          </thead>
+          <tbody id="fx"></tbody>
+        </table>
+      </div>
+      <p class="fx-legend">
+        <span><b class="up">↑</b> увеличилось</span>
+        <span><b class="down">↓</b> уменьшилось</span>
+        <span><b>=</b> не изменилось</span>
+        <span><b class="dunno">?</b> нельзя определить</span>
+        <span>y — подушевой доход, k — капиталовооружённость,
+              c — подушевое потребление, i — подушевые инвестиции</span>
+      </p>
 
     </div>
 
@@ -243,23 +345,36 @@
     <div class="margin">
 
       <div class="sect">
-        <h3>Параметры</h3>
-        <p class="hint">Кривые сдвинутся сразу. Запас k останется на месте — он предопределён прошлым.</p>
+        <h3>Сдвиги</h3>
+        <p class="hint">Слой 0 — исходное состояние. Каждый следующий сдвиг
+           начинается там, где предыдущий закончился, — когда экономика уже
+           дошла до своего стационара.</p>
+        <ol class="layers" id="layers"></ol>
+        <div class="btn-row">
+          <button class="btn" id="add">Добавить сдвиг</button>
+          <button class="btn" id="reset">Сбросить всё</button>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h3 id="edit-head">Параметры</h3>
+        <p class="hint">Кривые выбранного слоя сдвинутся сразу. Запас k останется
+           на месте — он предопределён прошлым.</p>
 
         <div class="ctl">
-          <div class="ctl-top"><label for="s">s — норма сбережений</label><span class="val" id="s-v">0,20</span></div>
+          <div class="ctl-top"><label for="s">s — норма сбережений</label><span class="val" id="s-v">0,200</span></div>
           <input type="range" id="s" min="0.01" max="0.90" step="0.01" value="0.20">
         </div>
         <div class="ctl">
-          <div class="ctl-top"><label for="d">δ — амортизация</label><span class="val" id="d-v">0,10</span></div>
+          <div class="ctl-top"><label for="d">δ — амортизация</label><span class="val" id="d-v">0,100</span></div>
           <input type="range" id="d" min="0.01" max="0.30" step="0.005" value="0.10">
         </div>
         <div class="ctl">
-          <div class="ctl-top"><label for="n">n — рост населения</label><span class="val" id="n-v">0,00</span></div>
+          <div class="ctl-top"><label for="n">n — рост населения</label><span class="val" id="n-v">0,000</span></div>
           <input type="range" id="n" min="0" max="0.06" step="0.002" value="0">
         </div>
         <div class="ctl">
-          <div class="ctl-top"><label for="g">g — техпрогресс</label><span class="val" id="g-v">0,00</span></div>
+          <div class="ctl-top"><label for="g">g — техпрогресс</label><span class="val" id="g-v">0,000</span></div>
           <input type="range" id="g" min="0" max="0.06" step="0.002" value="0">
         </div>
         <div class="ctl">
@@ -274,7 +389,8 @@
 
       <div class="sect">
         <h3>Разовый шок запаса</h3>
-        <p class="hint">Здесь наоборот: кривые стоят, а точка k прыгает.</p>
+        <p class="hint">Здесь наоборот: кривые стоят, а точка k прыгает.
+           Это часть выбранного слоя — она срабатывает в момент сдвига.</p>
         <div class="ctl">
           <div class="ctl-top"><label for="mk">капитал K ×</label><span class="val" id="mk-v">1,00</span></div>
           <input type="range" id="mk" min="0.3" max="2" step="0.01" value="1">
@@ -283,25 +399,29 @@
           <div class="ctl-top"><label for="ml">работники L ×</label><span class="val" id="ml-v">1,00</span></div>
           <input type="range" id="ml" min="0.3" max="2" step="0.01" value="1">
         </div>
-        <div class="btn-row" style="margin-top:9px">
-          <button class="btn" id="apply">Применить шок</button>
-        </div>
       </div>
 
       <div class="sect">
         <h3>Переход</h3>
         <div class="btn-row">
           <button class="btn primary" id="play">Запустить</button>
-          <button class="btn" id="jump">Сразу в k*</button>
+          <button class="btn" id="rewind">В начало</button>
         </div>
         <div class="btn-row" style="margin-top:7px">
-          <button class="btn" id="mark">Запомнить как «было»</button>
+          <button class="btn" id="tofinal">Показать итог</button>
         </div>
       </div>
 
       <div class="sect">
+        <h3>Задачи с семинара</h3>
+        <p class="hint">Готовые разборы: постановка, сдвиги и объяснение.</p>
+        <div class="probs" id="probs"></div>
+      </div>
+
+      <div class="sect">
         <h3>Поделиться</h3>
-        <p class="hint">Ссылка помнит все параметры — можно дать студентам конкретную конфигурацию.</p>
+        <p class="hint">Ссылка помнит все сдвиги — можно дать студентам
+           конкретную конфигурацию.</p>
         <div class="btn-row">
           <button class="btn" id="copy">Скопировать ссылку</button>
           <button class="btn" id="png">Сохранить PNG</button>
@@ -309,13 +429,8 @@
       </div>
 
       <div class="sect">
-        <h3>Сценарии</h3>
-        <div class="scen" id="scen"></div>
-      </div>
-
-      <div class="sect">
         <table class="readout">
-          <caption>Показатели</caption>
+          <caption id="ro-cap">Показатели</caption>
           <tbody id="ro"></tbody>
         </table>
         <div class="verdict" id="verdict"></div>
@@ -347,28 +462,18 @@
   </p>
 
 </div>
-
 <script>
 "use strict";
 
-/* ===================== state ===================== */
-const P = {s:0.20, d:0.10, n:0, g:0, a:0.33, sg:1.0};
-let kCur   = null;          // current capital per effective worker
-let ghost  = null;          // snapshot of a previous configuration
-let traj   = null;          // simulated path
-let playT  = 0, playing = false, rafId = null;
-let subMode = "time";
-
-const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
+/* ===================== model (CES) ===================== */
 /* CES with σ = 1 splits by 0/0, so that case gets its own branch. */
 const SG_TOL = 1e-3;
-const sgOne  = (p = P) => Math.abs(p.sg - 1) < SG_TOL;
+const sgOne  = p => Math.abs(p.sg - 1) < SG_TOL;
 const rho    = p => (p.sg - 1) / p.sg;
-const dep    = (p = P) => p.d + p.n + p.g;
+const dep    = p => p.d + p.n + p.g;
 
 /* f(k) = [α·k^ρ + (1−α)]^(1/ρ),  ρ = (σ−1)/σ;  at σ = 1 it is k^α. */
-function f(k, p = P){
+function f(k, p){
   const x = Math.max(k, 1e-12);
   if (sgOne(p)) return Math.pow(x, p.a);
   const r = rho(p);
@@ -377,7 +482,7 @@ function f(k, p = P){
 
 /* f(k)/k falls monotonically from A₀ to A∞, so every level of the average
    product is hit at most once. Both k* and the golden rule are such levels. */
-function kAtAPK(q, p = P){
+function kAtAPK(q, p){
   if (!(q > 0) || !isFinite(q)) return NaN;
   if (sgOne(p)) return Math.pow(q, 1 / (p.a - 1));
   const r = rho(p), den = Math.pow(q, r) - p.a;
@@ -385,66 +490,155 @@ function kAtAPK(q, p = P){
   return Math.pow((1 - p.a) / den, 1 / r);
 }
 
-const kStar = (p = P) => kAtAPK(dep(p) / p.s, p);
+const kStar = p => kAtAPK(dep(p) / p.s, p);
 
 /* Golden rule: f′(k) = δ+n+g  ⟺  f(k)/k = ((δ+n+g)/α)^σ. */
-const kGold = (p = P) => kAtAPK(Math.pow(dep(p) / p.a, p.sg), p);
+const kGold = p => kAtAPK(Math.pow(dep(p) / p.a, p.sg), p);
 
 /* Savings rate of the golden rule; at σ = 1 this collapses to s = α. */
-const sGold = (p = P) => Math.pow(p.a, p.sg) * Math.pow(dep(p), 1 - p.sg);
+const sGold = p => Math.pow(p.a, p.sg) * Math.pow(dep(p), 1 - p.sg);
 
 /* Savings rate at which the steady state appears (σ < 1) or vanishes (σ > 1). */
-const sCrit = (p = P) => sgOne(p) ? NaN : dep(p) / Math.pow(p.a, p.sg / (p.sg - 1));
+const sCrit = p => sgOne(p) ? NaN : dep(p) / Math.pow(p.a, p.sg / (p.sg - 1));
 
 /* f′(k) = α·(f(k)/k)^(1/σ). */
-const mpk = (k, p = P) => p.a * Math.pow(f(k, p) / Math.max(k, 1e-12), 1 / p.sg);
+const mpk = (k, p) => p.a * Math.pow(f(k, p) / Math.max(k, 1e-12), 1 / p.sg);
 
 /* Capital share θ(k) = k·f′(k)/f(k) = α·(k/f(k))^ρ — under CES it is not α. */
-const share = (k, p = P) =>
+const share = (k, p) =>
   sgOne(p) ? p.a : p.a * Math.pow(Math.max(k, 1e-12) / f(k, p), rho(p));
 
 /* λ = (1 − θ*)·(δ+n+g); NaN when there is no steady state to converge to. */
-const lambda = (p = P) => {
+const lambda = p => {
   const ks = kStar(p);
   return isFinite(ks) ? (1 - share(ks, p)) * dep(p) : NaN;
 };
 
 /* Where the economy ends up when no interior k* exists. */
-function regime(p = P){
-  if (isFinite(kStar(p))) return "ok";
-  return p.sg > 1 ? "explosive" : "collapse";
-}
+const regime = p => isFinite(kStar(p)) ? "ok" : (p.sg > 1 ? "explosive" : "collapse");
 
-const num = (x, dg = 2) =>
-  (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ","));
+/* ===================== formatting ===================== */
+const num = (x, dg = 2) => (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ","));
 const pct = (x, dg = 1) =>
   (!isFinite(x) ? "—" : (x * 100).toFixed(dg).replace(".", ",") + "%");
+const esc = s => String(s).replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 
-kCur = kStar();
+/* ===================== state ===================== */
+const KEYS   = ["s", "d", "n", "g", "a", "sg"];
+const DIGITS = {s:3, d:3, n:3, g:3, a:2, sg:2};
+const SYM    = {s:"s", d:"δ", n:"n", g:"g", a:"α", sg:"σ"};
+const BASE_P = {s:0.20, d:0.10, n:0, g:0, a:1/3, sg:1};
+const VARS   = ["y", "k", "c", "i"];
 
-/* ===================== simulation ===================== */
-function simulate(k0){
-  const lam = lambda();
-  let T;
-  if (isFinite(lam) && lam > 0){
-    T = Math.min(400, Math.max(40, (Math.log(2) / lam) * 7));
-  } else {
-    /* No steady state to converge to — pick a window long enough for the
-       trend to be unmistakable at the current speed. */
-    const gr = Math.abs(P.s * f(k0) / Math.max(k0, 1e-12) - dep());
-    T = Math.min(300, Math.max(60, Math.log(12) / Math.max(gr, 0.004)));
-  }
-  const dt = T / 900, out = [];
-  let k = k0;
-  for (let t = 0; t <= T; t += dt){
-    out.push(k);
-    k += (P.s * f(k) - dep() * k) * dt;
-    if (k < 1e-9)  k = 1e-9;
-    if (k > 1e12)  k = 1e12;
-  }
-  return {dt, ks: out};
+/* A layer is one step of the story: the parameters in force after it and the
+   one-off stock shock that produced it. Layer 0 is the starting position. */
+let layers  = [];
+let sel     = 0;          // layer the sliders edit
+let subMode = "time";
+let probIdx = -1;         // solved problem on screen, -1 when none
+let playT   = 0, playing = false, rafId = null;
+let STORY   = null;
+
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const mkLayer = (P, shock, name) => ({
+  P: {...P},
+  shock: {mk: 1, ml: 1, ...(shock || {})},
+  name: name || "",
+  on: true
+});
+const resetLayers = () => { layers = [mkLayer(BASE_P, null, "Исходное состояние")]; sel = 0; probIdx = -1; };
+
+const cssVar = i => i === 0 ? "var(--ink)" : "var(--sh" + (((i - 1) % 6) + 1) + ")";
+const colorOf = i => col(i === 0 ? "--ink" : "--sh" + (((i - 1) % 6) + 1));
+
+/* Auto-name a shift from what it actually changed — more useful than a label
+   the user has to keep in sync by hand. */
+function nameOf(i){
+  const L = layers[i];
+  if (L.name) return L.name;
+  if (i === 0) return "Исходное состояние";
+  const prev = layers[i - 1], bits = [];
+  KEYS.forEach(k => {
+    if (Math.abs(L.P[k] - prev.P[k]) > 1e-9)
+      bits.push(SYM[k] + " " + num(prev.P[k], DIGITS[k]) + " → " + num(L.P[k], DIGITS[k]));
+  });
+  if (Math.abs(L.shock.mk - 1) > 1e-9) bits.push("K ×" + num(L.shock.mk));
+  if (Math.abs(L.shock.ml - 1) > 1e-9) bits.push("L ×" + num(L.shock.ml));
+  return bits.length ? bits.join(", ") : "пока без изменений";
 }
-function rebuildTraj(){ traj = simulate(kCur); playT = 0; }
+
+/* ===================== the chain of states ===================== */
+/* Each shift starts where the previous one finished — that is, once the
+   economy has already settled into the previous steady state. */
+function chain(){
+  const rows = [];
+  let prev = null;
+  layers.forEach((L, i) => {
+    let kIn = !prev ? kStar(L.P) : (prev.long ? prev.long.k : prev.short.k);
+    if (!isFinite(kIn) || kIn <= 0) kIn = 1;
+    const kSh = kIn * L.shock.mk / L.shock.ml;
+    const kLg = kStar(L.P);
+    const at = k => {
+      const y = f(k, L.P);
+      return {k, y, c: (1 - L.P.s) * y, i: L.P.s * y};
+    };
+    const row = {
+      L, i, kIn,
+      short: at(kSh),
+      long : isFinite(kLg) ? at(kLg) : null,
+      reg  : regime(L.P),
+      settled: !prev || !!prev.long        // did the previous layer ever settle?
+    };
+    rows.push(row);
+    prev = row;
+  });
+  return rows;
+}
+
+/* ===================== the story over time ===================== */
+function buildStory(){
+  const rows = chain();
+  const phases = [];
+  let t0 = 0;
+  rows.forEach((row, i) => {
+    const p = row.L.P, lam = lambda(p);
+    const jumped = Math.abs(row.L.shock.mk - 1) > 1e-9 || Math.abs(row.L.shock.ml - 1) > 1e-9;
+    let dur;
+    if (i === 0 && !jumped)              dur = 25;   // just enough to show the baseline
+    else if (isFinite(lam) && lam > 0)   dur = Math.min(220, Math.max(35, (Math.log(2) / lam) * 6));
+    else                                 dur = 110;  // no steady state to reach
+    const steps = 500, dt = dur / steps, ks = new Array(steps + 1);
+    let k = row.short.k;
+    for (let j = 0; j <= steps; j++){
+      ks[j] = k;
+      k += (p.s * f(k, p) - dep(p) * k) * dt;
+      if (k < 1e-9) k = 1e-9;
+      if (k > 1e12) k = 1e12;
+    }
+    phases.push({row, i, t0, dur, dt, ks});
+    t0 += dur;
+  });
+  STORY = {rows, phases, total: t0};
+  return STORY;
+}
+
+function stateAt(T){
+  const ph = STORY.phases;
+  let p = ph[0];
+  for (let i = ph.length - 1; i >= 0; i--) if (T >= ph[i].t0){ p = ph[i]; break; }
+  const j = Math.min(p.ks.length - 1, Math.max(0, Math.round((T - p.t0) / p.dt)));
+  return {phase: p, k: p.ks[j], j};
+}
+
+/* Value of one series at a point of the story — each phase has its own s and α. */
+function valAt(phase, k, key){
+  const p = phase.row.L.P;
+  if (key === "k") return k;
+  const y = f(k, p);
+  return key === "y" ? y : key === "c" ? (1 - p.s) * y : p.s * y;
+}
 
 /* ===================== canvas helpers ===================== */
 function fitCanvas(cv){
@@ -513,15 +707,15 @@ function curve(ctx, fn, kMax, X, Y, opts){
 
 function tag(ctx, x, y, text, color, align, size){
   ctx.save();
-  ctx.fillStyle = color;
-  ctx.font = (size || 13.5) + "px " + col("--serif");
+  const sz = size || 13.5;
+  ctx.font = sz + "px " + col("--serif");
   ctx.textAlign = align || "left";
   ctx.textBaseline = "middle";
   const pad = 3, m = ctx.measureText(text);
-  const bx = align === "right" ? x - m.width - pad
+  const bx = align === "right"  ? x - m.width - pad
            : align === "center" ? x - m.width / 2 - pad : x - pad;
   ctx.fillStyle = "rgba(251,250,246,.86)";
-  ctx.fillRect(bx, y - (size || 13.5) * .62, m.width + pad * 2, (size || 13.5) * 1.24);
+  ctx.fillRect(bx, y - sz * .62, m.width + pad * 2, sz * 1.24);
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
   ctx.restore();
@@ -555,22 +749,48 @@ function noteBox(ctx, x, y, text, maxW, accent){
   ctx.restore();
 }
 
+/* Two rows of x-axis labels, so several k* marks never sit on top of each other. */
+function placeLabels(items, gap){
+  const rows = [[], []], out = [];
+  items.forEach(it => {
+    let r = 0;
+    while (r < rows.length && rows[r].some(x => Math.abs(x - it.x) < (gap || 36))) r++;
+    if (r >= rows.length) r = rows.length - 1;
+    rows[r].push(it.x);
+    out.push({...it, row: r});
+  });
+  return out;
+}
+
 /* ===================== main diagram ===================== */
 /* Pure renderer: draws into any context of w×h CSS pixels, so the PNG export
    can replay it at ×2 without touching the on-screen canvas. */
 function renderMain(ctx, w, h){
-  const L = 46, R = w - 74, T = 20, B = h - 34;
+  const L = 48, R = w - 80, T = 20, B = h - 48;
   graphPaper(ctx, L, T, R - L, B - T);
 
-  const ks = kStar(), kg = kGold(), reg = regime();
-  const anchors = [kCur];
-  if (isFinite(ks)) anchors.push(ks);
-  if (ghost){ const gs = kStar(ghost); if (isFinite(gs)) anchors.push(gs); }
-  /* With no k* to frame the picture, widen a little so the permanent gap
-     between s·f(k) and the depreciation line is plain to see. */
-  let kMax = Math.max(...anchors) * (isFinite(ks) ? 1.9 : 2.6);
+  const rows = STORY.rows;
+  const vis = rows.filter(r => r.L.on);
+  const here = stateAt(playT);
+  const last = rows[rows.length - 1];
+
+  /* frame the picture around everything that is actually on it */
+  const anchors = [here.k];
+  vis.forEach(r => {
+    anchors.push(r.short.k);
+    if (r.long) anchors.push(r.long.k);
+  });
+  const finite = anchors.filter(v => isFinite(v) && v > 0);
+  const anyOpen = vis.some(r => !r.long);
+  let kMax = (finite.length ? Math.max(...finite) : 1) * (anyOpen ? 2.4 : 1.85);
+  const kg = kGold(last.L.P);
   if (isFinite(kg) && kg < kMax * 1.15) kMax = Math.max(kMax, kg * 1.18);
-  const yMax = f(kMax) * 1.06;
+
+  const forScale = vis.length ? vis : [rows[rows.length - 1]];
+  let yMax = 1e-9;
+  forScale.forEach(r => { yMax = Math.max(yMax, f(kMax, r.L.P)); });
+  yMax *= 1.06;
+  if (!(yMax > 0)) yMax = 1;
 
   const X = k => L + (k / kMax) * (R - L);
   const Y = y => B - (y / yMax) * (B - T);
@@ -579,108 +799,108 @@ function renderMain(ctx, w, h){
   tag(ctx, R + 14, B + 15, "k", col("--ink"), "center", 15);
   tag(ctx, L - 16, T - 4, "y", col("--ink"), "center", 15);
 
-  /* ghost */
-  if (ghost){
-    const gd = dep(ghost);
-    curve(ctx, k => f(k, ghost), kMax, X, Y,
-          {color: col("--pencil"), w: 2, dash: [5, 4]});
-    curve(ctx, k => ghost.s * f(k, ghost), kMax, X, Y,
-          {color: col("--pencil"), w: 1.4, dash: [5, 4]});
-    curve(ctx, k => gd * k, kMax, X, Y,
-          {color: col("--pencil"), w: 1.4, dash: [5, 4]});
-    const gks = kStar(ghost);
-    if (isFinite(gks) && gks < kMax){
-      ctx.save();
-      ctx.strokeStyle = col("--pencil"); ctx.lineWidth = 1.2; ctx.setLineDash([3, 4]);
-      ctx.beginPath(); ctx.moveTo(X(gks), B); ctx.lineTo(X(gks), Y(f(gks, ghost))); ctx.stroke();
-      ctx.restore();
-      if (Math.abs(X(gks) - X(kCur)) > 34)
-        tag(ctx, X(gks), B + 15, "k* было", col("--pencil"), "center", 12.5);
-      else
-        tag(ctx, X(gks), B + 28, "k* было", col("--pencil"), "center", 12.5);
-    }
-  }
-
-  /* golden rule reference */
+  /* golden rule of the final state */
   if (isFinite(kg) && kg < kMax){
+    const p = last.L.P;
     ctx.save();
     ctx.strokeStyle = col("--ochre"); ctx.lineWidth = 1.3; ctx.setLineDash([2, 4]);
-    ctx.beginPath(); ctx.moveTo(X(kg), B); ctx.lineTo(X(kg), Y(f(kg))); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X(kg), B); ctx.lineTo(X(kg), Y(f(kg, p))); ctx.stroke();
     ctx.restore();
     ctx.fillStyle = col("--ochre");
-    ctx.beginPath(); ctx.arc(X(kg), Y(f(kg)), 4.5, 0, 7); ctx.fill();
-    tag(ctx, X(kg), B - 9, "золотое правило", col("--ochre"), "center", 12.5);
+    ctx.beginPath(); ctx.arc(X(kg), Y(f(kg, p)), 4.5, 0, 7); ctx.fill();
+    tag(ctx, X(kg), B - 25, "золотое правило", col("--ochre"), "center", 12.5);
   }
 
-  /* current curves */
-  curve(ctx, f, kMax, X, Y, {color: col("--ink"), w: 3.4});
-  curve(ctx, k => P.s * f(k), kMax, X, Y, {color: col("--ink"), w: 1.8});
-  curve(ctx, k => dep() * k, kMax, X, Y, {color: col("--ink-soft"), w: 1.8});
-
-  tag(ctx, R + 6, Y(f(kMax)), "f(k)", col("--ink"), "left", 14);
-  tag(ctx, R + 6, Y(P.s * f(kMax)), "s·f(k)", col("--ink"), "left", 13);
-  tag(ctx, R + 6, Y(dep() * kMax), "(δ+n+g)k", col("--ink-soft"), "left", 13);
-
-  /* steady state */
-  if (isFinite(ks) && ks < kMax){
-    ctx.save();
-    ctx.strokeStyle = col("--ink"); ctx.lineWidth = 1.3; ctx.setLineDash([6, 4]);
-    ctx.beginPath(); ctx.moveTo(X(ks), B); ctx.lineTo(X(ks), Y(f(ks))); ctx.stroke();
-    ctx.restore();
-    ctx.fillStyle = col("--ink");
-    [f(ks), P.s * f(ks)].forEach(v => {
-      ctx.beginPath(); ctx.arc(X(ks), Y(v), 5, 0, 7); ctx.fill();
-    });
-    tag(ctx, X(ks), B + 15, "k*", col("--ink"), "center", 15);
-
-    /* consumption bracket */
-    const yc = Y(f(ks)), yi = Y(P.s * f(ks));
-    ctx.save();
-    ctx.strokeStyle = col("--ink"); ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(X(ks), yc); ctx.lineTo(X(ks), yi); ctx.stroke();
-    ctx.restore();
-    tag(ctx, X(ks) + 9, (yc + yi) / 2, "c*", col("--ink"), "left", 14);
-  } else {
-    /* No k* to draw — say so on the sheet instead of leaving a silent gap. */
-    noteBox(ctx, L + 12, T + 12,
-            reg === "explosive"
-              ? "стационара нет: капитал растёт бесконечно"
-              : "стационара нет: капитал вырождается к нулю",
-            R - L - 24,
-            reg === "explosive" ? col("--red") : col("--ink-soft"));
-  }
-
-  /* current position */
-  const kk = kCur, yk = f(kk), ik = P.s * yk, dk = dep() * kk;
-  ctx.save();
-  ctx.strokeStyle = col("--red"); ctx.lineWidth = 1.5; ctx.setLineDash([5, 3]);
-  ctx.beginPath(); ctx.moveTo(X(kk), B); ctx.lineTo(X(kk), Y(yk)); ctx.stroke();
-  ctx.restore();
-  ctx.fillStyle = col("--red");
-  [yk, ik, dk].forEach(v => {
-    ctx.beginPath(); ctx.arc(X(kk), Y(v), 4.6, 0, 7); ctx.fill();
+  /* one set of curves per layer: weight says which curve, colour says which layer */
+  vis.forEach(r => {
+    const p = r.L.P, c = colorOf(r.i), base = r.i === 0 ? 1.8 : 3.2;
+    curve(ctx, k => dep(p) * k, kMax, X, Y, {color: c, w: base * .55, dash: [7, 4]});
+    curve(ctx, k => p.s * f(k, p), kMax, X, Y, {color: c, w: base * .55});
+    curve(ctx, k => f(k, p), kMax, X, Y, {color: c, w: base});
   });
-  if (!isFinite(ks) || Math.abs(X(kk) - X(ks)) > 20)
-    tag(ctx, X(kk), B + 15, "k", col("--red"), "center", 14);
 
-  /* gap arrow between investment and depreciation */
-  if (Math.abs(ik - dk) / Math.max(ik, 1e-9) > 0.012){
-    const up = ik > dk;
+  /* right-hand curve labels, for the final visible layer only */
+  const lead = vis.length ? vis[vis.length - 1] : rows[0];
+  if (lead){
+    const p = lead.L.P, c = colorOf(lead.i);
+    tag(ctx, R + 6, Y(f(kMax, p)), "f(k)", c, "left", 13.5);
+    tag(ctx, R + 6, Y(p.s * f(kMax, p)), "s·f(k)", c, "left", 12.5);
+    tag(ctx, R + 6, Y(dep(p) * kMax), "(δ+n+g)k", c, "left", 12.5);
+  }
+
+  /* where each layer settles, and how it got there */
+  const marks = [];
+  let notes = 0;
+  vis.forEach(r => {
+    const p = r.L.P, c = colorOf(r.i);
+    const jumped = Math.abs(r.short.k - r.kIn) / Math.max(r.kIn, 1e-12) > 1e-6;
+
+    if (jumped && r.short.k < kMax){
+      ctx.save();
+      ctx.strokeStyle = c; ctx.lineWidth = 1.1; ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.moveTo(X(r.short.k), B); ctx.lineTo(X(r.short.k), Y(r.short.y)); ctx.stroke();
+      ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.fillStyle = col("--paper");
+      ctx.beginPath(); ctx.arc(X(r.short.k), Y(r.short.y), 4.6, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      marks.push({x: X(r.short.k), text: "k" + sub(r.i) + "⁰", color: c});
+    }
+
+    if (r.long && r.long.k < kMax){
+      ctx.save();
+      ctx.strokeStyle = c; ctx.lineWidth = 1.3; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(X(r.long.k), B); ctx.lineTo(X(r.long.k), Y(r.long.y)); ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = c;
+      [r.long.y, r.L.P.s * r.long.y].forEach(v => {
+        ctx.beginPath(); ctx.arc(X(r.long.k), Y(v), r.i === 0 ? 4 : 5, 0, 7); ctx.fill();
+      });
+      marks.push({x: X(r.long.k), text: "k*" + sub(r.i), color: c});
+
+      /* arrow along the axis: from where the shift left k to where it ends up */
+      const x0 = X(r.short.k), x1 = X(r.long.k);
+      if (Math.abs(x1 - x0) > 14 && r.short.k < kMax){
+        const y = B - 7, dir = Math.sign(x1 - x0);
+        ctx.save();
+        ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(x0 + dir * 5, y); ctx.lineTo(x1 - dir * 7, y); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x1 - dir * 1, y);
+        ctx.lineTo(x1 - dir * 8, y - 4); ctx.lineTo(x1 - dir * 8, y + 4);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+    } else if (!r.long){
+      noteBox(ctx, L + 12, T + 12 + notes * 46,
+              r.reg === "explosive"
+                ? "стационара нет: капитал растёт бесконечно"
+                : "стационара нет: капитал вырождается к нулю",
+              R - L - 24, c);
+      notes++;
+    }
+  });
+
+  placeLabels(marks, 40).forEach(m =>
+    tag(ctx, m.x, B + 15 + m.row * 16, m.text, m.color, "center", 12.5));
+
+  /* where the economy stands right now */
+  const hp = here.phase, hc = colorOf(hp.i), hy = f(here.k, hp.row.L.P);
+  if (here.k < kMax){
     ctx.save();
-    ctx.strokeStyle = col("--red"); ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(X(kk), Y(ik)); ctx.lineTo(X(kk), Y(dk)); ctx.stroke();
-    const ax = X(kk) + (up ? 34 : -34), ay = (Y(ik) + Y(dk)) / 2;
-    ctx.beginPath(); ctx.moveTo(X(kk) + (up ? 7 : -7), ay); ctx.lineTo(ax, ay); ctx.stroke();
-    ctx.fillStyle = col("--red");
-    ctx.beginPath();
-    ctx.moveTo(ax + (up ? 8 : -8), ay);
-    ctx.lineTo(ax, ay - 4.5); ctx.lineTo(ax, ay + 4.5);
-    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hc; ctx.lineWidth = 1.4; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(X(here.k), B); ctx.lineTo(X(here.k), Y(hy)); ctx.stroke();
     ctx.restore();
-    tag(ctx, ax + (up ? 12 : -12), ay - 13,
-        up ? "k растёт" : "k падает", col("--red"), up ? "left" : "right", 12.5);
+    ctx.save();
+    ctx.lineWidth = 2.6; ctx.strokeStyle = hc; ctx.fillStyle = col("--paper");
+    ctx.beginPath(); ctx.arc(X(here.k), Y(hy), 6.5, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    tag(ctx, X(here.k), Y(hy) - 16, "сейчас", hc, "center", 12.5);
   }
 }
+
+const SUBS = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
+const sub = i => String(i).split("").map(d => SUBS[+d]).join("");
 
 function drawMain(){
   const cv = document.getElementById("main");
@@ -689,102 +909,114 @@ function drawMain(){
   renderMain(ctx, w, h);
 }
 
-/* ===================== sub panel ===================== */
+/* ===================== sub panel: the whole story over time ===================== */
 function drawTime(){
   const cv = document.getElementById("sub");
   const {ctx, w, h} = fitCanvas(cv);
   ctx.clearRect(0, 0, w, h);
-  const L = 46, R = w - 74, T = 16, B = h - 30;
+  const L = 48, R = w - 80, T = 16, B = h - 32;
   graphPaper(ctx, L, T, R - L, B - T);
   arrowAxes(ctx, L, B, R, T);
-  tag(ctx, R + 16, B + 14, "время", col("--ink"), "center", 13);
+  tag(ctx, R + 18, B + 14, "время", col("--ink"), "center", 13);
 
-  if (!traj){ return; }
-  const flat = Math.abs(traj.ks[traj.ks.length - 1] / traj.ks[0] - 1) < 0.004;
-  if (flat && !ghost){
-    const cx = (L + R) / 2, cy = (T + B) / 2;
-    const wide = (R - L) > 430;
-    if (wide){
-      tag(ctx, cx, cy, "Экономика в стационаре — задайте шок или выберите сценарий",
-          col("--graphite"), "center", 15);
-    } else {
-      tag(ctx, cx, cy - 11, "Экономика в стационаре.", col("--graphite"), "center", 14);
-      tag(ctx, cx, cy + 11, "Задайте шок или сценарий.", col("--graphite"), "center", 14);
-    }
-    return;
-  }
-  const ks = kStar();
+  const st = STORY, base = st.rows[0].long || st.rows[0].short;
+  const ref = {}; VARS.forEach(v => { ref[v] = (isFinite(base[v]) && base[v] > 0) ? base[v] : 1; });
+
   const series = [
-    {key:"k", get:k => k,                     c:col("--red"),      w:2.4, dash:[6,4]},
-    {key:"y", get:k => f(k),                  c:col("--ink"),      w:2.6},
-    {key:"i", get:k => P.s * f(k),            c:col("--ink-soft"), w:1.8},
-    {key:"c", get:k => (1 - P.s) * f(k),      c:col("--ochre"),    w:2.2}
+    {key:"k", c:col("--ink"),      w:2.4, dash:[6,4]},
+    {key:"y", c:col("--ink"),      w:2.6},
+    {key:"i", c:col("--ink-soft"), w:1.8},
+    {key:"c", c:col("--ochre"),    w:2.2}
   ];
-  let ref;
-  if (ghost){
-    const gk = kStar(ghost), gy = f(gk, ghost);
-    ref = [gk, gy, ghost.s * gy, (1 - ghost.s) * gy];
-  } else {
-    const k0 = traj.ks[0];
-    ref = series.map(s => s.get(k0) || 1);
-  }
-  ref = ref.map(v => (v && isFinite(v)) ? v : 1);
-  let lo = 1, hi = 1;
-  traj.ks.forEach(k => series.forEach((s, i) => {
-    const v = s.get(k) / ref[i];
-    if (v < lo) lo = v; if (v > hi) hi = v;
-  }));
-  lo = Math.max(0, lo - .08); hi = hi + .1;
 
-  const span = traj.ks.length * traj.dt;
-  const X = t => L + (t / span) * (R - L);
+  let lo = 1, hi = 1;
+  st.phases.forEach(ph => ph.ks.forEach(k => series.forEach(s => {
+    const v = valAt(ph, k, s.key) / ref[s.key];
+    if (isFinite(v)){ if (v < lo) lo = v; if (v > hi) hi = v; }
+  })));
+  lo = Math.max(0, lo - .08); hi = hi + .1;
+  if (!(hi > lo)) hi = lo + 1;
+
+  const X = t => L + (t / Math.max(st.total, 1e-9)) * (R - L);
   const Y = v => B - ((v - lo) / (hi - lo)) * (B - T);
 
-  ctx.save(); ctx.strokeStyle = col("--grid-bold"); ctx.lineWidth = 1.4; ctx.setLineDash([4,4]);
-  ctx.beginPath(); ctx.moveTo(L, Y(1)); ctx.lineTo(R, Y(1)); ctx.stroke(); ctx.restore();
-  tag(ctx, L - 6, Y(1), ghost ? "было" : "старт", col("--graphite"), "right", 12.5);
+  ctx.save();
+  ctx.strokeStyle = col("--grid-bold"); ctx.lineWidth = 1.4; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(L, Y(1)); ctx.lineTo(R, Y(1)); ctx.stroke();
+  ctx.restore();
+  tag(ctx, L - 6, Y(1), "старт", col("--graphite"), "right", 12.5);
 
-  const used = [];
-  series.forEach((s, i) => {
+  /* one vertical rule per shift, in that shift's colour */
+  st.phases.forEach(ph => {
+    if (ph.i === 0) return;
+    const c = colorOf(ph.i), x = X(ph.t0);
+    ctx.save();
+    ctx.strokeStyle = c; ctx.lineWidth = 1.4; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x, T); ctx.lineTo(x, B); ctx.stroke();
+    ctx.restore();
+    tag(ctx, x, T + 8, String(ph.i), c, "center", 12.5);
+  });
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(L, T, R - L, B - T); ctx.clip();
+  series.forEach(s => {
     ctx.save();
     ctx.strokeStyle = s.c; ctx.lineWidth = s.w; ctx.lineJoin = "round";
     if (s.dash) ctx.setLineDash(s.dash);
     ctx.beginPath();
-    traj.ks.forEach((k, j) => {
-      const px = X(j * traj.dt), py = Y(s.get(k) / ref[i]);
-      j ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-    });
+    let pen = false;
+    st.phases.forEach(ph => ph.ks.forEach((k, j) => {
+      const v = valAt(ph, k, s.key) / ref[s.key];
+      if (!isFinite(v)){ pen = false; return; }
+      const px = X(ph.t0 + j * ph.dt), py = Y(v);
+      pen ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      pen = true;
+    }));
     ctx.stroke(); ctx.restore();
-    const last = traj.ks[traj.ks.length - 1];
-    let ly = Y(s.get(last) / ref[i]);
+  });
+  ctx.restore();
+
+  const used = [];
+  series.forEach(s => {
+    const lastPh = st.phases[st.phases.length - 1];
+    const lastK = lastPh.ks[lastPh.ks.length - 1];
+    let ly = Y(valAt(lastPh, lastK, s.key) / ref[s.key]);
+    if (!isFinite(ly)) ly = B;
+    ly = Math.max(T + 6, Math.min(B - 6, ly));
     used.forEach(u => { if (Math.abs(u - ly) < 15) ly = u + 15; });
     used.push(ly);
     tag(ctx, R + 6, ly, s.key, s.c, "left", 13.5);
   });
 
   /* playhead */
-  const idx = Math.min(traj.ks.length - 1, Math.round(playT / traj.dt));
-  const px = X(idx * traj.dt);
-  ctx.save(); ctx.strokeStyle = col("--red"); ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(px, T); ctx.lineTo(px, B); ctx.stroke(); ctx.restore();
-  series.forEach((s, i) => {
+  const here = stateAt(playT), px = X(playT);
+  ctx.save();
+  ctx.strokeStyle = colorOf(here.phase.i); ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(px, T); ctx.lineTo(px, B); ctx.stroke();
+  ctx.restore();
+  series.forEach(s => {
+    const v = valAt(here.phase, here.k, s.key) / ref[s.key];
+    if (!isFinite(v)) return;
     ctx.fillStyle = s.c;
-    ctx.beginPath(); ctx.arc(px, Y(s.get(traj.ks[idx]) / ref[i]), 4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, Y(v), 4, 0, 7); ctx.fill();
   });
 }
 
+/* ===================== sub panel: consumption against s ===================== */
 function drawHump(){
   const cv = document.getElementById("sub");
   const {ctx, w, h} = fitCanvas(cv);
   ctx.clearRect(0, 0, w, h);
-  const L = 46, R = w - 74, T = 16, B = h - 30;
+  const L = 48, R = w - 80, T = 16, B = h - 32;
   graphPaper(ctx, L, T, R - L, B - T);
   arrowAxes(ctx, L, B, R, T);
-  tag(ctx, R + 16, B + 14, "s", col("--ink"), "center", 14);
+  tag(ctx, R + 18, B + 14, "s", col("--ink"), "center", 14);
+
+  const P = layers[sel].P, accent = colorOf(sel);
 
   /* c*(s) is defined only where a steady state exists. Under CES that is a
      one-sided restriction: σ > 1 loses it above sCrit, σ < 1 below it. */
-  const crit = sCrit();
+  const crit = sCrit(P);
   let lo = 0.005, hi = 0.995;
   if (isFinite(crit)){
     if (P.sg > 1) hi = Math.min(hi, crit * 0.995);
@@ -801,7 +1033,7 @@ function drawHump(){
     return isFinite(k) ? (1 - s) * f(k, p) : NaN;
   };
 
-  const sg = sGold();
+  const sg = sGold(P);
   const peakOK = isFinite(sg) && sg > lo && sg < hi && isFinite(cOf(sg));
   const peak = peakOK ? cOf(sg) : NaN;
 
@@ -829,7 +1061,7 @@ function drawHump(){
   ctx.save();
   ctx.beginPath(); ctx.rect(L, T, R - L, B - T); ctx.clip();
 
-  ctx.strokeStyle = col("--ink"); ctx.lineWidth = 3; ctx.lineJoin = "round";
+  ctx.strokeStyle = accent; ctx.lineWidth = sel === 0 ? 2.2 : 3; ctx.lineJoin = "round";
   ctx.beginPath();
   let pen = false;
   pts.forEach(([s, c]) => {
@@ -850,10 +1082,10 @@ function drawHump(){
   }
 
   if (isFinite(cNow)){
-    ctx.fillStyle = col("--red");
+    ctx.fillStyle = accent;
     ctx.beginPath(); ctx.arc(X(P.s), Y(cNow), 5.5, 0, 7); ctx.fill();
     ctx.save();
-    ctx.strokeStyle = col("--red"); ctx.lineWidth = 1.3; ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = accent; ctx.lineWidth = 1.3; ctx.setLineDash([4, 3]);
     ctx.beginPath(); ctx.moveTo(X(P.s), B); ctx.lineTo(X(P.s), Y(cNow)); ctx.stroke();
     ctx.restore();
   }
@@ -869,9 +1101,9 @@ function drawHump(){
 
   /* Labels go outside the clip so they are never chopped in half. */
   if (peakOK)
-    tag(ctx, X(sg), Y(peak) - 14, sgOne() ? "s* = α" : "s* = " + num(sg),
+    tag(ctx, X(sg), Y(peak) - 14, sgOne(P) ? "s* = α" : "s* = " + num(sg),
         col("--ochre"), "center", 13.5);
-  if (isFinite(cNow)) tag(ctx, X(P.s), B + 14, "s", col("--red"), "center", 13.5);
+  if (isFinite(cNow)) tag(ctx, X(P.s), B + 14, "s", accent, "center", 13.5);
   tag(ctx, L - 6, Y(peakOK ? peak : cTop * 0.9), "c*", col("--graphite"), "right", 13);
   if (showCrit)
     tag(ctx, X(crit) + (P.sg > 1 ? 5 : -5), T + 9, "стационара нет",
@@ -880,186 +1112,412 @@ function drawHump(){
 
 function drawSub(){ subMode === "time" ? drawTime() : drawHump(); }
 
-/* ===================== readout ===================== */
-const DIGITS = {s:3, d:3, n:3, g:3, a:2, sg:2};
+/* ===================== the verdict table ===================== */
+/* Four answers, exactly as they are asked for on the seminar sheet. */
+const FX = {
+  up   : {gl:"↑", cls:"up",    word:"увеличилось"},
+  down : {gl:"↓", cls:"down",  word:"уменьшилось"},
+  same : {gl:"=", cls:"same",  word:"не изменилось"},
+  dunno: {gl:"?", cls:"dunno", word:"нельзя определить"}
+};
 
-function refresh(){
-  for (const id of ["s", "d", "n", "g", "a", "sg"]){
-    document.getElementById(id).value = P[id];
-    document.getElementById(id + "-v").textContent = num(P[id], DIGITS[id]);
+function cmp(now, before, defined){
+  if (defined === false) return "dunno";
+  if (!isFinite(now) || !isFinite(before)) return "dunno";
+  const rel = (now - before) / Math.max(1e-12, Math.abs(before));
+  if (Math.abs(rel) < 2e-4) return "same";
+  return rel > 0 ? "up" : "down";
+}
+
+function fxRows(){
+  const rows = STORY.rows, out = [];
+  for (let i = 1; i < rows.length; i++){
+    const prev = rows[i - 1];
+    const before = prev.long || prev.short;
+    const settled = !!prev.long;            // could the economy finish the last step?
+    out.push({
+      i, name: nameOf(i),
+      short: VARS.map(v => cmp(rows[i].short[v], before[v], settled)),
+      long : VARS.map(v => rows[i].long ? cmp(rows[i].long[v], before[v], settled) : "dunno")
+    });
   }
-  document.getElementById("mk-v").textContent = num(+document.getElementById("mk").value);
-  document.getElementById("ml-v").textContent = num(+document.getElementById("ml").value);
+  if (rows.length > 1){
+    const b = rows[0].long || rows[0].short, settled = !!rows[0].long;
+    const last = rows[rows.length - 1];
+    out.push({
+      total: true, name: "Итого, с учётом всех сдвигов",
+      short: VARS.map(v => cmp(last.short[v], b[v], settled)),
+      long : VARS.map(v => last.long ? cmp(last.long[v], b[v], settled) : "dunno")
+    });
+  }
+  return out;
+}
 
-  const ks = kStar(), reg = regime();
-  const gap = P.s * f(kCur) - dep() * kCur;
-  const inSS = isFinite(ks) && Math.abs(kCur / ks - 1) < 0.004;
+function renderFx(){
+  const data = fxRows();
+  const body = document.getElementById("fx");
+  if (!data.length){
+    body.innerHTML = '<tr><td colspan="9" style="text-align:left;color:var(--graphite);' +
+      'font-style:italic;padding:9px 6px">Пока нет ни одного сдвига — добавьте его справа ' +
+      'или откройте готовую задачу.</td></tr>';
+    return;
+  }
+  const cell = (code, first) => {
+    const c = FX[code];
+    return `<td class="v ${c.cls}${first ? " sr" : ""}" title="${c.word}">${c.gl}</td>`;
+  };
+  body.innerHTML = data.map(r => `
+    <tr class="${r.total ? "total" : ""}" ${r.total ? "" : `style="--live:${cssVar(r.i)}"`}>
+      <th class="who">${r.total ? "" : '<i class="sw"></i>'}${esc(r.name)}</th>
+      ${r.short.map((c, j) => cell(c, j === 0)).join("")}
+      ${r.long.map((c, j) => cell(c, j === 0)).join("")}
+    </tr>`).join("");
+}
 
-  document.getElementById("phase").textContent =
-      reg === "explosive" ? "стационара нет — k растёт без предела"
-    : reg === "collapse"  ? "стационара нет — k сходит к нулю"
-    : inSS                ? "экономика в стационаре"
-    : gap > 0             ? "инвестиции больше выбытия — k растёт"
-                          : "выбытие больше инвестиций — k падает";
+/* ===================== readout ===================== */
+function renderReadout(){
+  const row = STORY.rows[sel], P = row.L.P;
+  const ks = kStar(P), lam = lambda(P);
+  const hl = (isFinite(lam) && lam > 0) ? Math.log(2) / lam : NaN;
+  const moved = Math.abs(row.short.k - row.kIn) / Math.max(row.kIn, 1e-12) > 1e-6;
 
-  document.getElementById("jump").disabled = !isFinite(ks);
+  document.getElementById("ro-cap").textContent =
+    "Показатели — " + (sel === 0 ? "исходное состояние" : "сдвиг " + sel);
 
-  const gk  = P.s * f(kCur) / Math.max(kCur, 1e-12) - dep();
-  const r   = mpk(kCur) - P.d;
-  const lam = lambda();
-  const hl  = (isFinite(lam) && lam > 0) ? Math.log(2) / lam : NaN;
-
-  const rows = [
-    ["k* — стационар",         num(ks), false],
-    ["k — сейчас",             num(kCur), !inSS],
-    ["y — выпуск",             num(f(kCur)), false],
-    ["c — потребление",        num((1 - P.s) * f(kCur)), false],
-    ["i — инвестиции",         num(P.s * f(kCur)), false],
-    ["γ — темп роста k",       pct(gk), !inSS],
-    ["r — отдача капитала",    pct(r), false],
-    ["θ — доля капитала в Y",  pct(share(kCur)), false],
-    ["K/Y",                    num(kCur / f(kCur)), false],
+  const list = [
+    ["k сразу после сдвига", num(row.short.k), moved],
+    ["k* — стационар",       num(ks), false],
+    ["y* — выпуск",          num(row.long ? row.long.y : NaN), false],
+    ["c* — потребление",     num(row.long ? row.long.c : NaN), false],
+    ["i* — инвестиции",      num(row.long ? row.long.i : NaN), false],
+    ["γ — темп роста k",     pct(P.s * row.short.y / Math.max(row.short.k, 1e-12) - dep(P)), moved],
+    ["r — отдача капитала",  pct(mpk(row.long ? row.long.k : row.short.k, P) - P.d), false],
+    ["θ — доля капитала в Y", pct(share(row.long ? row.long.k : row.short.k, P)), false],
+    ["K/Y",                  num(row.long ? row.long.k / row.long.y : NaN), false],
     ["λ — скорость схождения", pct(lam), false],
-    ["период полураспада",     isFinite(hl) ? num(hl, 0) + " лет" : "—", false]
+    ["период полураспада",   isFinite(hl) ? num(hl, 0) + " лет" : "—", false]
   ];
-  document.getElementById("ro").innerHTML = rows.map(
+  document.getElementById("ro").innerHTML = list.map(
     ([k, v, hi]) => `<tr><th>${k}</th><td class="${hi ? "hi" : ""}">${v}</td></tr>`
   ).join("");
 
-  const sg = sGold();
+  const sg = sGold(P), reg = regime(P);
   let title, body;
   if (reg === "explosive"){
     title = "Стационара нет";
-    body = "При σ > 1 капитал слишком легко замещает труд: средний продукт "
+    body = "При σ &gt; 1 капитал слишком легко замещает труд: средний продукт "
          + "не опускается ниже α^(σ/(σ−1)), и при такой s инвестиции навсегда "
-         + "остаются выше линии выбытия. Модель вырождается в AK — рост "
-         + "не затухает.";
+         + "остаются выше линии выбытия. Модель вырождается в AK — рост не затухает.";
   } else if (reg === "collapse"){
     title = "Стационара нет";
-    body = "При σ < 1 отдача капитала ограничена сверху: даже в самой бедной "
+    body = "При σ &lt; 1 отдача капитала ограничена сверху: даже в самой бедной "
          + "точке f(k)/k не превышает α^(σ/(σ−1)). При такой s инвестиции нигде "
          + "не покрывают выбытие, и капитал сходит к нулю.";
   } else if (!isFinite(sg) || sg >= 1){
     title = "Золотое правило недостижимо";
-    body = "Норма сбережений золотого правила s* = α^σ·(δ+n+g)^(1−σ) здесь "
-         + "выше единицы: сберегать пришлось бы больше, чем производится. "
-         + "На всём допустимом диапазоне потребление в стационаре растёт по s.";
+    body = "Норма сбережений золотого правила s* = α^σ·(δ+n+g)^(1−σ) здесь выше "
+         + "единицы: сберегать пришлось бы больше, чем производится.";
   } else if (Math.abs(P.s - sg) < 0.012){
     title = "Золотое правило";
-    body = "s совпадает с s* = " + num(sg)
-         + ": потребление на душу в стационаре максимально.";
+    body = "s совпадает с s* = " + num(sg) + ": потребление на душу в стационаре максимально.";
   } else if (P.s < sg){
     title = "Недонакопление";
-    body = "s ниже s* = " + num(sg) + ", значит r > δ+n+g. Потребление можно "
-         + "поднять, но только ценой жертвы сегодняшнего поколения. "
-         + "Динамически эффективно.";
+    body = "s ниже s* = " + num(sg) + ", значит r &gt; δ+n+g. Потребление можно поднять, "
+         + "но только ценой жертвы сегодняшнего поколения. Динамически эффективно.";
   } else {
     title = "Перенакопление";
-    body = "s выше s* = " + num(sg) + ", значит r < δ+n+g. Можно проесть часть "
-         + "капитала — и выиграют сразу все поколения. Динамически неэффективно.";
+    body = "s выше s* = " + num(sg) + ", значит r &lt; δ+n+g. Можно проесть часть капитала — "
+         + "и выиграют сразу все поколения. Динамически неэффективно.";
   }
-  document.getElementById("verdict").innerHTML = `<b>${title}</b>${body}`;
+  document.getElementById("verdict").innerHTML = "<b>" + title + "</b>" + body;
+}
 
+/* ===================== layer list ===================== */
+function renderLayers(){
+  document.getElementById("layers").innerHTML = layers.map((L, i) => `
+    <li class="layer${i === sel ? " sel" : ""}${L.on ? "" : " hidden"}" style="--live:${cssVar(i)}">
+      <button class="lay-pick" data-pick="${i}" aria-pressed="${i === sel}">
+        <i class="sw"></i><span class="ix">${i}</span><span class="nm">${esc(nameOf(i))}</span>
+      </button>
+      <button class="lay-btn" data-eye="${i}" aria-pressed="${L.on}"
+              title="${L.on ? "Скрыть на графике" : "Показать на графике"}">${L.on ? "◉" : "○"}</button>
+      <button class="lay-btn" data-del="${i}" title="Удалить сдвиг"${i === 0 ? " disabled" : ""}>×</button>
+    </li>`).join("");
+  document.getElementById("add").disabled = layers.length >= 7;
+}
+
+function renderLegend(){
+  const ink = col("--ink");
+  document.getElementById("legend").innerHTML = [
+    `<span><i style="border-color:${ink};border-top-width:3.2px"></i> f(k) — выпуск</span>`,
+    `<span><i style="border-color:${ink};border-top-width:1.8px"></i> s·f(k) — инвестиции</span>`,
+    `<span><i style="border-color:${ink};border-top-style:dashed"></i> (δ+n+g)k — выбытие</span>`,
+    `<span><i style="border-color:${col("--ochre")};border-top-style:dotted"></i> золотое правило</span>`,
+    `<span>толщина — какая кривая, цвет — какой сдвиг</span>`
+  ].join("");
+}
+
+function renderPhase(){
+  const here = stateAt(playT), P = here.phase.row.L.P;
+  const ks = kStar(P), reg = regime(P);
+  const gap = P.s * f(here.k, P) - dep(P) * here.k;
+  const inSS = isFinite(ks) && Math.abs(here.k / ks - 1) < 0.004;
+  const who = here.phase.i === 0 ? "исходное состояние" : "сдвиг " + here.phase.i;
+  const what = reg === "explosive" ? "стационара нет — k растёт без предела"
+             : reg === "collapse"  ? "стационара нет — k сходит к нулю"
+             : inSS                ? "экономика в стационаре"
+             : gap > 0             ? "инвестиции больше выбытия — k растёт"
+                                   : "выбытие больше инвестиций — k падает";
+  document.getElementById("phase").textContent = who + " · " + what;
   document.getElementById("subnote").textContent = subMode === "time"
-    ? "всё относительно стационарного уровня"
-    : "текущая s против оптимальной";
-
-  drawMain(); drawSub();
-  syncHash();
+    ? "всё в долях от исходного стационара"
+    : "s выбранного слоя против оптимальной";
 }
 
-/* ===================== animation ===================== */
-function stop(){
-  playing = false;
-  if (rafId) cancelAnimationFrame(rafId);
-  document.getElementById("play").textContent = "Запустить";
-}
-function step(){
-  if (!playing) return;
-  playT += (traj.ks.length * traj.dt) / 300;
-  const idx = Math.round(playT / traj.dt);
-  if (idx >= traj.ks.length - 1){
-    kCur = traj.ks[traj.ks.length - 1];
-    stop(); refresh(); return;
-  }
-  kCur = traj.ks[idx];
-  refresh();
-  rafId = requestAnimationFrame(step);
-}
-
-/* ===================== wiring ===================== */
-["s","d","n","g","a","sg"].forEach(id => {
-  document.getElementById(id).addEventListener("input", e => {
-    stop();
-    P[id] = +e.target.value;
-    rebuildTraj();
-    refresh();
+function syncControls(){
+  const L = layers[sel];
+  KEYS.forEach(id => {
+    document.getElementById(id).value = L.P[id];
+    document.getElementById(id + "-v").textContent = num(L.P[id], DIGITS[id]);
   });
-});
-["mk","ml"].forEach(id => {
-  document.getElementById(id).addEventListener("input", refresh);
-});
-
-document.getElementById("apply").addEventListener("click", () => {
-  stop();
-  const mk = +document.getElementById("mk").value;
-  const ml = +document.getElementById("ml").value;
-  kCur = kCur * mk / ml;
-  document.getElementById("mk").value = 1;
-  document.getElementById("ml").value = 1;
-  rebuildTraj(); refresh();
-});
-
-document.getElementById("play").addEventListener("click", () => {
-  if (playing){ stop(); return; }
-  if (!traj) rebuildTraj();
-  if (playT >= traj.ks.length * traj.dt - traj.dt) playT = 0;
-  if (REDUCED){ kCur = traj.ks[traj.ks.length - 1]; rebuildTraj(); refresh(); return; }
-  playing = true;
-  document.getElementById("play").textContent = "Пауза";
-  rafId = requestAnimationFrame(step);
-});
-
-document.getElementById("jump").addEventListener("click", () => {
-  const ks = kStar();
-  if (!isFinite(ks)) return;           // nowhere to jump to
-  stop(); kCur = ks; rebuildTraj(); refresh();
-});
-
-document.getElementById("mark").addEventListener("click", () => {
-  ghost = {...P}; refresh();
-});
-
-document.getElementById("tab-time").addEventListener("click", () => setTab("time"));
-document.getElementById("tab-hump").addEventListener("click", () => setTab("hump"));
-function syncTabs(){
+  document.getElementById("mk").value = L.shock.mk;
+  document.getElementById("ml").value = L.shock.ml;
+  document.getElementById("mk-v").textContent = num(L.shock.mk);
+  document.getElementById("ml-v").textContent = num(L.shock.ml);
+  document.getElementById("edit-head").textContent =
+    "Параметры — " + (sel === 0 ? "исходное состояние" : "сдвиг " + sel);
+  document.querySelector(".margin").style.setProperty("--live", cssVar(sel));
   document.getElementById("tab-time").setAttribute("aria-selected", subMode === "time");
   document.getElementById("tab-hump").setAttribute("aria-selected", subMode === "hump");
 }
-function setTab(m){
-  subMode = m;
-  syncTabs();
-  refresh();
+
+/* ===================== solved problems ===================== */
+/* Чтобы добавить разбор, скопируйте один элемент и заполните поля:
+     title  — как называется задача
+     hint   — строка под названием в списке
+     ask    — постановка (можно с HTML-разметкой)
+     why    — объяснение, показывается под таблицей
+     src    — откуда задача, необязательно
+     layers — слои по порядку. Первый — исходное состояние; в каждом
+              следующем указываются только те параметры, которые изменились,
+              остальные наследуются от предыдущего слоя.
+                P     — {s, d, n, g, a, sg}, любое подмножество
+                shock — {mk, ml}, разовые множители запаса K и числа работников L
+                name  — подпись слоя; если не задать, она соберётся сама  */
+const PROBLEMS = [
+  {
+    title: "Задача 1.i — миграция",
+    hint : "L ×1,25, K ×0,8 — запас падает, стационар стоит",
+    ask  : "Экономика в стационаре. Единовременно приезжают мигранты: число " +
+           "работников вырастает на 25%, а запас капитала за тот же момент " +
+           "падает на 20%. Что происходит с y, k, c и i в коротком и длинном периоде?",
+    why  : "<b>Короткий период.</b> Технология и норма сбережений не менялись, " +
+           "поэтому все три кривые стоят на месте. Меняется только точка: " +
+           "k = K/L падает в 0,8/1,25 = 0,64 раза, то есть на 36%. За ней вниз " +
+           "идут y = f(k), c и i — все по одному разу. " +
+           "<b>Длинный период.</b> Стационар k* зависит только от s, δ, n, g и α — " +
+           "ни один из них не тронут, значит k* остался прежним. Экономика " +
+           "оказалась ниже него, инвестиции превышают выбытие, и капитал " +
+           "возвращается ровно туда, где был. В длинном периоде не изменилось ничего.",
+    layers: [
+      {P: {s:.20, d:.10, n:0, g:0, a:1/3, sg:1}, name:"Исходный стационар"},
+      {shock: {mk:.8, ml:1.25}, name:"Приток мигрантов: K ×0,8, L ×1,25"}
+    ]
+  },
+  {
+    title: "Задача 1.ii — δ и s вверх",
+    hint : "δ 10 → 12%, s 10 → 20%: k* растёт на 115%",
+    ask  : "Экономика в стационаре при s = 0,10 и δ = 0,10. Норма сбережений " +
+           "удваивается до 0,20, одновременно амортизация растёт до 0,12. " +
+           "Что происходит с переменными?",
+    why  : "<b>Короткий период.</b> Запас капитала предопределён прошлым, поэтому " +
+           "k и вслед за ним y = f(k) не меняются вовсе. А вот распределение " +
+           "выпуска меняется сразу: i = s·f(k) удваивается, c = (1−s)·f(k) падает. " +
+           "<b>Длинный период.</b> Кривая инвестиций поднялась сильнее, чем " +
+           "повернулась вверх линия выбытия, поэтому новый стационар правее: " +
+           "k* = (s/δ)^(1/(1−α)) растёт с 1 до (0,2/0,12)^1,5 ≈ 2,15 — то есть " +
+           "на 115%. Выше k* — выше y*, i* и, поскольку s = 0,20 всё ещё ниже " +
+           "золотого правила s* = α = 1/3, выше и c*. Сегодняшнее поколение " +
+           "заплатило потреблением за то, чтобы выиграли следующие.",
+    layers: [
+      {P: {s:.10, d:.10, n:0, g:0, a:1/3, sg:1}, name:"Исходный стационар, s = 0,10"},
+      {P: {s:.20, d:.12}, name:"s 0,10 → 0,20 и δ 0,10 → 0,12"}
+    ]
+  },
+  {
+    title: "Демографический бум",
+    hint : "n 0 → 3%: линия выбытия круче, k* падает",
+    ask  : "Экономика в стационаре. Рост населения ускоряется с нуля до 3% в год. " +
+           "Что происходит с переменными?",
+    why  : "<b>Короткий период.</b> Ни s, ни технология не изменились, запас " +
+           "капитала на работника в момент сдвига тот же — y, k, c и i стоят " +
+           "на месте. Меняется только наклон линии выбытия: теперь каждый " +
+           "год нужно оснащать ещё и новых работников. " +
+           "<b>Длинный период.</b> Линия (δ+n+g)k стала круче, её пересечение " +
+           "с s·f(k) уехало влево: k* падает, а с ним y*, c* и i*. " +
+           "Это классический аргумент «население растёт — душевой доход падает»: " +
+           "в модели Солоу он держится именно на разбавлении капитала.",
+    layers: [
+      {P: {s:.20, d:.10, n:0, g:0, a:1/3, sg:1}, name:"Исходный стационар"},
+      {P: {n:.03}, name:"n 0 → 3%"}
+    ]
+  },
+  {
+    title: "Золотое правило",
+    hint : "s поднимается до α — максимум c в стационаре",
+    ask  : "Экономика в стационаре при s = 0,20 и α = 1/3. Норма сбережений " +
+           "поднимается до золотого правила. Что происходит с потреблением?",
+    why  : "<b>Короткий период.</b> k не двигается, y не двигается, но доля " +
+           "сберегаемого выросла: i вверх, c вниз. Поколение, которое проводит " +
+           "реформу, платит за неё. " +
+           "<b>Длинный период.</b> k* и y* растут, и поскольку стартовали мы слева " +
+           "от золотого правила (s = 0,20 &lt; α = 1/3), потребление в новом " +
+           "стационаре выше прежнего. Это и есть смысл золотого правила: " +
+           "s = α максимизирует c*, потому что там разрыв между f(k) и линией " +
+           "выбытия наибольший. Двигаться дальше вправо уже бессмысленно — " +
+           "начнётся перенакопление.",
+    layers: [
+      {P: {s:.20, d:.10, n:0, g:0, a:1/3, sg:1}, name:"Исходный стационар"},
+      {P: {s:1/3}, name:"s 0,20 → α = 1/3"}
+    ]
+  },
+  {
+    title: "Перенакопление по-советски",
+    hint : "s 0,20 → 1/3 → 0,55: где предел полезного накопления",
+    ask  : "Экономика в стационаре при s = 0,20 и α = 1/3. Сначала норма " +
+           "сбережений поднимается до золотого правила s* = 1/3, потом плановик " +
+           "идёт дальше — до 0,55. Где предел полезного накопления?",
+    why  : "<b>Первый сдвиг, до s* = 1/3.</b> Короткий период как обычно: k и y " +
+           "на месте, i вверх, c вниз — поколение реформы платит. Зато в длинном " +
+           "периоде растут все четыре переменные, потребление в том числе: мы шли " +
+           "<i>к</i> золотому правилу, а не от него. " +
+           "<b>Второй сдвиг, до s = 0,55.</b> Короткий период тот же — c вниз, " +
+           "i вверх. А длинный уже другой: k* и y* по-прежнему растут, но c* " +
+           "падает. Экономика перешагнула золотое правило. " +
+           "<b>Почему это плохо навсегда.</b> Справа от s* отдача капитала r " +
+           "опускается ниже δ+n+g: очередной рубль капитала не окупает даже " +
+           "собственного выбытия. Снизив s обратно, выиграли бы сразу все " +
+           "поколения — и сегодняшнее (c вырастет тут же), и все будущие " +
+           "(c* тоже выше). Не проиграл бы никто. Это и есть динамическая " +
+           "неэффективность — редкий в экономике случай бесплатного обеда. " +
+           "Заметьте: сам по себе факт «s = 0,40 больше, чем α = 1/3» ещё не " +
+           "значит, что потребление упало по сравнению с исходной точкой. " +
+           "Сравнивать надо не с α, а с тем, где экономика стояла: 0,40 ближе " +
+           "к оптимуму, чем 0,20, поэтому c* от такого шага как раз вырастет.",
+    layers: [
+      {P: {s:.20, d:.10, n:0, g:0, a:1/3, sg:1}, name:"Исходный стационар, s = 0,20"},
+      {P: {s:1/3}, name:"s 0,20 → 1/3: золотое правило"},
+      {P: {s:.55}, name:"s 1/3 → 0,55: за оптимумом"}
+    ]
+  },
+  {
+    title: "СССР: низкая эластичность замещения",
+    hint : "σ 1 → 0,6 при s = 0,30 — рост обязан был затухнуть",
+    ask  : "Экономика с очень высокой нормой сбережений s = 0,30 в стационаре " +
+           "при σ = 1. Оказывается, что капитал и труд замещают друг друга хуже, " +
+           "чем считалось: σ = 0,6. Что это меняет?",
+    why  : "<b>Короткий период.</b> Запас капитала уже накоплен, он не меняется. " +
+           "Меняется оценка того, сколько он приносит: при σ &lt; 1 отдача " +
+           "капитала падает гораздо быстрее, поэтому и y, и c, и i в той же точке " +
+           "оказываются ниже, чем считали при σ = 1. " +
+           "<b>Длинный период.</b> Новый стационар лежит левее: k* падает с 5,20 " +
+           "до 4,24. Экономика оказалась выше своего настоящего стационара и " +
+           "обязана к нему сползать — рост затухает, сколько бы ни вкладывали. " +
+           "Обратите внимание на строку θ: доля капитала в доходе здесь всего 16%, " +
+           "а не 33%. При CES α — это параметр распределения, а не доля.",
+    src  : "Easterly W., Fischer S. The Soviet Economic Decline. NBER WP 4735 / " +
+           "World Bank Economic Review, 1995.",
+    layers: [
+      {P: {s:.30, d:.10, n:0, g:0, a:1/3, sg:1}, name:"Стационар при σ = 1"},
+      {P: {sg:.6}, name:"σ 1 → 0,6"}
+    ]
+  },
+  {
+    title: "Замещение без предела",
+    hint : "σ = 2, α = 0,5, s = 0,60 — стационара нет вовсе",
+    ask  : "Что будет, если капитал замещает труд слишком легко — σ = 2 " +
+           "при α = 0,5 и высокой норме сбережений?",
+    why  : "При σ &gt; 1 средний продукт капитала f(k)/k не падает до нуля, а " +
+           "упирается снизу в α^(σ/(σ−1)) = 0,25. Если s·0,25 больше, чем δ+n+g, " +
+           "линия s·f(k) уже нигде не пересечёт линию выбытия: инвестиции всегда " +
+           "обгоняют выбытие, и капитал растёт без предела. Стационара просто нет, " +
+           "и в длинном периоде про переменные ничего сказать нельзя — " +
+           "отсюда «?» в таблице. Модель Солоу в этом случае вырождается в AK, " +
+           "и рост становится эндогенным.",
+    layers: [
+      {P: {s:.20, d:.10, n:0, g:0, a:.5, sg:1}, name:"Обычный стационар"},
+      {P: {s:.60, sg:2}, name:"s 0,20 → 0,60 и σ 1 → 2"}
+    ]
+  }
+];
+
+function loadProblem(i){
+  const q = PROBLEMS[i];
+  if (!q) return;
+  layers = [];
+  let P = {...BASE_P};
+  q.layers.forEach(spec => {
+    P = {...P, ...(spec.P || {})};
+    layers.push(mkLayer(P, spec.shock, spec.name || ""));
+  });
+  sel = layers.length > 1 ? 1 : 0;
+  probIdx = i;
+  playT = 0;
+}
+
+/* Has the configuration drifted away from the problem as posed? */
+function problemIntact(){
+  const q = PROBLEMS[probIdx];
+  if (!q || q.layers.length !== layers.length) return false;
+  let P = {...BASE_P};
+  return q.layers.every((spec, j) => {
+    P = {...P, ...(spec.P || {})};
+    const sh = {mk: 1, ml: 1, ...(spec.shock || {})};
+    const L = layers[j];
+    return KEYS.every(k => Math.abs(L.P[k] - P[k]) < 1e-9)
+        && Math.abs(L.shock.mk - sh.mk) < 1e-9
+        && Math.abs(L.shock.ml - sh.ml) < 1e-9;
+  });
+}
+
+function renderProblems(){
+  document.getElementById("probs").innerHTML = PROBLEMS.map((q, i) =>
+    `<button class="btn" data-p="${i}" aria-pressed="${i === probIdx}">${esc(q.title)}` +
+    `<small>${esc(q.hint || "")}</small></button>`).join("");
+
+  const el = document.getElementById("solution");
+  const q = PROBLEMS[probIdx];
+  if (!q){ el.hidden = true; el.innerHTML = ""; return; }
+  el.hidden = false;
+  el.innerHTML = `<h3>${esc(q.title)}</h3>
+    <p class="ask">${q.ask}</p>
+    <p class="why">${q.why}</p>` +
+    (q.src ? `<p class="src">${esc(q.src)}</p>` : "") +
+    (problemIntact() ? "" :
+      `<p class="src">Конфигурация изменена вручную — разбор относится к исходной постановке.</p>`);
 }
 
 /* ===================== state in the URL ===================== */
-/* Everything a student needs to land on exactly this picture: parameters,
-   the capital stock, the remembered "как было" and the open tab. */
-const HASH_KEYS = ["s", "d", "n", "g", "a", "sg"];
-const trim = v => String(+(+v).toPrecision(6));
+/* Everything a student needs to land on exactly this picture: every layer,
+   which one is open, the tab and the solved problem on screen. */
+/* String() of a double is the shortest text that parses back to the same
+   number — 0,2 stays "0.2" while α = 1/3 round-trips exactly. */
+const trim = v => String(+v);
 
 function stateToHash(){
-  const q = HASH_KEYS.map(k => k + "=" + trim(P[k]));
-  q.push("k=" + trim(kCur));
-  if (ghost) q.push("gh=" + HASH_KEYS.map(k => trim(ghost[k])).join(","));
-  q.push("tab=" + subMode);
+  const L = layers.map(l =>
+    KEYS.map(k => trim(l.P[k])).concat([trim(l.shock.mk), trim(l.shock.ml), l.on ? "1" : "0"]).join(",")
+  ).join(";");
+  const N = layers.map(l => encodeURIComponent(l.name || "")).join(";");
+  const q = ["v=2", "L=" + L, "N=" + N, "sel=" + sel, "tab=" + subMode];
+  if (probIdx >= 0) q.push("p=" + probIdx);
   return "#" + q.join("&");
 }
 
 function shareURL(){ return location.href.split("#")[0] + stateToHash(); }
 
 /* Clamp to the slider's own bounds, so a hand-edited link cannot push the
-   model somewhere the UI can never get back from. */
+   model somewhere the interface can never get back from. */
 function clampTo(id, v){
   const el = document.getElementById(id);
   if (!el || !isFinite(v)) return null;
@@ -1072,39 +1530,33 @@ function readHash(){
   const q = {};
   raw.split("&").forEach(kv => {
     const i = kv.indexOf("=");
-    if (i > 0) q[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1));
+    if (i > 0) q[kv.slice(0, i)] = kv.slice(i + 1);
   });
+  if (!q.L) return false;
 
-  let touched = false;
-  HASH_KEYS.forEach(k => {
-    if (q[k] === undefined) return;
-    const v = clampTo(k, parseFloat(q[k]));
-    if (v !== null){ P[k] = v; touched = true; }
+  const names = (q.N || "").split(";").map(s => { try { return decodeURIComponent(s); } catch (e) { return ""; } });
+  const built = [];
+  q.L.split(";").forEach((chunk, j) => {
+    const v = chunk.split(",").map(parseFloat);
+    if (v.length < KEYS.length + 2 || !v.slice(0, KEYS.length + 2).every(x => isFinite(x))) return;
+    const P = {};
+    KEYS.forEach((k, i) => { P[k] = clampTo(k, v[i]); });
+    if (KEYS.some(k => P[k] === null)) return;
+    const L = mkLayer(P, {mk: clampTo("mk", v[KEYS.length]), ml: clampTo("ml", v[KEYS.length + 1])},
+                      names[j] || "");
+    L.on = v[KEYS.length + 2] !== 0;
+    built.push(L);
   });
+  if (!built.length) return false;
 
-  if (q.gh){
-    const parts = q.gh.split(",").map(parseFloat);
-    if (parts.length === HASH_KEYS.length && parts.every(v => isFinite(v))){
-      ghost = {};
-      HASH_KEYS.forEach((k, i) => { ghost[k] = clampTo(k, parts[i]); });
-      touched = true;
-    }
-  } else if (q.gh === ""){
-    ghost = null;
-  }
-
-  if (q.tab === "time" || q.tab === "hump"){ subMode = q.tab; touched = true; }
-
-  const kv = parseFloat(q.k);
-  if (isFinite(kv) && kv > 0){
-    kCur = Math.min(1e9, Math.max(1e-6, kv));
-  } else if (touched){
-    /* Parameters came from the link but the stock did not — start at rest,
-       not at whatever k the previous configuration happened to leave behind. */
-    const ks = kStar();
-    kCur = isFinite(ks) ? ks : 1;
-  }
-  return touched || (isFinite(kv) && kv > 0);
+  layers = built;
+  const s = parseInt(q.sel, 10);
+  sel = (isFinite(s) && s >= 0 && s < layers.length) ? s : 0;
+  if (q.tab === "time" || q.tab === "hump") subMode = q.tab;
+  const p = parseInt(q.p, 10);
+  probIdx = (isFinite(p) && p >= 0 && p < PROBLEMS.length) ? p : -1;
+  playT = 0;
+  return true;
 }
 
 let lastHash = "", hashTimer = 0;
@@ -1121,7 +1573,7 @@ function syncHash(){
 window.addEventListener("hashchange", () => {
   if (location.hash === lastHash) return;    // our own write
   stop();
-  if (readHash()){ syncTabs(); rebuildTraj(); refresh(); }
+  if (readHash()) refresh();
 });
 
 /* ===================== share and export ===================== */
@@ -1138,8 +1590,8 @@ function flash(btn, text){
   }, 1600);
 }
 
-/* navigator.clipboard is absent outside secure contexts — and the page is
-   meant to run from file:// too, so keep the old selection trick around. */
+/* navigator.clipboard is absent outside secure contexts — and the page is meant
+   to run from file:// too, so keep the old selection trick around. */
 function legacyCopy(text){
   const ta = document.createElement("textarea");
   ta.value = text;
@@ -1181,8 +1633,8 @@ document.getElementById("png").addEventListener("click", e => {
   ctx.fillRect(0, 0, w, h);
   renderMain(ctx, w, h);
 
-  const name = "solow-" + HASH_KEYS.map(k => k + trim(P[k])).join("-")
-                 .replace(/\./g, "_") + ".png";
+  const name = "solow-" + layers.length + "sh-" +
+    KEYS.map(k => k + trim(layers[layers.length - 1].P[k])).join("-").replace(/\./g, "_") + ".png";
   const save = href => {
     const a = document.createElement("a");
     a.href = href; a.download = name;
@@ -1202,78 +1654,138 @@ document.getElementById("png").addEventListener("click", e => {
   }
 });
 
-/* ===================== scenarios ===================== */
-const BASE = {s:.20, d:.10, n:0, g:0, a:1/3, sg:1};
+/* ===================== animation ===================== */
+function stop(){
+  playing = false;
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = null;
+  document.getElementById("play").textContent = "Запустить";
+}
 
-const SCEN = [
-  {t:"Исходное равновесие",
-   d:"s = 0,20, δ = 0,10, α = 1/3, σ = 1 — точка отсчёта",
-   run(){ Object.assign(P, BASE);
-          ghost = null; kCur = kStar(); }},
+function step(){
+  if (!playing) return;
+  playT += STORY.total / 420;
+  if (playT >= STORY.total){ playT = STORY.total; stop(); redraw(); syncHash(); return; }
+  redraw();
+  rafId = requestAnimationFrame(step);
+}
 
-  {t:"Задача 1.i — миграция",
-   d:"L ×1,25, K ×0,8 ⇒ k падает на 36%, k* не двигается",
-   run(){ Object.assign(P, BASE);
-          ghost = null; kCur = kStar() * 0.64; }},
+/* ===================== redraw ===================== */
+function redraw(){ renderPhase(); drawMain(); drawSub(); }
 
-  {t:"Задача 1.ii — δ и s вверх",
-   d:"δ 10→12%, s 10→20% ⇒ k* растёт на 115%",
-   run(){ Object.assign(P, BASE, {s:.10});
-          kCur = kStar(); ghost = {...P};
-          Object.assign(P, {s:.20, d:.12}); }},
+function refresh(){
+  buildStory();
+  playT = Math.max(0, Math.min(playT, STORY.total));
+  syncControls();
+  renderLayers();
+  renderLegend();
+  renderFx();
+  renderReadout();
+  renderProblems();
+  redraw();
+  syncHash();
+}
 
-  {t:"Золотое правило",
-   d:"s = s*: потребление в стационаре максимально",
-   run(){ const sg = sGold();
-          if (!isFinite(sg)) return;
-          ghost = {...P};
-          P.s = Math.min(0.90, Math.max(0.01, sg));
-          kCur = kStar(); }},
+/* ===================== wiring ===================== */
+KEYS.forEach(id => {
+  document.getElementById(id).addEventListener("input", e => {
+    stop();
+    layers[sel].P[id] = +e.target.value;
+    layers[sel].name = "";        // the auto-name now tells the truth again
+    refresh();
+  });
+});
+["mk", "ml"].forEach(id => {
+  document.getElementById(id).addEventListener("input", e => {
+    stop();
+    layers[sel].shock[id] = +e.target.value;
+    layers[sel].name = "";
+    refresh();
+  });
+});
 
-  {t:"Перенакопление по-советски",
-   d:"s = 0,40 при α = 1/3 — справа от оптимума",
-   run(){ Object.assign(P, BASE);
-          kCur = kStar(); ghost = {...P}; P.s = .40; }},
-
-  {t:"СССР: низкая эластичность замещения",
-   d:"σ 1 → 0,6 при s = 0,30: капитал плохо заменяет труд, k* ниже — рост обязан был затухнуть (Easterly & Fischer, 1995)",
-   run(){ Object.assign(P, BASE, {s:.30});
-          kCur = kStar(); ghost = {...P}; P.sg = .6; }},
-
-  {t:"Замещение без предела",
-   d:"σ = 2, α = 0,5, s = 0,60: s·f(k) нигде не пересекает линию выбытия — стационара нет",
-   run(){ Object.assign(P, BASE, {s:.60, a:.5, sg:2});
-          ghost = null; kCur = 2; }},
-
-  {t:"Демографический бум",
-   d:"n 0 → 3%: линия выбытия круче, k* падает",
-   run(){ Object.assign(P, BASE);
-          kCur = kStar(); ghost = {...P}; P.n = .03; }}
-];
-
-document.getElementById("scen").innerHTML = SCEN.map(
-  (s, i) => `<button class="btn" data-i="${i}">${s.t}<small>${s.d}</small></button>`
-).join("");
-document.getElementById("scen").addEventListener("click", e => {
-  const b = e.target.closest("button[data-i]");
+document.getElementById("layers").addEventListener("click", e => {
+  const b = e.target.closest("button");
   if (!b) return;
   stop();
-  SCEN[+b.dataset.i].run();
-  document.getElementById("mk").value = 1;
-  document.getElementById("ml").value = 1;
-  rebuildTraj(); refresh();
+  if (b.dataset.pick !== undefined){ sel = +b.dataset.pick; }
+  else if (b.dataset.eye !== undefined){
+    const i = +b.dataset.eye;
+    layers[i].on = !layers[i].on;
+  } else if (b.dataset.del !== undefined){
+    const i = +b.dataset.del;
+    if (i === 0) return;
+    layers.splice(i, 1);
+    if (sel >= layers.length) sel = layers.length - 1;
+  } else return;
+  refresh();
+});
+
+document.getElementById("add").addEventListener("click", () => {
+  stop();
+  if (layers.length >= 7) return;
+  const prev = layers[layers.length - 1];
+  layers.push(mkLayer(prev.P, null, ""));
+  sel = layers.length - 1;
+  refresh();
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  stop(); resetLayers(); playT = 0; refresh();
+});
+
+document.getElementById("play").addEventListener("click", e => {
+  if (playing){ stop(); syncHash(); return; }
+  if (REDUCED){ playT = STORY.total; redraw(); return; }
+  if (playT >= STORY.total - 1e-9) playT = 0;
+  playing = true;
+  e.currentTarget.textContent = "Пауза";
+  rafId = requestAnimationFrame(step);
+});
+document.getElementById("rewind").addEventListener("click", () => { stop(); playT = 0; redraw(); syncHash(); });
+document.getElementById("tofinal").addEventListener("click", () => { stop(); playT = STORY.total; redraw(); syncHash(); });
+
+document.getElementById("tab-time").addEventListener("click", () => setTab("time"));
+document.getElementById("tab-hump").addEventListener("click", () => setTab("hump"));
+function setTab(m){ subMode = m; syncControls(); redraw(); syncHash(); }
+
+/* Scrubbing the time chart is the fastest way to answer «а что тут в момент X». */
+const subCv = document.getElementById("sub");
+let scrub = false;
+const scrubTo = ev => {
+  const r = subCv.getBoundingClientRect();
+  const L = 48, R = r.width - 80;
+  const u = (ev.clientX - r.left - L) / Math.max(1, R - L);
+  playT = Math.max(0, Math.min(1, u)) * STORY.total;
+  redraw();
+};
+subCv.addEventListener("pointerdown", ev => {
+  if (subMode !== "time") return;
+  stop(); scrub = true;
+  subCv.setPointerCapture(ev.pointerId);
+  scrubTo(ev);
+});
+subCv.addEventListener("pointermove", ev => { if (scrub) scrubTo(ev); });
+subCv.addEventListener("pointerup", ev => {
+  if (!scrub) return;
+  scrub = false;
+  try { subCv.releasePointerCapture(ev.pointerId); } catch (err) { /* already gone */ }
+  syncHash();
+});
+
+document.getElementById("probs").addEventListener("click", e => {
+  const b = e.target.closest("button[data-p]");
+  if (!b) return;
+  stop();
+  loadProblem(+b.dataset.p);
+  refresh();
 });
 
 /* ===================== go ===================== */
 window.addEventListener("resize", () => { drawMain(); drawSub(); });
 
+resetLayers();
 readHash();
-if (!isFinite(kCur) || kCur <= 0){
-  const ks = kStar();
-  kCur = isFinite(ks) ? ks : 1;
-}
-syncTabs();
-rebuildTraj();
 refresh();
 </script>
 </body>
