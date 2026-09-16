@@ -141,10 +141,17 @@
 
   /* ---------- right panel ---------- */
   .block{margin-bottom:22px}
-  .block > h3{
+  .block > h3,.blockhead h3{
     font-size:11.5px;font-weight:700;margin:0 0 9px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
   }
+  .blockhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .blockhead h3{margin-bottom:9px}
+  .btn.small{font-size:12px;padding:3px 9px}
+
+  .viewbar{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .viewbar .viewhint{font-size:12px;color:var(--muted)}
+  .btn.ghost[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 
   .card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);margin-bottom:9px}
   .chead{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--rule)}
@@ -279,14 +286,7 @@
 <div class="sheet">
 
   <header class="masthead">
-    <div>
-      <h1>Модель Солоу</h1>
-      <p class="lead">Задаёте исходное состояние и шоки к нему. Шоки происходят
-         одновременно, каждый двигает ровно один параметр. Параметр, который условие
-         не называет, помечается «свободно»: он двигает картинку, но в таблице
-         перебирается по всему диапазону — и если знак от него зависит, честный
-         ответ «нельзя определить».</p>
-    </div>
+    <h1>Модель Солоу</h1>
   </header>
 
   <div class="work">
@@ -299,6 +299,11 @@
       </div>
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
+      <div class="viewbar">
+        <button class="btn ghost small" id="goldbtn" aria-pressed="false">Показать golden rule</button>
+        <button class="btn ghost small" id="zoomreset" hidden>Сбросить масштаб</button>
+        <span class="viewhint">колесо — приблизить, перетаскивание — сдвинуть</span>
+      </div>
       <div class="legend" id="legend"></div>
 
       <div class="coords">
@@ -344,7 +349,10 @@
     <div class="panel">
 
       <div class="block">
-        <h3>Исходное состояние</h3>
+        <div class="blockhead">
+          <h3>Исходное состояние</h3>
+          <button class="btn ghost small" id="basereset">Сбросить</button>
+        </div>
         <div class="card base">
           <div class="chead">
             <span class="idx">0</span><i class="chip"></i>
@@ -682,9 +690,11 @@ const C = getComputedStyle(document.documentElement);
 const col = n => C.getPropertyValue(n).trim();
 const FONT = () => col("--sans");
 
-function axes(ctx, L, B, R, T){
+function axes(ctx, L, B, R, T, home){
   ctx.strokeStyle = col("--ink"); ctx.fillStyle = col("--ink"); ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(L, T - 12); ctx.lineTo(L, B); ctx.lineTo(R + 14, B); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(L, T - (home ? 12 : 0)); ctx.lineTo(L, B);
+  ctx.lineTo(R + (home ? 14 : 0), B); ctx.stroke();
+  if (!home) return;               // при увеличении начало координат за кадром
   const head = (x, y, dx, dy) => {
     ctx.beginPath(); ctx.moveTo(x, y);
     ctx.lineTo(x - dx*8 - dy*4, y - dy*8 - dx*4);
@@ -694,16 +704,19 @@ function axes(ctx, L, B, R, T){
   head(R + 14, B, 1, 0); head(L, T - 12, 0, -1);
 }
 
-function curve(ctx, fn, kMax, X, Y, color, w){
+function curve(ctx, fn, k0, k1, X, Y, color, w){
   ctx.save();
   ctx.strokeStyle = color; ctx.lineWidth = w;
   ctx.lineJoin = "round"; ctx.lineCap = "round";
   ctx.beginPath();
-  const N = 420;
+  const N = 460;
+  let pen = false;
   for (let i = 0; i <= N; i++){
-    const k = kMax * i / N, px = X(k), py = Y(fn(k));
-    if (!isFinite(py)) continue;
-    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    const k = k0 + (k1 - k0) * i / N, py = Y(fn(k));
+    if (!isFinite(py)){ pen = false; continue; }
+    const px = X(k);
+    pen ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    pen = true;
   }
   ctx.stroke(); ctx.restore();
 }
@@ -729,34 +742,38 @@ function dashed(ctx, x1, y1, x2, y2, color, w, dash){
   ctx.restore();
 }
 
-/* цепочка маленьких стрелок — направление подстройки */
+/* Цепочка стрелок подстройки — идёт прямо по оси k. */
 function adjust(ctx, x0, x1, y, color, label){
   if (Math.abs(x1 - x0) < 26) return;
   const dir = Math.sign(x1 - x0), n = Math.max(3, Math.min(9, Math.round(Math.abs(x1 - x0) / 34)));
   ctx.save();
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.1;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(x0 + dir*5, y); ctx.lineTo(x1 - dir*5, y); ctx.stroke();
   const span = (x1 - x0) - dir*10, step = span / n;
   for (let i = 0; i < n; i++){
     const x = x0 + dir*5 + step*(i + 0.55);
     ctx.beginPath();
-    ctx.moveTo(x + dir*4, y);
-    ctx.lineTo(x - dir*3, y - 3.2); ctx.lineTo(x - dir*3, y + 3.2);
+    ctx.moveTo(x + dir*4.5, y);
+    ctx.lineTo(x - dir*3.5, y - 3.6); ctx.lineTo(x - dir*3.5, y + 3.6);
     ctx.closePath(); ctx.fill();
   }
   ctx.restore();
-  if (label) tag(ctx, (x0 + x1)/2, y - 11, label, color, "center", 12);
+  if (label) tag(ctx, (x0 + x1)/2, y - 13, label, color, "center", 12);
 }
 
-/* вертикальная скобка с засечками */
-function bracket(ctx, x, yTop, yBot, color, label){
+/* Подпись с нижним индексом: k с «golden rule» под строкой. */
+function tagSub(ctx, x, y, main, low, color, bold){
   ctx.save();
-  ctx.strokeStyle = color; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(x - 4, yTop); ctx.lineTo(x, yTop);
-  ctx.lineTo(x, yBot); ctx.lineTo(x - 4, yBot);
-  ctx.stroke(); ctx.restore();
-  tag(ctx, x + 6, (yTop + yBot)/2, label, color, "left", 13, true);
+  const s1 = 13, s2 = 9.5, f1 = (bold ? "700 " : "") + s1 + "px " + FONT();
+  ctx.font = f1;                  const w1 = ctx.measureText(main).width;
+  ctx.font = s2 + "px " + FONT(); const w2 = ctx.measureText(low).width;
+  const total = w1 + w2 + 1.5, bx = x - total / 2;
+  ctx.fillStyle = "rgba(255,255,255,.9)";
+  ctx.fillRect(bx - 3, y - s1 * .7, total + 6, s1 * 1.5);
+  ctx.fillStyle = color; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.font = f1;                  ctx.fillText(main, bx, y);
+  ctx.font = s2 + "px " + FONT(); ctx.fillText(low, bx + w1 + 1.5, y + 4);
+  ctx.restore();
 }
 
 /* развести подписи по двум строкам под осью */
@@ -784,20 +801,23 @@ function statesOf(){
     seen.add(key); out.push(st);
   };
   const k0 = kStar(pv);
-  push({id:"base", label:"исходное", mark:"k" + sub(0) + "*", P:pv, k:k0,
-        color:col("--ink"), weight:1.4});
+  push({id:"base", label:"исходное", mark:"old", P:pv, k:k0,
+        color:col("--ink"), weight:1.4, axis:true});
   act.forEach((sh, i) => {
     const P = paramsOf(sh);
-    push({id:"sh" + sh.ci, label:shockName(sh), mark:"k*" + sub(i + 1),
+    push({id:"sh" + sh.ci, label:shockName(sh), mark:"k" + sub(i + 1),
           P, k: isStock(sh.key) ? k0 * stockMulOf([sh]) : kStar(P),
-          color: colHex(sh.ci), weight:1.1});
+          color: colHex(sh.ci), weight:1.1, axis:true});
   });
   if (act.length){
-    const PF = finalP(pv), m = stockMulOf(act);
-    push({id:"short", label:"сразу после шоков", mark:"k′", P:PF, k:k0*m,
-          color:col("--res"), weight:1.1, short:true});
-    push({id:"final", label:"итог", mark:"k*" + (act.length > 1 ? "∑" : ""),
-          P:PF, k:kStar(PF), color:col("--res"), weight:1.5, final:true});
+    const PF = finalP(pv), kS = k0 * stockMulOf(act);
+    /* Точка сразу после шоков заслуживает своего перпендикуляра только когда
+       она и правда в другом месте: шоки по параметрам запас не двигают. */
+    push({id:"short", label:"сразу после шоков", mark:"сразу", P:PF, k:kS,
+          color:col("--res"), weight:1.1, short:true,
+          axis: Math.abs(kS / k0 - 1) > 1e-9});
+    push({id:"final", label:"итог", mark:"new", P:PF, k:kStar(PF),
+          color:col("--res"), weight:1.5, final:true, axis:true});
   }
   return out;
 }
@@ -823,108 +843,90 @@ function pointList(){
 
 /* ===================== главная диаграмма ===================== */
 let HITS = [], FRAME = {gold:false, points:0};
+let view = null;                       // null — авто; иначе окно {k0,k1,y0,y1}
+let autoFrame = {k0:0, k1:1, y0:0, y1:1};
+let showGold = false;
+
+const geomOf = (w, h) => ({L:58, R:w - 104, T:28, B:h - 52});
+function geom(){
+  const cv = document.getElementById("main");
+  return geomOf(cv.clientWidth, parseInt(cv.dataset.h, 10));
+}
 
 function renderMain(ctx, w, h, capture){
-  const L = 58, R = w - 104, T = 28, B = h - 52;
+  const {L, R, T, B} = geomOf(w, h);
   const pv = dispVals(), act = active(), PF = finalP(pv);
   const sts = statesOf(), pts = pointList();
 
-  const ks = sts.map(s => s.k).filter(v => isFinite(v) && v > 0);
-  const span = ks.length ? Math.max(...ks) : 1;
-  let kMax = span * 1.45;
-  const kg = Math.pow(PF.a / dep(PF), 1/(1 - PF.a));
-  const gold = isFinite(kg) && kg > 0 && kg < span * 2.6;
-  if (gold) kMax = Math.max(kMax, kg * 1.12);
-  if (!(kMax > 0) || !isFinite(kMax)) kMax = 1;
-
-  /* что рисуем: чёрное исходное, поверх — только те линии, которые шок двигает */
+  /* что рисуем: чёрное исходное, поверх — только линии, которые шок двигает */
   const items = [];
   CURVES.forEach(c => items.push({c, P:pv, color:col("--ink"), w:1.5, kind:"base"}));
   act.forEach(sh => AFFECTS[sh.key].forEach(c =>
     items.push({c, P:paramsOf(sh), color:colHex(sh.ci), w:2.6, kind:"shock"})));
   CURVES.forEach(c => {
     const known = new Set([sigOf(pv, c)].concat(act.map(sh => sigOf(paramsOf(sh), c))));
-    if (!known.has(sigOf(PF, c)))
-      items.push({c, P:PF, color:col("--res"), w:3, kind:"res"});
+    if (!known.has(sigOf(PF, c))) items.push({c, P:PF, color:col("--res"), w:3, kind:"res"});
   });
 
-  let yMax = 1e-12;
-  items.forEach(it => { yMax = Math.max(yMax, curveFn(it.c, it.P)(kMax)); });
-  pts.forEach(q => { yMax = Math.max(yMax, q.y); });
-  yMax *= 1.1;
-  if (!(yMax > 0) || !isFinite(yMax)) yMax = 1;
+  /* домашняя рамка — по всем значимым точкам */
+  const ks = sts.map(s => s.k).filter(v => isFinite(v) && v > 0);
+  const span = ks.length ? Math.max(...ks) : 1;
+  const kg = Math.pow(PF.a / dep(PF), 1 / (1 - PF.a));
+  const goldFits = isFinite(kg) && kg > 0 && kg < span * 2.6;
+  let kTop = span * 1.45;
+  if (showGold && goldFits) kTop = Math.max(kTop, kg * 1.12);
+  if (!(kTop > 0) || !isFinite(kTop)) kTop = 1;
+  let yTop = 1e-12;
+  items.forEach(it => { yTop = Math.max(yTop, curveFn(it.c, it.P)(kTop)); });
+  pts.forEach(q => { yTop = Math.max(yTop, q.y); });
+  yTop *= 1.1;
+  if (!(yTop > 0) || !isFinite(yTop)) yTop = 1;
+  autoFrame = {k0:0, k1:kTop, y0:0, y1:yTop};
 
-  const X = k => L + (k / kMax) * (R - L);
-  const Y = y => B - (y / yMax) * (B - T);
+  const fr = view || autoFrame, home = !view;
+  const X = k => L + ((k - fr.k0) / (fr.k1 - fr.k0)) * (R - L);
+  const Y = y => B - ((y - fr.y0) / (fr.y1 - fr.y0)) * (B - T);
+  const onX = k => k >= fr.k0 - 1e-9 && k <= fr.k1 + 1e-9;
+  const onY = y => y >= fr.y0 - 1e-9 && y <= fr.y1 + 1e-9;
 
-  axes(ctx, L, B, R, T);
+  axes(ctx, L, B, R, T, home);
   tag(ctx, R + 22, B + 18, "k", col("--ink"), "center", 15, true);
   tag(ctx, L - 22, T - 8, "y", col("--ink"), "center", 15, true);
 
-  if (gold){
+  ctx.save();
+  ctx.beginPath(); ctx.rect(L, T - 14, R - L + 16, B - T + 14); ctx.clip();
+
+  if (showGold && goldFits && onX(kg)){
     dashed(ctx, X(kg), B, X(kg), Y(f(kg, PF)), col("--gold"), 1.2, [2, 4]);
     ctx.fillStyle = col("--gold");
     ctx.beginPath(); ctx.arc(X(kg), Y(f(kg, PF)), 4, 0, 7); ctx.fill();
-    tag(ctx, X(kg), B - 26, "golden rule", col("--gold"), "center", 12);
   }
 
-  items.filter(i => i.kind === "base").forEach(i => curve(ctx, curveFn(i.c, i.P), kMax, X, Y, i.color, i.w));
-  items.filter(i => i.kind !== "base").forEach(i => curve(ctx, curveFn(i.c, i.P), kMax, X, Y, i.color, i.w));
+  items.filter(i => i.kind === "base").forEach(i =>
+    curve(ctx, curveFn(i.c, i.P), fr.k0, fr.k1, X, Y, i.color, i.w));
+  items.filter(i => i.kind !== "base").forEach(i =>
+    curve(ctx, curveFn(i.c, i.P), fr.k0, fr.k1, X, Y, i.color, i.w));
 
-  /* подписи линий у правого края */
-  const lab = items.map(i => ({y: Y(curveFn(i.c, i.P)(kMax)), t: CURVE_LABEL[i.c],
-                               c: i.color, b: i.kind !== "base"}));
-  lab.sort((p, q) => p.y - q.y);
-  for (let i = 1; i < lab.length; i++)
-    if (lab[i].y - lab[i-1].y < 16) lab[i].y = lab[i-1].y + 16;
-  lab.forEach(l => tag(ctx, R + 9, Math.max(T - 6, Math.min(B + 12, l.y)), l.t, l.c, "left", 12.5, l.b));
-
-  /* перпендикуляры на всю высоту + точки на каждой пересечённой линии */
-  const marks = [];
+  /* перпендикуляры на всю высоту + засечки к осям у old и new */
   sts.forEach(st => {
-    if (st.k > kMax) return;
+    if (!onX(st.k)) return;
     const top = f(st.k, st.P);
-    dashed(ctx, X(st.k), B, X(st.k), Y(top), st.color, st.weight, st.short ? [3, 4] : [5, 4]);
-    if (st.id === "base" || st.final)
+    dashed(ctx, X(st.k), B, X(st.k), Math.max(Y(top), T - 12), st.color,
+           st.weight, st.short ? [3, 4] : [5, 4]);
+    if ((st.id === "base" || st.final) && onY(top))
       dashed(ctx, L, Y(top), X(st.k), Y(top), st.color, 1.1, [5, 4]);
-    marks.push({x: X(st.k), t: st.mark, c: st.color, b: st.id === "base" || st.final});
   });
-  place(marks, 44).forEach(m =>
-    tag(ctx, m.x, B + 18 + m.row * 17, m.t, m.c, "center", 13, m.b));
 
-  /* скобка инвестиций у итогового равновесия */
-  const fin = sts.find(s => s.final) || sts[0];
-  if (fin && fin.k <= kMax){
-    const iv = fin.P.s * f(fin.k, fin.P);
-    if (iv > 0) bracket(ctx, X(fin.k) + 11, Y(iv), Y(0), fin.color, "i*");
-    tag(ctx, L - 9, Y(f(fin.k, fin.P)), fin.id === "base" ? "y" + sub(0) + "*" : "y*",
-        fin.color, "right", 13, true);
-  }
-  const b0 = sts.find(s => s.id === "base");
-  if (b0 && fin !== b0) tag(ctx, L - 9, Y(f(b0.k, b0.P)), "y" + sub(0) + "*", b0.color, "right", 13, true);
+  /* подстройка — стрелками прямо по оси k */
+  const sh0 = sts.find(s => s.short) || sts.find(s => s.id === "base");
+  const f0 = sts.find(s => s.final);
+  if (sh0 && f0 && onX(sh0.k) && onX(f0.k))
+    adjust(ctx, X(sh0.k), X(f0.k), B, col("--res"), f0.k > sh0.k ? "k растёт" : "k падает");
 
-  /* стрелки подстройки: из точки сразу после шоков в новый стационар */
-  const sh0 = sts.find(s => s.short), f0 = sts.find(s => s.final);
-  if (sh0 && f0 && sh0.k <= kMax && f0.k <= kMax){
-    const grows = f0.k > sh0.k;
-    adjust(ctx, X(sh0.k), X(f0.k), B - 13, col("--res"), grows ? "k растёт" : "k падает");
-    const gap = PF.s * f(sh0.k, PF) - dep(PF) * sh0.k;
-    const txt = ["Короткий период: запас k на месте,",
-                 (gap > 0 ? "но инвестиции выше выбытия ⇒ k растёт"
-                          : "но выбытие выше инвестиций ⇒ k падает")];
-    ctx.save();
-    ctx.font = "12.5px " + FONT(); ctx.fillStyle = col("--muted");
-    ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    const tx = Math.min(X(sh0.k) + 16, R - 250);
-    txt.forEach((t, i) => ctx.fillText(t, tx, T + 20 + i*17));
-    ctx.restore();
-    dashed(ctx, tx - 5, T + 30, X(sh0.k) + 2, Y(PF.s * f(sh0.k, PF)) - 9, col("--muted"), 1, [3, 3]);
-  }
-
-  /* сами точки */
+  /* точки */
   const hits = [];
   pts.forEach(q => {
-    if (q.k > kMax || q.y > yMax) return;
+    if (!onX(q.k) || !onY(q.y)) return;
     const px = X(q.k), py = Y(q.y), on = picked.indexOf(q.id) >= 0;
     if (on){
       dashed(ctx, L, py, px, py, q.color, 1, [3, 3]);
@@ -939,8 +941,41 @@ function renderMain(ctx, w, h, capture){
     if (on) tag(ctx, px + 10, py - 12, coordText(q), q.color, "left", 12, true);
     hits.push({id: q.id, x: px, y: py});
   });
+  ctx.restore();
 
-  if (capture){ HITS = hits; FRAME = {gold, points: hits.length}; }
+  /* подписи линий у правого края */
+  const lab = items.map(i => ({y: Y(curveFn(i.c, i.P)(fr.k1)), t: CURVE_LABEL[i.c],
+                               c: i.color, b: i.kind !== "base"}))
+                   .filter(l => isFinite(l.y));
+  lab.sort((p1, p2) => p1.y - p2.y);
+  for (let i = 1; i < lab.length; i++)
+    if (lab[i].y - lab[i-1].y < 16) lab[i].y = lab[i-1].y + 16;
+  lab.forEach(l => tag(ctx, R + 9, Math.max(T - 6, Math.min(B + 12, l.y)), l.t, l.c, "left", 12.5, l.b));
+
+  /* подписи на оси k: совпавшие состояния склеиваются в одну */
+  const marks = [];
+  sts.forEach(st => {
+    if (!st.axis || !onX(st.k)) return;
+    const x = X(st.k), hit = marks.find(m => Math.abs(m.x - x) < 2.5);
+    if (hit){ hit.t += " = " + st.mark; hit.c = col("--ink"); hit.b = true; }
+    else marks.push({x, t: st.mark, c: st.color, b: st.id === "base" || st.final});
+  });
+  place(marks, 48).forEach(m =>
+    tag(ctx, m.x, B + 18 + m.row * 17, m.t, m.c, "center", 13, m.b));
+  if (showGold && goldFits && onX(kg))
+    tagSub(ctx, X(kg), B + 18 + (marks.some(m => Math.abs(m.x - X(kg)) < 48) ? 17 : 0),
+           "k", "golden rule", col("--gold"));
+
+  /* засечки уровня выпуска на оси y */
+  const b0 = sts.find(s => s.id === "base"), fin = sts.find(s => s.final);
+  [[b0, "y", "old"], [fin, "y", "new"]].forEach(([st, main, low]) => {
+    if (!st) return;
+    const yv = f(st.k, st.P);
+    if (!onY(yv) || !onX(st.k)) return;
+    tagSub(ctx, L - 24, Y(yv), main, low, st.color, true);
+  });
+
+  if (capture){ HITS = hits; FRAME = {gold: showGold && goldFits, points: hits.length}; }
 }
 
 function drawMain(){
@@ -948,6 +983,8 @@ function drawMain(){
   const {ctx, w, h} = fitCanvas(cv);
   ctx.clearRect(0, 0, w, h);
   renderMain(ctx, w, h, true);
+  const rb = document.getElementById("zoomreset");
+  if (rb) rb.hidden = !view;
 }
 
 /* ===================== относительные координаты ===================== */
@@ -1145,21 +1182,27 @@ function renderBase(){
     PKEYS.map(k => paramRow(k, base[k].v, "b-", "var(--ink)", base[k].fixed)).join("");
 }
 
+/* Шапка карточки шока. Вынесена отдельно, потому что её надо обновлять
+   и при перетаскивании ползунка — иначе в шапке остаётся старое число. */
+function shockHead(sh){
+  const m = META[sh.key], d = FORM[sh.form].dig(sh.key);
+  return sh.form === "set"
+    ? '<span class="sym">' + m.sym + "</span>: " + num(base[sh.key].v, d) +
+      ' <span class="arr">→</span> <span class="to">' + num(sh.value, d) + "</span>"
+    : '<span class="sym">' + m.sym + '</span> <span class="arr">' + FORM[sh.form].glyph +
+      '</span> <span class="to">' + num(sh.value, d) + "</span>";
+}
+
 function renderShocks(){
   document.getElementById("shocks").innerHTML = shocks.map((sh, i) => {
     const live = colVar(sh.ci), m = META[sh.key];
     const touches = AFFECTS[sh.key].length
       ? "двигает " + AFFECTS[sh.key].map(c => CURVE_LABEL[c]).join(" и ")
       : "двигает саму точку k, кривые стоят";
-    const head = sh.form === "set"
-      ? '<span class="sym">' + m.sym + '</span>: ' + num(base[sh.key].v, FORM.set.dig(sh.key)) +
-        ' <span class="arr">→</span> <span class="to">' + num(sh.value, FORM.set.dig(sh.key)) + "</span>"
-      : '<span class="sym">' + m.sym + '</span> <span class="arr">' + FORM[sh.form].glyph +
-        '</span> <span class="to">' + num(sh.value, FORM[sh.form].dig(sh.key)) + "</span>";
     return "<li>" +
       '<div class="card' + (sh.on ? "" : " off") + '" data-card="' + i + '" style="--live:' + live + '">' +
         '<div class="chead"><span class="idx">' + (i + 1) + '</span><i class="chip"></i>' +
-          '<span class="ctitle">' + head + "</span>" +
+          '<span class="ctitle" data-head="' + i + '">' + shockHead(sh) + "</span>" +
           '<span class="acts">' +
             '<button data-eye="' + i + '" aria-pressed="' + sh.on + '">' +
               (sh.on ? "скрыть" : "показать") + "</button>" +
@@ -1329,6 +1372,7 @@ function loadProblem(i){
     ({key: s.key, form: s.form, value: clampKey(s.key, s.value, s.form), on: true, ci: j}));
   probIdx = i;
   picked = [];
+  view = null;
 }
 
 function problemIntact(){
@@ -1493,6 +1537,10 @@ function syncValues(){
     const k = el.dataset.from;
     el.textContent = num(base[k].v, META[k].dig) + " →";
   });
+  document.querySelectorAll("[data-head]").forEach(el => {
+    const sh = shocks[+el.dataset.head];
+    if (sh) el.innerHTML = shockHead(sh);
+  });
 }
 let heavyTimer = 0;
 function renderHeavy(){ renderFx(); renderNotes(); }
@@ -1583,6 +1631,27 @@ document.getElementById("add").addEventListener("click", () => {
   refreshAll();
 });
 
+document.getElementById("basereset").addEventListener("click", () => {
+  const q = PROBLEMS[probIdx];
+  PKEYS.forEach(k => {
+    const [v, fx] = (q && q.base[k]) ? q.base[k] : [DEFAULT_BASE[k].v, DEFAULT_BASE[k].fixed ? 1 : 0];
+    base[k] = {v: clampKey(k, v), fixed: !!fx};
+  });
+  view = null;
+  refreshAll();
+});
+
+/* ---------- golden rule и масштаб ---------- */
+document.getElementById("goldbtn").addEventListener("click", e => {
+  showGold = !showGold;
+  e.currentTarget.setAttribute("aria-pressed", showGold);
+  e.currentTarget.textContent = showGold ? "Скрыть golden rule" : "Показать golden rule";
+  drawMain(); renderLegend();
+});
+document.getElementById("zoomreset").addEventListener("click", () => {
+  view = null; drawMain(); renderLegend();
+});
+
 document.getElementById("probs").addEventListener("click", e => {
   const b = e.target.closest("button[data-p]");
   if (!b) return;
@@ -1602,10 +1671,58 @@ const nearest = (x, y) => {
   HITS.forEach(h => { const d = Math.hypot(h.x - x, h.y - y); if (d < bd){ bd = d; best = h; } });
   return best;
 };
-cv.addEventListener("click", e => { const h = nearest(e.offsetX, e.offsetY); if (h) togglePoint(h.id); });
-cv.addEventListener("mousemove", e => {
-  cv.style.cursor = nearest(e.offsetX, e.offsetY) ? "pointer" : "crosshair";
+
+/* Колесо приближает вокруг курсора, перетаскивание сдвигает. Если окно стало
+   шире домашнего, возвращаемся к авто — так из зума всегда есть выход. */
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const fr = view || autoFrame, g = geom();
+  const kw = fr.k1 - fr.k0, yh = fr.y1 - fr.y0;
+  const kx = fr.k0 + (e.offsetX - g.L) / (g.R - g.L) * kw;
+  const ky = fr.y0 + (g.B - e.offsetY) / (g.B - g.T) * yh;
+  const z = e.deltaY < 0 ? 1 / 1.18 : 1.18;
+  const nw = kw * z, nh = yh * z;
+  if (nw >= (autoFrame.k1 - autoFrame.k0) * 1.02){ view = null; drawMain(); return; }
+  if (nw < 1e-7 || nh < 1e-10) return;
+  let k0 = kx - (kx - fr.k0) * z, y0 = ky - (ky - fr.y0) * z;
+  if (k0 < 0) k0 = 0;
+  if (y0 < 0) y0 = 0;
+  view = {k0, k1: k0 + nw, y0, y1: y0 + nh};
+  drawMain();
+}, {passive: false});
+
+let drag = null;
+cv.addEventListener("pointerdown", e => {
+  drag = {sx: e.clientX, sy: e.clientY, moved: 0, base: view ? {...view} : {...autoFrame}};
+  try { cv.setPointerCapture(e.pointerId); } catch (err) { /* не критично */ }
 });
+cv.addEventListener("pointermove", e => {
+  if (!drag){
+    cv.style.cursor = nearest(e.offsetX, e.offsetY) ? "pointer" : (view ? "grab" : "crosshair");
+    return;
+  }
+  const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+  drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
+  if (drag.moved < 4) return;
+  cv.style.cursor = "grabbing";
+  const fr = drag.base, g = geom();
+  const kPer = (fr.k1 - fr.k0) / (g.R - g.L), yPer = (fr.y1 - fr.y0) / (g.B - g.T);
+  let k0 = fr.k0 - dx * kPer, y0 = fr.y0 + dy * yPer;
+  if (k0 < 0) k0 = 0;
+  if (y0 < 0) y0 = 0;
+  view = {k0, k1: k0 + (fr.k1 - fr.k0), y0, y1: y0 + (fr.y1 - fr.y0)};
+  drawMain();
+});
+cv.addEventListener("pointerup", e => {
+  if (!drag) return;
+  const click = drag.moved < 4;
+  drag = null;
+  try { cv.releasePointerCapture(e.pointerId); } catch (err) { /* уже отпущен */ }
+  cv.style.cursor = "crosshair";
+  if (click){ const h = nearest(e.offsetX, e.offsetY); if (h) togglePoint(h.id); }
+});
+cv.addEventListener("pointercancel", () => { drag = null; });
+cv.addEventListener("dblclick", () => { view = null; drawMain(); });
 let cursor = -1;
 cv.addEventListener("keydown", e => {
   if (!HITS.length) return;
