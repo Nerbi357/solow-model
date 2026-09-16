@@ -197,6 +197,7 @@
     border:1px solid var(--rule);background:var(--paper);color:var(--muted);white-space:nowrap;
   }
   .pin[aria-pressed="false"]{border-style:dashed;color:var(--dunno);border-color:var(--dunno)}
+  .pin[disabled]{cursor:not-allowed;opacity:.55}
   .pin:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 
   input[type=range]{
@@ -318,8 +319,8 @@
           <thead>
             <tr>
               <th rowspan="2" class="who">Шок</th>
-              <th colspan="4" class="grp">Короткий период</th>
-              <th colspan="4" class="grp">Длинный период</th>
+              <th colspan="4" class="grp">Краткосрочные изменения</th>
+              <th colspan="4" class="grp">Долгосрочные изменения</th>
             </tr>
             <tr>
               <th class="sr">y</th><th>k</th><th>c</th><th>i</th>
@@ -396,9 +397,9 @@
   <p class="foot">
     Производственная функция — Кобб — Дуглас, <code>f(k) = k<sup>α</sup></code>;
     накопление <code>Δk = s·f(k) − (δ+n+g)·k</code>; стационар
-    <code>k* = (s/(δ+n+g))<sup>1/(1−α)</sup></code>. В коротком периоде запас
+    <code>k* = (s/(δ+n+g))<sup>1/(1−α)</sup></code>. В краткосрочном периоде запас
     капитала предопределён прошлым и не двигается — меняются только кривые;
-    в длинном экономика доходит до нового стационара.
+    в долгосрочном экономика доходит до нового стационара.
     Знаки в таблице считаются перебором: свободные параметры прогоняются по всей
     области допустимых значений, и если знак где-то переворачивается, ответом
     становится «нельзя определить», а под таблицей появляется пояснение с порогом.
@@ -434,14 +435,46 @@ const META = {
 
 /* Три формы, потому что в задачах встречаются все три:
    «s: 0,10 → 0,20», «δ + 5 п.п.», «K ×0,80». */
+/* Границы приращения и множителя зависят от исходного значения: если оно
+   задано, дальше выхода за допустимые пределы просто не даём. Если свободно,
+   сузить нечего — про такой случай предупреждает пояснение под таблицей. */
+const pinned = k => base[k] && base[k].fixed;
 const FORM = {
   set:{glyph:"→", tab:"новое",      word:"новое значение",
        rng:k => [META[k].min, META[k].max], dig:k => META[k].dig},
   add:{glyph:"+", tab:"на сколько", word:"приращение в пунктах",
-       rng:()  => [-0.5, 0.5],              dig:()  => 3},
+       rng:k => (META[k].stock || !pinned(k)) ? [-0.5, 0.5]
+              : [META[k].min - base[k].v, META[k].max - base[k].v],
+       dig:()  => 3},
   mul:{glyph:"×", tab:"во сколько", word:"множитель",
-       rng:()  => [0.05, 3],                dig:()  => 2}
+       rng:k => (META[k].stock || !pinned(k)) ? [0.05, 3]
+              : [Math.max(0.05, META[k].min / base[k].v),
+                 Math.min(3, META[k].max / base[k].v)],
+       dig:()  => 2}
 };
+
+/* Шок «→ новое» называет и конец, и начало: «s растёт с 0,10 до 0,20». Значит
+   исходное значение дано условием, и свободным оно быть не может — иначе
+   неизвестно даже, вырос параметр или упал, и таблица вырождается в «?». */
+const lockedKeys = () => new Set(shocks.filter(s => s.on && s.form === "set").map(s => s.key));
+/* Границы «+ на сколько» и «× во сколько» зависят от исходного значения:
+   сдвинули базовый ползунок — старое значение шока могло выпасть наружу. */
+function clampShocks(){
+  shocks.forEach(sh => { sh.value = clampKey(sh.key, sh.value, sh.form); });
+}
+function enforceLocks(){
+  const lock = lockedKeys();
+  PKEYS.forEach(k => {
+    if (!base[k]) return;
+    if (lock.has(k)){
+      /* auto помнит, что «задано» поставил не человек, а форма шока */
+      if (!base[k].fixed){ base[k].fixed = true; base[k].auto = true; }
+    } else if (base[k].auto){
+      base[k].fixed = false; base[k].auto = false;
+    }
+  });
+  clampShocks();
+}
 
 /* какую линию двигает параметр — шок красит только её */
 const AFFECTS = {s:["inv"], d:["dep"], n:["dep"], g:["dep"], a:["out","inv"], K:[], L:[]};
@@ -586,11 +619,12 @@ function sweep(){
   const acc = Array.from({length: nrows}, () => ({
     sr: VARS.map(() => new Set()), lr: VARS.map(() => new Set())
   }));
-  let seen = 0;
+  let seen = 0, tried = 0, coarse = false, seenC = 0, triedC = 0;
   const take = pv => {
+    tried++; if (coarse) triedC++;
     const r = rowsAt(pv);
     if (!r || r.length !== nrows) return;
-    seen++;
+    seen++; if (coarse) seenC++;
     r.forEach((row, i) => VARS.forEach((_, j) => {
       acc[i].sr[j].add(row.sr[j]);
       acc[i].lr[j].add(row.lr[j]);
@@ -598,6 +632,7 @@ function sweep(){
   };
 
   /* грубая полная сетка — ловит совместные эффекты нескольких параметров */
+  coarse = true;
   const total = Math.pow(N, free.length);
   for (let idx = 0; idx < total; idx++){
     const pv = dispVals();
@@ -608,6 +643,7 @@ function sweep(){
     }
     take(pv);
   }
+  coarse = false;
 
   /* тонкая пристрелка вдоль каждой свободной оси: грубая сетка проскакивает
      узкие полосы, где знак переворачивается. Остальные свободные параметры
@@ -630,18 +666,24 @@ function sweep(){
   });
 
   const pick = st => (seen && st.size === 1) ? [...st][0] : "dunno";
+  SWEEPSTAT = {seen, tried, seenC, triedC, nfree: free.length};
   return acc.map(a => ({sr: a.sr.map(pick), lr: a.lr.map(pick)}));
 }
+let SWEEPSTAT = {seen: 0, tried: 0, seenC: 0, triedC: 0, nfree: 0};
 
 /* Перебор зависит только от заданных значений, набора свободных и самих шоков —
    значит, таскать его на каждое движение свободного ползунка не нужно. */
-let sweepCache = {key: null, val: null};
+let sweepCache = {key: null, val: null, stat: null};
 const sweepKey = () =>
   PKEYS.map(k => base[k].fixed ? "f" + base[k].v : "x").join(",") + "|" +
   active().map(s => s.key + s.form + s.value).join(";");
 function sweepCached(){
   const key = sweepKey();
-  if (sweepCache.key !== key) sweepCache = {key, val: sweep()};
+  if (sweepCache.key !== key){
+    const val = sweep();
+    sweepCache = {key, val, stat: {...SWEEPSTAT}};
+  }
+  SWEEPSTAT = sweepCache.stat || SWEEPSTAT;
   return sweepCache.val;
 }
 
@@ -1114,13 +1156,58 @@ function renderFx(){
 }
 
 /* Под таблицей — почему именно «нельзя определить» и где проходит граница. */
+/* Шок умеет выводить параметр за пределы модели: «n + 0,5» при свободном n
+   осмысленна только при n < 0,5. Перебор такие точки молча пропускает —
+   значит, про сужение надо сказать вслух, иначе таблица отвечает про часть
+   диапазона, а выглядит как ответ про весь. */
+const MLIM = {s:[0, 1, false], a:[0, 1, false], d:[0, 1, true], n:[0, 1, true], g:[0, 1, true]};
+function rangeCuts(){
+  const cuts = [];
+  active().forEach(sh => {
+    const k = sh.key, L = MLIM[k];
+    if (!L) return;                                   // K и L двигают точку, не параметр
+    const inside = v => (L[2] ? v >= L[0] : v > L[0]) && v < L[1];
+    const t = v => sh.form === "set" ? sh.value : sh.form === "add" ? v + sh.value : v * sh.value;
+    const lo0 = base[k].fixed ? base[k].v : META[k].min;
+    const hi0 = base[k].fixed ? base[k].v : META[k].max;
+    if (inside(t(lo0)) && inside(t(hi0))) return;     // преобразование монотонно
+    let a = NaN, b = NaN;
+    for (let j = 0; j <= 600; j++){
+      const v = lo0 + (hi0 - lo0) * j / 600;
+      if (!inside(t(v))) continue;
+      if (!isFinite(a)) a = v;
+      b = v;
+    }
+    const span = (b - a) / (META[k].max - META[k].min);
+    cuts.push({key: k, from: a, to: b, none: !isFinite(a), fixed: base[k].fixed,
+               big: !(span > 0.95)});
+  });
+  return cuts;
+}
+
 function renderNotes(){
   const rows = sweepCached(), names = rowNames(), host = document.getElementById("notes");
   const word = c => c === "up" ? "растёт" : c === "down" ? "падает" : "не меняется";
   const out = [];
+  const cuts = rangeCuts(), dead = cuts.filter(c => c.none);
+  if (dead.length || !SWEEPSTAT.seen){
+    const who = dead.map(c => META[c.key].sym).join(", ");
+    host.innerHTML = '<div class="note"><b>Модель не определена</b><p>' +
+      (who ? "Шок выводит " + who + " за допустимые границы" : "Шок выводит параметр за границы") +
+      " при любых значениях остальных, поэтому считать нечего и в таблице всюду «?». " +
+      "Поправьте величину шока или исходное значение.</p></div>";
+    return;
+  }
+  cuts.filter(c => c.big).forEach(c => {
+    const sym = META[c.key].sym, d = META[c.key].dig;
+    out.push('<div class="note"><b>Перебор сужен</b><p>Шок осмыслен не на всём диапазоне: ' +
+      "перебор шёл только по <code>" + sym + " от " + num(c.from, d) + " до " +
+      num(c.to, d) + "</code> — вне этого отрезка шок выводит " + sym +
+      " за границы модели.</p></div>");
+  });
   rows.forEach((row, ri) => {
     const lines = [];
-    [["sr", "короткий период"], ["lr", "длинный период"]].forEach(([per, perName]) => {
+    [["sr", "в краткосрочном периоде"], ["lr", "в долгосрочном периоде"]].forEach(([per, perName]) => {
       row[per].forEach((code, vi) => {
         if (code !== "dunno") return;
         const v = VARS[vi], th = thresholds(ri, per, vi);
@@ -1191,9 +1278,12 @@ function paramRow(key, value, idp, live, fixed, fromVal, form){
   const m = META[key], id = idp + key;
   const dig = form ? FORM[form].dig(key) : m.dig;
   const [lo, hi] = form ? FORM[form].rng(key) : [m.min, m.max];
+  const lock = fixed !== undefined && lockedKeys().has(key);
   const pin = fixed === undefined ? "" :
-    '<button class="pin" data-pin="' + key + '" aria-pressed="' + fixed + '">' +
-    (fixed ? "задано" : "свободно") + "</button>";
+    '<button class="pin" data-pin="' + key + '" aria-pressed="' + fixed + '"' +
+    (lock ? ' disabled title="Шок «' + META[key].sym +
+            ' → новое» называет и начало, и конец, поэтому исходное значение задано"' : "") +
+    '>' + (fixed ? "задано" : "свободно") + "</button>";
   const gl = form ? FORM[form].glyph : "→";
   return '<div class="prow" style="--live:' + live + '">' +
     '<div class="prow-top">' +
@@ -1221,19 +1311,25 @@ function renderBase(){
    и при перетаскивании ползунка — иначе в шапке остаётся старое число. */
 function shockHead(sh){
   const m = META[sh.key], d = FORM[sh.form].dig(sh.key);
+  const neg = sh.form === "add" && sh.value < 0;
   return sh.form === "set"
     ? '<span class="sym">' + m.sym + "</span>: " + num(base[sh.key].v, d) +
       ' <span class="arr">→</span> <span class="to">' + num(sh.value, d) + "</span>"
-    : '<span class="sym">' + m.sym + '</span> <span class="arr">' + FORM[sh.form].glyph +
-      '</span> <span class="to">' + num(sh.value, d) + "</span>";
+    : '<span class="sym">' + m.sym + '</span> <span class="arr">' +
+      (neg ? "−" : FORM[sh.form].glyph) + '</span> <span class="to">' +
+      num(neg ? -sh.value : sh.value, d) + "</span>";
 }
 
 function renderShocks(){
   document.getElementById("shocks").innerHTML = shocks.map((sh, i) => {
     const live = colVar(sh.ci), m = META[sh.key];
-    const touches = AFFECTS[sh.key].length
+    const touches = (AFFECTS[sh.key].length
       ? "двигает " + AFFECTS[sh.key].map(c => CURVE_LABEL[c]).join(" и ")
-      : "двигает саму точку k, кривые стоят";
+      : "двигает саму точку k, кривые стоят") +
+      (sh.form === "set" && !isStock(sh.key)
+        ? ". Форма «новое» называет и начало, и конец, поэтому исходное " + m.sym +
+          " держится заданным"
+        : "");
     return "<li>" +
       '<div class="card' + (sh.on ? "" : " off") + '" data-card="' + i + '" style="--live:' + live + '">' +
         '<div class="chead"><span class="idx">' + (i + 1) + '</span><i class="chip"></i>' +
@@ -1290,12 +1386,12 @@ const PROBLEMS = [
            "за счёт миграции увеличилось на 25%, а объём капитала упал на 20%. " +
            "Что произойдёт с выпуском, инвестициями, потреблением и капиталом " +
            "в краткосрочном и долгосрочном периоде?",
-    why  : "<b>Короткий период.</b> Ни s, ни δ, ни α не тронуты — все три кривые стоят " +
+    why  : "<b>Краткосрочные изменения.</b> Ни s, ни δ, ни α не тронуты — все три кривые стоят " +
            "на месте. Двигается только точка: k = K/L падает в 0,8 / 1,25 = 0,64 раза, " +
            "то есть на 36%. За ней вниз идут y = f(k), c = (1−s)·y и i = s·f(k). " +
            "Ответ не зависит ни от одного неизвестного параметра: во сколько бы раз ни " +
            "упал k, все четыре величины падают вместе с ним. " +
-           "<b>Длинный период.</b> Стационар k* = (s/(δ+n+g))^(1/(1−α)) определяют " +
+           "<b>Долгосрочные изменения.</b> Стационар k* = (s/(δ+n+g))^(1/(1−α)) определяют " +
            "только те параметры, которых шок не коснулся, значит он остался прежним. " +
            "Экономика оказалась ниже него, инвестиции превышают выбытие, капитал " +
            "возвращается ровно туда, где был. Не изменилось ничего.",
@@ -1308,11 +1404,11 @@ const PROBLEMS = [
     ask  : "Та же модель, экономика в стационаре. Амортизация капитала растёт с 10% " +
            "до 12%, а уровень сбережений увеличивается с 10% до 20%. Что произойдёт " +
            "с переменными в краткосрочном и долгосрочном периоде?",
-    why  : "<b>Короткий период.</b> Запас капитала предопределён прошлым, поэтому k " +
+    why  : "<b>Краткосрочные изменения.</b> Запас капитала предопределён прошлым, поэтому k " +
            "и вслед за ним y = f(k) не меняются вовсе — амортизация на выпуск при " +
            "данном k не влияет. А распределение выпуска меняется сразу: i = s·f(k) " +
            "удваивается, c = (1−s)·f(k) падает. " +
-           "<b>Длинный период.</b> Кривая инвестиций поднялась сильнее, чем повернулась " +
+           "<b>Долгосрочные изменения.</b> Кривая инвестиций поднялась сильнее, чем повернулась " +
            "вверх линия выбытия: s/(δ+n+g) выросло с 1 до 0,20/0,12 ≈ 1,67, значит k* " +
            "растёт при любой α — а с ним y* и i*. " +
            "<b>А вот c* определить нельзя.</b> Потребление тянут в разные стороны: " +
@@ -1329,11 +1425,11 @@ const PROBLEMS = [
     ask  : "Та же модель, экономика в стационаре. Количество людей в экономике за счёт " +
            "миграции уменьшилось на 10%, а коэффициент амортизации вырос на 5 п.п. " +
            "Что произойдёт с подушевыми выпуском, инвестициями, потреблением и капиталом?",
-    why  : "<b>Короткий период.</b> Работников на 10% меньше, капитал тот же, значит " +
+    why  : "<b>Краткосрочные изменения.</b> Работников на 10% меньше, капитал тот же, значит " +
            "k = K/L вырос в 1/0,9 ≈ 1,111 раза. Множитель по L двигает точку, а не " +
            "линии, а рост амортизации при данном k на выпуск не влияет — поэтому вверх " +
            "идут все четыре величины. " +
-           "<b>Длинный период.</b> Линия выбытия стала круче, её пересечение с s·f(k) " +
+           "<b>Долгосрочные изменения.</b> Линия выбытия стала круче, её пересечение с s·f(k) " +
            "уехало влево: k* падает, а с ним y*, c* и i*. " +
            "Исходная δ в условии не названа — и не нужна: важно только, что она выросла. " +
            "Знак не меняется ни при какой δ, s или α, поэтому здесь всё определено.",
@@ -1354,8 +1450,8 @@ const PROBLEMS = [
            "запасе k₀ выпуск вырастет, если k₀ > 1, и упадёт, если k₀ < 1. " +
            "А k₀ = (s/δ)^(1/(1−α)) = (0,20/δ)^(1/0,7), и это больше единицы ровно " +
            "тогда, когда δ &lt; 0,20. Про δ условие молчит — значит, знак y не определён, " +
-           "и за ним тянутся c и i, а в длинном периоде и сам k*. " +
-           "<b>Что определено.</b> Только одно: в коротком периоде запас капитала " +
+           "и за ним тянутся c и i, а в долгосрочном периоде и сам k*. " +
+           "<b>Что определено.</b> Только одно: в краткосрочном периоде запас капитала " +
            "не меняется, он предопределён прошлым. " +
            "Если задать δ числом (кнопка «свободно» рядом с δ), таблица тут же покажет " +
            "конкретные стрелки — и видно, как ответ переворачивается при переходе " +
@@ -1369,16 +1465,16 @@ const PROBLEMS = [
     ask  : "Та же модель, экономика в стационаре. Капитал в экономике из-за дождей " +
            "уменьшился на 5%, а количество мигрантов снизилось на 10%. Что произойдёт " +
            "с подушевыми переменными?",
-    why  : "<b>Короткий период.</b> k = K/L вырос в 0,95/0,9 ≈ 1,056 раза: капитала " +
+    why  : "<b>Краткосрочные изменения.</b> k = K/L вырос в 0,95/0,9 ≈ 1,056 раза: капитала " +
            "стало меньше, но работников — ещё меньше. Кривые стоят на месте, поэтому " +
            "вверх идут все четыре величины. " +
-           "<b>Длинный период.</b> Стационар зависит только от s, δ, n, g и α, а их шок " +
+           "<b>Долгосрочные изменения.</b> Стационар зависит только от s, δ, n, g и α, а их шок " +
            "не тронул — не изменилось ничего, экономика возвращается в ту же точку. " +
            "<b>Оговорка к условию.</b> «Количество мигрантов снизилось на 10%» читается " +
            "двояко. Мы берём буквальное «рабочая сила уменьшилась на 10%». Если имелось " +
            "в виду, что на 10% сократился только приток мигрантов, а не вся рабочая " +
            "сила, множитель по L нужен другой — и если он окажется меньше 0,95, знаки " +
-           "в коротком периоде перевернутся.",
+           "в краткосрочном периоде перевернутся.",
     base : {s:[.20,0], d:[.10,0], n:[0,1], g:[0,1], a:[1/3,0]},
     shocks: [{key:"K", form:"mul", value:.95}, {key:"L", form:"mul", value:.9}]
   },
@@ -1388,14 +1484,14 @@ const PROBLEMS = [
     ask  : "Та же модель, экономика в стационаре. Амортизация снижается с 5% до 4%, " +
            "а доля капитала в производственной функции Кобба — Дугласа (α) растёт " +
            "с 40% до 45%. Что произойдёт с подушевыми переменными?",
-    why  : "<b>Длинный период — единственное, что здесь определено полностью: k* растёт.</b> " +
+    why  : "<b>Долгосрочные изменения — единственное, что здесь определено полностью: k* растёт.</b> " +
            "Оба изменения толкают стационар вправо: амортизация упала, значит линия " +
            "выбытия стала положе, а рост α делает показатель 1/(1−α) больше. " +
            "<b>Остальное упирается в ту же развилку, что и в листке 2.</b> Меняется α, " +
            "а функции k^0,40 и k^0,45 пересекаются в k = 1. Здесь " +
            "k₀ = (s/0,05)^(1/0,6), и это больше единицы ровно тогда, когда s &gt; 0,05. " +
-           "Про s условие молчит, поэтому знаки y, c и i не определены ни в коротком, " +
-           "ни в длинном периоде. " +
+           "Про s условие молчит, поэтому знаки y, c и i не определены ни в краткосрочном, " +
+           "ни в долгосрочном периоде. " +
            "Задайте s числом — и таблица сразу покажет конкретный ответ.",
     base : {s:[.20,0], d:[.05,1], n:[0,1], g:[0,1], a:[.40,1]},
     shocks: [{key:"d", form:"set", value:.04}, {key:"a", form:"set", value:.45}]
@@ -1570,6 +1666,10 @@ function syncValues(){
   const put = (scope, key, val, form) => {
     const r = document.getElementById(scope + key), n = document.getElementById("n" + scope + key);
     const dig = form ? FORM[form].dig(key) : META[key].dig;
+    if (r){
+      const [lo, hi] = form ? FORM[form].rng(key) : [META[key].min, META[key].max];
+      r.min = lo; r.max = hi;
+    }
     if (r && document.activeElement !== r) r.value = val;
     if (n && document.activeElement !== n){ n.value = num(val, dig); n.classList.remove("bad"); }
   };
@@ -1587,6 +1687,7 @@ function syncValues(){
 let heavyTimer = 0;
 function renderHeavy(){ renderFx(); renderNotes(); }
 function refreshLive(defer){
+  clampShocks();
   syncValues();
   renderReadout();
   drawMain();                       // заполняет FRAME, его читает легенда
@@ -1599,6 +1700,7 @@ function refreshLive(defer){
   syncHash();
 }
 function refreshAll(){
+  enforceLocks();
   renderBase(); renderShocks(); renderProblems();
   refreshLive();
 }
@@ -1638,7 +1740,7 @@ panel.addEventListener("keydown", e => {
 
 document.getElementById("base-params").addEventListener("click", e => {
   const b = e.target.closest("[data-pin]");
-  if (!b) return;
+  if (!b || b.disabled) return;
   base[b.dataset.pin].fixed = !base[b.dataset.pin].fixed;
   refreshAll();
 });
