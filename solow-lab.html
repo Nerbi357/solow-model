@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Модель Солоу — интерактивная диаграмма</title>
+<style>
+  :root{
+    --paper:#FBFAF6;
+    --grid-fine:#DCE9E4;
+    --grid-bold:#B4CEC5;
+    --ink:#16283C;
+    --ink-soft:#2E4A66;
+    --pencil:#A3ADA8;
+    --red:#B03A2E;
+    --ochre:#A8832C;
+    --graphite:#68727C;
+    --rule:#D8D6CC;
+    --serif:"PT Serif","Georgia","Times New Roman",serif;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    font-size:16px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .sheet{max-width:1400px;margin:0 auto;padding:28px 30px 44px}
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    border-bottom:1.5px solid var(--ink);
+    padding-bottom:12px;margin-bottom:22px;
+    display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  }
+  .masthead h1{
+    font-size:27px;font-weight:700;margin:0;letter-spacing:-.01em;
+  }
+  .masthead p{
+    margin:0;color:var(--graphite);font-size:15px;max-width:52ch;
+  }
+
+  /* ---------- layout ---------- */
+  .work{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:0}
+  .plots{padding-right:30px;min-width:0}
+  .margin{
+    border-left:1px solid var(--rule);
+    padding-left:26px;
+  }
+
+  /* ---------- canvases ---------- */
+  .plot{margin-bottom:22px}
+  .plot-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    gap:16px;margin-bottom:7px;
+  }
+  .plot-head h2{font-size:17px;font-weight:700;margin:0}
+  .plot-note{color:var(--graphite);font-size:13.5px;font-style:italic}
+  canvas{
+    display:block;width:100%;
+    border:1px solid var(--grid-bold);
+    background:var(--paper);
+    touch-action:none;
+  }
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex;gap:2px}
+  .tabs button{
+    font-family:var(--serif);font-size:14px;
+    background:none;border:1px solid var(--rule);border-bottom:none;
+    color:var(--graphite);padding:4px 13px 3px;cursor:pointer;
+  }
+  .tabs button[aria-selected="true"]{
+    color:var(--ink);background:#F2F0E8;border-color:var(--grid-bold);
+    font-weight:700;
+  }
+  .tabs button:focus-visible{outline:2px solid var(--red);outline-offset:1px}
+
+  /* ---------- margin column ---------- */
+  .sect{margin-bottom:26px}
+  .sect > h3{
+    font-size:15px;font-weight:700;margin:0 0 3px;
+  }
+  .sect > .hint{
+    font-size:13px;color:var(--graphite);margin:0 0 12px;font-style:italic;
+    line-height:1.4;
+  }
+
+  .ctl{margin-bottom:13px}
+  .ctl-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .ctl-top label{font-size:14.5px}
+  .ctl-top .val{
+    font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;
+    min-width:58px;text-align:right;
+  }
+  .ctl-top .val.moved{color:var(--red)}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:20px;background:none;margin:1px 0 0;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:2px;background:var(--grid-bold);
+  }
+  input[type=range]::-moz-range-track{height:2px;background:var(--grid-bold)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:13px;height:13px;margin-top:-5.5px;border-radius:50%;
+    background:var(--paper);border:2px solid var(--ink);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:13px;height:13px;border-radius:50%;
+    background:var(--paper);border:2px solid var(--ink);
+  }
+  input[type=range]:focus-visible::-webkit-slider-thumb{
+    border-color:var(--red);box-shadow:0 0 0 3px rgba(176,58,46,.22);
+  }
+  input[type=range]:focus-visible::-moz-range-thumb{
+    border-color:var(--red);box-shadow:0 0 0 3px rgba(176,58,46,.22);
+  }
+
+  /* ---------- buttons ---------- */
+  .btn{
+    font-family:var(--serif);font-size:14px;
+    background:var(--paper);color:var(--ink);
+    border:1px solid var(--ink);padding:5px 11px;cursor:pointer;
+    text-align:left;
+  }
+  .btn:hover{background:#EFEDE4}
+  .btn:focus-visible{outline:2px solid var(--red);outline-offset:1px}
+  .btn[disabled]{opacity:.4;cursor:default}
+  .btn.primary{background:var(--ink);color:var(--paper);font-weight:700}
+  .btn.primary:hover{background:#0E1C2C}
+  .btn-row{display:flex;gap:7px;flex-wrap:wrap}
+  .btn-row .btn{flex:1 1 auto}
+
+  .scen{display:flex;flex-direction:column;gap:6px}
+  .scen .btn{position:relative;padding-left:11px}
+  .scen .btn small{display:block;color:var(--graphite);font-size:12.5px;line-height:1.35}
+  .scen .btn:hover small{color:var(--ink-soft)}
+
+  /* ---------- readout ---------- */
+  .readout{width:100%;border-collapse:collapse;font-size:14.5px}
+  .readout caption{
+    text-align:left;font-weight:700;font-size:15px;padding-bottom:5px;
+  }
+  .readout th,.readout td{
+    padding:3.5px 0;border-bottom:1px solid var(--rule);text-align:left;
+    font-weight:400;
+  }
+  .readout td{font-variant-numeric:tabular-nums;text-align:right;width:44%}
+  .readout tr:last-child th,.readout tr:last-child td{border-bottom:none}
+  .readout td.hi{color:var(--red);font-weight:700}
+
+  .verdict{
+    margin-top:10px;padding:9px 11px;font-size:14px;line-height:1.45;
+    border-left:3px solid var(--ochre);background:#F6F2E6;
+  }
+  .verdict b{display:block;margin-bottom:1px}
+
+  /* ---------- legend ---------- */
+  .legend{
+    display:flex;gap:18px;flex-wrap:wrap;
+    font-size:13.5px;color:var(--graphite);margin-top:7px;
+  }
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:19px;height:0;border-top-width:2.5px;border-top-style:solid;display:inline-block}
+
+  /* ---------- footnote ---------- */
+  .foot{
+    margin-top:30px;padding-top:13px;border-top:1px solid var(--rule);
+    color:var(--graphite);font-size:14px;max-width:88ch;
+  }
+  .foot code{
+    font-family:var(--serif);font-style:italic;
+    background:#F2F0E8;padding:0 3px;
+  }
+
+  @media (max-width:980px){
+    .work{grid-template-columns:1fr}
+    .plots{padding-right:0}
+    .margin{border-left:none;border-top:1px solid var(--rule);padding-left:0;padding-top:22px;margin-top:8px}
+    .sheet{padding:20px 18px 34px}
+    .masthead h1{font-size:23px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="masthead">
+    <h1>Модель Солоу</h1>
+    <p>Двигайте параметры и смотрите, куда уезжает стационарное состояние.
+       Запас капитала не прыгает вместе с кривыми — он доходит туда сам.</p>
+  </header>
+
+  <div class="work">
+
+    <!-- ============ PLOTS ============ -->
+    <div class="plots">
+
+      <div class="plot">
+        <div class="plot-head">
+          <h2>Диаграмма накопления</h2>
+          <span class="plot-note" id="phase">экономика в стационаре</span>
+        </div>
+        <canvas id="main" data-h="440"></canvas>
+        <div class="legend">
+          <span><i style="border-color:var(--ink);border-top-width:3.5px"></i> f(k) — выпуск</span>
+          <span><i style="border-color:var(--ink)"></i> s·f(k) — инвестиции</span>
+          <span><i style="border-color:var(--ink-soft)"></i> (δ+n+g)k — выбытие</span>
+          <span><i style="border-color:var(--red)"></i> текущее k</span>
+          <span><i style="border-color:var(--pencil);border-top-style:dashed"></i> как было</span>
+          <span><i style="border-color:var(--ochre);border-top-style:dotted"></i> золотое правило</span>
+        </div>
+      </div>
+
+      <div class="plot">
+        <div class="plot-head">
+          <div class="tabs" role="tablist">
+            <button role="tab" id="tab-time" aria-selected="true" aria-controls="sub">Динамика во времени</button>
+            <button role="tab" id="tab-hump" aria-selected="false" aria-controls="sub">Потребление и норма сбережений</button>
+          </div>
+          <span class="plot-note" id="subnote"></span>
+        </div>
+        <canvas id="sub" data-h="260"></canvas>
+      </div>
+
+    </div>
+
+    <!-- ============ MARGIN ============ -->
+    <div class="margin">
+
+      <div class="sect">
+        <h3>Параметры</h3>
+        <p class="hint">Кривые сдвинутся сразу. Запас k останется на месте — он предопределён прошлым.</p>
+
+        <div class="ctl">
+          <div class="ctl-top"><label for="s">s — норма сбережений</label><span class="val" id="s-v">0,20</span></div>
+          <input type="range" id="s" min="0.01" max="0.90" step="0.01" value="0.20">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="d">δ — амортизация</label><span class="val" id="d-v">0,10</span></div>
+          <input type="range" id="d" min="0.01" max="0.30" step="0.005" value="0.10">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="n">n — рост населения</label><span class="val" id="n-v">0,00</span></div>
+          <input type="range" id="n" min="0" max="0.06" step="0.002" value="0">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="g">g — техпрогресс</label><span class="val" id="g-v">0,00</span></div>
+          <input type="range" id="g" min="0" max="0.06" step="0.002" value="0">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="a">α — доля капитала</label><span class="val" id="a-v">0,33</span></div>
+          <input type="range" id="a" min="0.10" max="0.75" step="0.01" value="0.33">
+        </div>
+      </div>
+
+      <div class="sect">
+        <h3>Разовый шок запаса</h3>
+        <p class="hint">Здесь наоборот: кривые стоят, а точка k прыгает.</p>
+        <div class="ctl">
+          <div class="ctl-top"><label for="mk">капитал K ×</label><span class="val" id="mk-v">1,00</span></div>
+          <input type="range" id="mk" min="0.3" max="2" step="0.01" value="1">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="ml">работники L ×</label><span class="val" id="ml-v">1,00</span></div>
+          <input type="range" id="ml" min="0.3" max="2" step="0.01" value="1">
+        </div>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn" id="apply">Применить шок</button>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h3>Переход</h3>
+        <div class="btn-row">
+          <button class="btn primary" id="play">Запустить</button>
+          <button class="btn" id="jump">Сразу в k*</button>
+        </div>
+        <div class="btn-row" style="margin-top:7px">
+          <button class="btn" id="mark">Запомнить как «было»</button>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h3>Сценарии</h3>
+        <div class="scen" id="scen"></div>
+      </div>
+
+      <div class="sect">
+        <table class="readout">
+          <caption>Показатели</caption>
+          <tbody id="ro"></tbody>
+        </table>
+        <div class="verdict" id="verdict"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <p class="foot">
+    Производственная функция <code>f(k) = k<sup>α</sup></code>, накопление
+    <code>Δk = s·f(k) − (δ+n+g)·k</code>. Стационар там, где инвестиции ровно покрывают
+    выбытие. Золотое правило достигается при <code>s = α</code>: там разрыв между
+    <code>f(k)</code> и линией выбытия максимален, то есть потребление на душу наибольшее.
+    Скорость сходимости <code>λ = (1−α)(δ+n+g)</code> — отсюда и знаменитые «2% в год».
+  </p>
+
+</div>
+
+<script>
+"use strict";
+
+/* ===================== state ===================== */
+const P = {s:0.20, d:0.10, n:0, g:0, a:0.33};
+let kCur   = null;          // current capital per effective worker
+let ghost  = null;          // snapshot of a previous configuration
+let traj   = null;          // simulated path
+let playT  = 0, playing = false, rafId = null;
+let subMode = "time";
+
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const f      = (k, a = P.a) => Math.pow(Math.max(k, 1e-9), a);
+const dep    = () => P.d + P.n + P.g;
+const kStar  = (p = P) => Math.pow(p.s / (p.d + p.n + p.g), 1 / (1 - p.a));
+const kGold  = (p = P) => Math.pow(p.a / (p.d + p.n + p.g), 1 / (1 - p.a));
+const lambda = (p = P) => (1 - p.a) * (p.d + p.n + p.g);
+
+const num = (x, dg = 2) =>
+  (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ","));
+const pct = (x, dg = 1) =>
+  (!isFinite(x) ? "—" : (x * 100).toFixed(dg).replace(".", ",") + "%");
+
+kCur = kStar();
+
+/* ===================== simulation ===================== */
+function simulate(k0){
+  const half = Math.log(2) / lambda();
+  const T = Math.min(400, Math.max(40, half * 7));
+  const dt = T / 900, out = [];
+  let k = k0;
+  for (let t = 0; t <= T; t += dt){
+    out.push(k);
+    k += (P.s * f(k) - dep() * k) * dt;
+    if (k < 1e-9) k = 1e-9;
+  }
+  return {dt, ks: out};
+}
+function rebuildTraj(){ traj = simulate(kCur); playT = 0; }
+
+/* ===================== canvas helpers ===================== */
+function fitCanvas(cv){
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = parseInt(cv.dataset.h, 10);
+  cv.width  = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  cv.style.height = h + "px";
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return {ctx, w, h};
+}
+
+const C = getComputedStyle(document.documentElement);
+const col = n => C.getPropertyValue(n).trim();
+
+function graphPaper(ctx, x0, y0, w, h){
+  const fine = col("--grid-fine"), bold = col("--grid-bold");
+  const step = 11;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
+  ctx.lineWidth = 1;
+  for (let i = 0; i * step <= w; i++){
+    ctx.strokeStyle = (i % 5 === 0) ? bold : fine;
+    const x = Math.round(x0 + i * step) + .5;
+    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + h); ctx.stroke();
+  }
+  for (let j = 0; j * step <= h; j++){
+    ctx.strokeStyle = (j % 5 === 0) ? bold : fine;
+    const y = Math.round(y0 + h - j * step) + .5;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function arrowAxes(ctx, L, B, R, T){
+  ctx.strokeStyle = col("--ink"); ctx.fillStyle = col("--ink"); ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(L, T - 10); ctx.lineTo(L, B); ctx.lineTo(R + 10, B); ctx.stroke();
+  const head = (x, y, dx, dy) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - dx * 8 - dy * 4, y - dy * 8 - dx * 4);
+    ctx.lineTo(x - dx * 8 + dy * 4, y - dy * 8 + dx * 4);
+    ctx.closePath(); ctx.fill();
+  };
+  head(R + 10, B, 1, 0);
+  head(L, T - 10, 0, -1);
+}
+
+function curve(ctx, fn, kMax, X, Y, opts){
+  ctx.save();
+  ctx.strokeStyle = opts.color;
+  ctx.lineWidth = opts.w;
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  if (opts.dash) ctx.setLineDash(opts.dash);
+  ctx.beginPath();
+  const N = 320;
+  for (let i = 0; i <= N; i++){
+    const k = kMax * i / N;
+    const px = X(k), py = Y(fn(k));
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function tag(ctx, x, y, text, color, align, size){
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = (size || 13.5) + "px " + col("--serif");
+  ctx.textAlign = align || "left";
+  ctx.textBaseline = "middle";
+  const pad = 3, m = ctx.measureText(text);
+  const bx = align === "right" ? x - m.width - pad
+           : align === "center" ? x - m.width / 2 - pad : x - pad;
+  ctx.fillStyle = "rgba(251,250,246,.86)";
+  ctx.fillRect(bx, y - (size || 13.5) * .62, m.width + pad * 2, (size || 13.5) * 1.24);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+/* ===================== main diagram ===================== */
+function drawMain(){
+  const cv = document.getElementById("main");
+  const {ctx, w, h} = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+
+  const L = 46, R = w - 74, T = 20, B = h - 34;
+  graphPaper(ctx, L, T, R - L, B - T);
+
+  const ks = kStar(), kg = kGold();
+  const anchors = [ks, kCur];
+  if (ghost) anchors.push(kStar(ghost));
+  let kMax = Math.max(...anchors.filter(isFinite)) * 1.9;
+  if (isFinite(kg) && kg < kMax * 1.15) kMax = Math.max(kMax, kg * 1.18);
+  const yMax = f(kMax) * 1.06;
+
+  const X = k => L + (k / kMax) * (R - L);
+  const Y = y => B - (y / yMax) * (B - T);
+
+  arrowAxes(ctx, L, B, R, T);
+  tag(ctx, R + 14, B + 15, "k", col("--ink"), "center", 15);
+  tag(ctx, L - 16, T - 4, "y", col("--ink"), "center", 15);
+
+  /* ghost */
+  if (ghost){
+    const gd = ghost.d + ghost.n + ghost.g;
+    curve(ctx, k => f(k, ghost.a), kMax, X, Y,
+          {color: col("--pencil"), w: 2, dash: [5, 4]});
+    curve(ctx, k => ghost.s * f(k, ghost.a), kMax, X, Y,
+          {color: col("--pencil"), w: 1.4, dash: [5, 4]});
+    curve(ctx, k => gd * k, kMax, X, Y,
+          {color: col("--pencil"), w: 1.4, dash: [5, 4]});
+    const gks = kStar(ghost);
+    if (isFinite(gks) && gks < kMax){
+      ctx.save();
+      ctx.strokeStyle = col("--pencil"); ctx.lineWidth = 1.2; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(X(gks), B); ctx.lineTo(X(gks), Y(f(gks, ghost.a))); ctx.stroke();
+      ctx.restore();
+      if (Math.abs(X(gks) - X(kCur)) > 34)
+        tag(ctx, X(gks), B + 15, "k* было", col("--pencil"), "center", 12.5);
+      else
+        tag(ctx, X(gks), B + 28, "k* было", col("--pencil"), "center", 12.5);
+    }
+  }
+
+  /* golden rule reference */
+  if (isFinite(kg) && kg < kMax){
+    ctx.save();
+    ctx.strokeStyle = col("--ochre"); ctx.lineWidth = 1.3; ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(X(kg), B); ctx.lineTo(X(kg), Y(f(kg))); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = col("--ochre");
+    ctx.beginPath(); ctx.arc(X(kg), Y(f(kg)), 4.5, 0, 7); ctx.fill();
+    tag(ctx, X(kg), B - 9, "золотое правило", col("--ochre"), "center", 12.5);
+  }
+
+  /* current curves */
+  curve(ctx, f, kMax, X, Y, {color: col("--ink"), w: 3.4});
+  curve(ctx, k => P.s * f(k), kMax, X, Y, {color: col("--ink"), w: 1.8});
+  curve(ctx, k => dep() * k, kMax, X, Y, {color: col("--ink-soft"), w: 1.8});
+
+  tag(ctx, R + 6, Y(f(kMax)), "f(k)", col("--ink"), "left", 14);
+  tag(ctx, R + 6, Y(P.s * f(kMax)), "s·f(k)", col("--ink"), "left", 13);
+  tag(ctx, R + 6, Y(dep() * kMax), "(δ+n+g)k", col("--ink-soft"), "left", 13);
+
+  /* steady state */
+  if (isFinite(ks) && ks < kMax){
+    ctx.save();
+    ctx.strokeStyle = col("--ink"); ctx.lineWidth = 1.3; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(X(ks), B); ctx.lineTo(X(ks), Y(f(ks))); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = col("--ink");
+    [f(ks), P.s * f(ks)].forEach(v => {
+      ctx.beginPath(); ctx.arc(X(ks), Y(v), 5, 0, 7); ctx.fill();
+    });
+    tag(ctx, X(ks), B + 15, "k*", col("--ink"), "center", 15);
+
+    /* consumption bracket */
+    const yc = Y(f(ks)), yi = Y(P.s * f(ks));
+    ctx.save();
+    ctx.strokeStyle = col("--ink"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(ks), yc); ctx.lineTo(X(ks), yi); ctx.stroke();
+    ctx.restore();
+    tag(ctx, X(ks) + 9, (yc + yi) / 2, "c*", col("--ink"), "left", 14);
+  }
+
+  /* current position */
+  const kk = kCur, yk = f(kk), ik = P.s * yk, dk = dep() * kk;
+  ctx.save();
+  ctx.strokeStyle = col("--red"); ctx.lineWidth = 1.5; ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.moveTo(X(kk), B); ctx.lineTo(X(kk), Y(yk)); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = col("--red");
+  [yk, ik, dk].forEach(v => {
+    ctx.beginPath(); ctx.arc(X(kk), Y(v), 4.6, 0, 7); ctx.fill();
+  });
+  if (!isFinite(ks) || Math.abs(X(kk) - X(ks)) > 20)
+    tag(ctx, X(kk), B + 15, "k", col("--red"), "center", 14);
+
+  /* gap arrow between investment and depreciation */
+  if (Math.abs(ik - dk) / Math.max(ik, 1e-9) > 0.012){
+    const up = ik > dk;
+    ctx.save();
+    ctx.strokeStyle = col("--red"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(kk), Y(ik)); ctx.lineTo(X(kk), Y(dk)); ctx.stroke();
+    const ax = X(kk) + (up ? 34 : -34), ay = (Y(ik) + Y(dk)) / 2;
+    ctx.beginPath(); ctx.moveTo(X(kk) + (up ? 7 : -7), ay); ctx.lineTo(ax, ay); ctx.stroke();
+    ctx.fillStyle = col("--red");
+    ctx.beginPath();
+    ctx.moveTo(ax + (up ? 8 : -8), ay);
+    ctx.lineTo(ax, ay - 4.5); ctx.lineTo(ax, ay + 4.5);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+    tag(ctx, ax + (up ? 12 : -12), ay - 13,
+        up ? "k растёт" : "k падает", col("--red"), up ? "left" : "right", 12.5);
+  }
+}
+
+/* ===================== sub panel ===================== */
+function drawTime(){
+  const cv = document.getElementById("sub");
+  const {ctx, w, h} = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  const L = 46, R = w - 74, T = 16, B = h - 30;
+  graphPaper(ctx, L, T, R - L, B - T);
+  arrowAxes(ctx, L, B, R, T);
+  tag(ctx, R + 16, B + 14, "время", col("--ink"), "center", 13);
+
+  if (!traj){ return; }
+  const flat = Math.abs(traj.ks[traj.ks.length - 1] / traj.ks[0] - 1) < 0.004;
+  if (flat && !ghost){
+    const cx = (L + R) / 2, cy = (T + B) / 2;
+    const wide = (R - L) > 430;
+    if (wide){
+      tag(ctx, cx, cy, "Экономика в стационаре — задайте шок или выберите сценарий",
+          col("--graphite"), "center", 15);
+    } else {
+      tag(ctx, cx, cy - 11, "Экономика в стационаре.", col("--graphite"), "center", 14);
+      tag(ctx, cx, cy + 11, "Задайте шок или сценарий.", col("--graphite"), "center", 14);
+    }
+    return;
+  }
+  const ks = kStar();
+  const series = [
+    {key:"k", get:k => k,                     c:col("--red"),      w:2.4, dash:[6,4]},
+    {key:"y", get:k => f(k),                  c:col("--ink"),      w:2.6},
+    {key:"i", get:k => P.s * f(k),            c:col("--ink-soft"), w:1.8},
+    {key:"c", get:k => (1 - P.s) * f(k),      c:col("--ochre"),    w:2.2}
+  ];
+  let ref;
+  if (ghost){
+    const gk = kStar(ghost), gy = f(gk, ghost.a);
+    ref = [gk, gy, ghost.s * gy, (1 - ghost.s) * gy];
+  } else {
+    const k0 = traj.ks[0];
+    ref = series.map(s => s.get(k0) || 1);
+  }
+  ref = ref.map(v => (v && isFinite(v)) ? v : 1);
+  let lo = 1, hi = 1;
+  traj.ks.forEach(k => series.forEach((s, i) => {
+    const v = s.get(k) / ref[i];
+    if (v < lo) lo = v; if (v > hi) hi = v;
+  }));
+  lo = Math.max(0, lo - .08); hi = hi + .1;
+
+  const span = traj.ks.length * traj.dt;
+  const X = t => L + (t / span) * (R - L);
+  const Y = v => B - ((v - lo) / (hi - lo)) * (B - T);
+
+  ctx.save(); ctx.strokeStyle = col("--grid-bold"); ctx.lineWidth = 1.4; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(L, Y(1)); ctx.lineTo(R, Y(1)); ctx.stroke(); ctx.restore();
+  tag(ctx, L - 6, Y(1), ghost ? "было" : "старт", col("--graphite"), "right", 12.5);
+
+  const used = [];
+  series.forEach((s, i) => {
+    ctx.save();
+    ctx.strokeStyle = s.c; ctx.lineWidth = s.w; ctx.lineJoin = "round";
+    if (s.dash) ctx.setLineDash(s.dash);
+    ctx.beginPath();
+    traj.ks.forEach((k, j) => {
+      const px = X(j * traj.dt), py = Y(s.get(k) / ref[i]);
+      j ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.stroke(); ctx.restore();
+    const last = traj.ks[traj.ks.length - 1];
+    let ly = Y(s.get(last) / ref[i]);
+    used.forEach(u => { if (Math.abs(u - ly) < 15) ly = u + 15; });
+    used.push(ly);
+    tag(ctx, R + 6, ly, s.key, s.c, "left", 13.5);
+  });
+
+  /* playhead */
+  const idx = Math.min(traj.ks.length - 1, Math.round(playT / traj.dt));
+  const px = X(idx * traj.dt);
+  ctx.save(); ctx.strokeStyle = col("--red"); ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(px, T); ctx.lineTo(px, B); ctx.stroke(); ctx.restore();
+  series.forEach((s, i) => {
+    ctx.fillStyle = s.c;
+    ctx.beginPath(); ctx.arc(px, Y(s.get(traj.ks[idx]) / ref[i]), 4, 0, 7); ctx.fill();
+  });
+}
+
+function drawHump(){
+  const cv = document.getElementById("sub");
+  const {ctx, w, h} = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  const L = 46, R = w - 74, T = 16, B = h - 30;
+  graphPaper(ctx, L, T, R - L, B - T);
+  arrowAxes(ctx, L, B, R, T);
+  tag(ctx, R + 16, B + 14, "s", col("--ink"), "center", 14);
+
+  const cOf = s => (1 - s) * Math.pow(s / dep(), P.a / (1 - P.a));
+  const peak = cOf(P.a);
+  const X = s => L + s * (R - L);
+  const Y = c => B - (c / (peak * 1.12)) * (B - T);
+
+  ctx.save();
+  ctx.strokeStyle = col("--ink"); ctx.lineWidth = 3; ctx.lineJoin = "round";
+  ctx.beginPath();
+  for (let i = 0; i <= 300; i++){
+    const s = 0.005 + (i / 300) * 0.985;
+    i ? ctx.lineTo(X(s), Y(cOf(s))) : ctx.moveTo(X(s), Y(cOf(s)));
+  }
+  ctx.stroke(); ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = col("--ochre"); ctx.lineWidth = 1.4; ctx.setLineDash([3, 4]);
+  ctx.beginPath(); ctx.moveTo(X(P.a), B); ctx.lineTo(X(P.a), Y(peak)); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = col("--ochre");
+  ctx.beginPath(); ctx.arc(X(P.a), Y(peak), 6, 0, 7); ctx.fill();
+  tag(ctx, X(P.a), Y(peak) - 14, "s* = α", col("--ochre"), "center", 13.5);
+
+  ctx.fillStyle = col("--red");
+  ctx.beginPath(); ctx.arc(X(P.s), Y(cOf(P.s)), 5.5, 0, 7); ctx.fill();
+  ctx.save();
+  ctx.strokeStyle = col("--red"); ctx.lineWidth = 1.3; ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(X(P.s), B); ctx.lineTo(X(P.s), Y(cOf(P.s))); ctx.stroke();
+  ctx.restore();
+  tag(ctx, X(P.s), B + 14, "s", col("--red"), "center", 13.5);
+  tag(ctx, L - 6, Y(peak), "c*", col("--graphite"), "right", 13);
+}
+
+function drawSub(){ subMode === "time" ? drawTime() : drawHump(); }
+
+/* ===================== readout ===================== */
+function refresh(){
+  for (const [id, v] of Object.entries(
+      {s:P.s, d:P.d, n:P.n, g:P.g, a:P.a})){
+    document.getElementById(id).value = v;
+    document.getElementById(id + "-v").textContent = num(v, id === "a" ? 2 : 3);
+  }
+  document.getElementById("mk-v").textContent = num(+document.getElementById("mk").value);
+  document.getElementById("ml-v").textContent = num(+document.getElementById("ml").value);
+
+  const ks = kStar(), gap = P.s * f(kCur) - dep() * kCur;
+  const inSS = Math.abs(kCur / ks - 1) < 0.004;
+  document.getElementById("phase").textContent = inSS
+    ? "экономика в стационаре"
+    : (gap > 0 ? "инвестиции больше выбытия — k растёт"
+               : "выбытие больше инвестиций — k падает");
+
+  const gk = P.s * Math.pow(kCur, P.a - 1) - dep();
+  const r  = P.a * Math.pow(kCur, P.a - 1) - P.d;
+  const hl = Math.log(2) / lambda();
+
+  const rows = [
+    ["k* — стационар",        num(ks), false],
+    ["k — сейчас",            num(kCur), !inSS],
+    ["y — выпуск",            num(f(kCur)), false],
+    ["c — потребление",       num((1 - P.s) * f(kCur)), false],
+    ["i — инвестиции",        num(P.s * f(kCur)), false],
+    ["γ — темп роста k",      pct(gk), !inSS],
+    ["r — отдача капитала",   pct(r), false],
+    ["K/Y",                   num(kCur / f(kCur)), false],
+    ["λ — скорость схождения", pct(lambda()), false],
+    ["период полураспада",    num(hl, 0) + " лет", false]
+  ];
+  document.getElementById("ro").innerHTML = rows.map(
+    ([k, v, hi]) => `<tr><th>${k}</th><td class="${hi ? "hi" : ""}">${v}</td></tr>`
+  ).join("");
+
+  const diff = P.s - P.a;
+  let title, body;
+  if (Math.abs(diff) < 0.012){
+    title = "Золотое правило";
+    body = "s совпадает с α: потребление на душу в стационаре максимально.";
+  } else if (diff < 0){
+    title = "Недонакопление";
+    body = "s ниже α, значит r > δ+n+g. Потребление можно поднять, но только "
+         + "ценой жертвы сегодняшнего поколения. Динамически эффективно.";
+  } else {
+    title = "Перенакопление";
+    body = "s выше α, значит r < δ+n+g. Можно проесть часть капитала — и выиграют "
+         + "сразу все поколения. Динамически неэффективно.";
+  }
+  document.getElementById("verdict").innerHTML = `<b>${title}</b>${body}`;
+
+  document.getElementById("subnote").textContent = subMode === "time"
+    ? "всё относительно стационарного уровня"
+    : "текущая s против оптимальной";
+
+  drawMain(); drawSub();
+}
+
+/* ===================== animation ===================== */
+function stop(){
+  playing = false;
+  if (rafId) cancelAnimationFrame(rafId);
+  document.getElementById("play").textContent = "Запустить";
+}
+function step(){
+  if (!playing) return;
+  playT += (traj.ks.length * traj.dt) / 300;
+  const idx = Math.round(playT / traj.dt);
+  if (idx >= traj.ks.length - 1){
+    kCur = traj.ks[traj.ks.length - 1];
+    stop(); refresh(); return;
+  }
+  kCur = traj.ks[idx];
+  refresh();
+  rafId = requestAnimationFrame(step);
+}
+
+/* ===================== wiring ===================== */
+["s","d","n","g","a"].forEach(id => {
+  document.getElementById(id).addEventListener("input", e => {
+    stop();
+    P[id] = +e.target.value;
+    rebuildTraj();
+    refresh();
+  });
+});
+["mk","ml"].forEach(id => {
+  document.getElementById(id).addEventListener("input", refresh);
+});
+
+document.getElementById("apply").addEventListener("click", () => {
+  stop();
+  const mk = +document.getElementById("mk").value;
+  const ml = +document.getElementById("ml").value;
+  kCur = kCur * mk / ml;
+  document.getElementById("mk").value = 1;
+  document.getElementById("ml").value = 1;
+  rebuildTraj(); refresh();
+});
+
+document.getElementById("play").addEventListener("click", () => {
+  if (playing){ stop(); return; }
+  if (!traj) rebuildTraj();
+  if (playT >= traj.ks.length * traj.dt - traj.dt) playT = 0;
+  if (REDUCED){ kCur = kStar(); rebuildTraj(); refresh(); return; }
+  playing = true;
+  document.getElementById("play").textContent = "Пауза";
+  rafId = requestAnimationFrame(step);
+});
+
+document.getElementById("jump").addEventListener("click", () => {
+  stop(); kCur = kStar(); rebuildTraj(); refresh();
+});
+
+document.getElementById("mark").addEventListener("click", () => {
+  ghost = {...P}; refresh();
+});
+
+document.getElementById("tab-time").addEventListener("click", () => setTab("time"));
+document.getElementById("tab-hump").addEventListener("click", () => setTab("hump"));
+function setTab(m){
+  subMode = m;
+  document.getElementById("tab-time").setAttribute("aria-selected", m === "time");
+  document.getElementById("tab-hump").setAttribute("aria-selected", m === "hump");
+  refresh();
+}
+
+/* ===================== scenarios ===================== */
+const SCEN = [
+  {t:"Исходное равновесие",
+   d:"s = 0,20, δ = 0,10, α = 1/3 — точка отсчёта",
+   run(){ Object.assign(P, {s:.20, d:.10, n:0, g:0, a:1/3});
+          ghost = null; kCur = kStar(); }},
+
+  {t:"Задача 1.i — миграция",
+   d:"L ×1,25, K ×0,8 ⇒ k падает на 36%, k* не двигается",
+   run(){ Object.assign(P, {s:.20, d:.10, n:0, g:0, a:1/3});
+          ghost = null; kCur = kStar() * 0.64; }},
+
+  {t:"Задача 1.ii — δ и s вверх",
+   d:"δ 10→12%, s 10→20% ⇒ k* растёт на 115%",
+   run(){ Object.assign(P, {s:.10, d:.10, n:0, g:0, a:1/3});
+          kCur = kStar(); ghost = {...P};
+          Object.assign(P, {s:.20, d:.12}); }},
+
+  {t:"Золотое правило",
+   d:"s = α: потребление в стационаре максимально",
+   run(){ ghost = {...P}; P.s = P.a; kCur = kStar(); }},
+
+  {t:"Перенакопление по-советски",
+   d:"s = 0,40 при α = 1/3 — справа от оптимума",
+   run(){ Object.assign(P, {s:.20, d:.10, n:0, g:0, a:1/3});
+          kCur = kStar(); ghost = {...P}; P.s = .40; }},
+
+  {t:"Демографический бум",
+   d:"n 0 → 3%: линия выбытия круче, k* падает",
+   run(){ Object.assign(P, {s:.20, d:.10, n:0, g:0, a:1/3});
+          kCur = kStar(); ghost = {...P}; P.n = .03; }}
+];
+
+document.getElementById("scen").innerHTML = SCEN.map(
+  (s, i) => `<button class="btn" data-i="${i}">${s.t}<small>${s.d}</small></button>`
+).join("");
+document.getElementById("scen").addEventListener("click", e => {
+  const b = e.target.closest("button[data-i]");
+  if (!b) return;
+  stop();
+  SCEN[+b.dataset.i].run();
+  document.getElementById("mk").value = 1;
+  document.getElementById("ml").value = 1;
+  rebuildTraj(); refresh();
+});
+
+/* ===================== go ===================== */
+window.addEventListener("resize", () => { drawMain(); drawSub(); });
+rebuildTraj();
+refresh();
+</script>
+</body>
+</html>
