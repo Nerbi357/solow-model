@@ -783,27 +783,30 @@ function dashed(ctx, x1, y1, x2, y2, color, w, dash){
   ctx.restore();
 }
 
-/* Одна сводчатая стрелка: полукруг над осью с остриём на конце дуги. */
+/* Одна сводчатая стрелка: полукруг над осью с остриём на вершине свода.
+   Остриё стояло на конце дуги, у самой оси, и там его было не разглядеть:
+   мелкий треугольник вплотную к чёрной линии. На вершине он на виду. */
 function archArrow(ctx, xa, xb, y){
   const r = Math.abs(xb - xa) / 2, cx = (xa + xb) / 2, dir = Math.sign(xb - xa);
   if (r < 3) return;
   const ang = t => dir > 0 ? Math.PI + t * Math.PI : -t * Math.PI;
   const at = t => { const a = ang(t); return [cx + r * Math.cos(a), y + r * Math.sin(a)]; };
-  const stop = 0.86;                       // не доводим дугу до оси — там остриё
   ctx.beginPath();
-  for (let i = 0; i <= 26; i++){
-    const [px, py] = at((i / 26) * stop);
+  for (let i = 0; i <= 30; i++){
+    const [px, py] = at(i / 30);
     i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
   }
   ctx.stroke();
-  const [hx, hy] = at(stop), a = ang(stop);
+  const top = 0.5, [hx, hy] = at(top), a = ang(top);
   /* касательная к дуге в этой точке — вдоль неё и смотрит остриё */
   const tx = -Math.sin(a) * dir, ty = Math.cos(a) * dir;
-  const nx = -ty, ny = tx, L2 = 5, W = 3;
+  const nx = -ty, ny = tx, L2 = 6, W = 4;
+  /* треугольник сидит серединой на вершине, а не начинается от неё */
+  const bx = hx - tx * L2 / 2, by = hy - ty * L2 / 2;
   ctx.beginPath();
-  ctx.moveTo(hx + tx * L2, hy + ty * L2);
-  ctx.lineTo(hx - nx * W, hy - ny * W);
-  ctx.lineTo(hx + nx * W, hy + ny * W);
+  ctx.moveTo(bx + tx * L2, by + ty * L2);
+  ctx.lineTo(bx - nx * W, by - ny * W);
+  ctx.lineTo(bx + nx * W, by + ny * W);
   ctx.closePath(); ctx.fill();
 }
 
@@ -819,7 +822,7 @@ function adjust(ctx, x0, x1, y, color, label){
   for (let i = 0; i < n; i++) archArrow(ctx, x0 + step * i, x0 + step * (i + 1), y);
   ctx.restore();
   if (label)
-    tag(ctx, (x0 + x1) / 2, y - Math.abs(step) / 2 - 11, label, color, "center", 12);
+    tag(ctx, (x0 + x1) / 2, y - Math.abs(step) / 2 - 15, label, color, "center", 12);
 }
 
 /* Подпись с нижним индексом: k с «golden rule» под строкой. */
