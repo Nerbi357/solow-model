@@ -12,20 +12,24 @@
     --card-2:#FCFCFD;
     --ink:#12161C;
     --ink-2:#2A323D;
-    --muted:#6B7280;
+    --muted:#565C66;
     --rule:#E3E6EB;
     --rule-2:#EEF0F3;
 
-    /* Цвет шока. Исходное состояние всегда чёрное. Шоков не больше трёх. */
-    --sh1:#C2402F;
-    --sh2:#17786A;
-    --sh3:#3A5BA8;
-    --res:#8C3A79;
-    --gold:#A8832B;
+    /* Цвет шока. Исходное состояние всегда чёрное. Шоков не больше трёх.
+       Пары проверены на протанопию и дейтеранопию: минимальное ΔE по всем
+       парам — 34 и 36. Старая палитра давала 11,8 между --sh2 и --res,
+       то есть две самые толстые линии диаграммы были для дейтераноптика
+       одним цветом. Светлота идёт лестницей: итог тяжелее всех. */
+    --sh1:#1F6FD0;
+    --sh2:#A44A00;
+    --sh3:#0E6B4F;
+    --res:#5C1A66;
+    --gold:#7D611C;
 
-    --up:#1C7350;
-    --down:#C2402F;
-    --dunno:#A8832B;
+    --up:#15573E;
+    --down:#A32E22;
+    --dunno:#7D611C;
 
     --sans:Aptos,'Segoe UI',Arial,'Helvetica Neue',Helvetica,sans-serif;
     --r:8px;
@@ -96,22 +100,22 @@
 
   /* ---------- effects table ---------- */
   .fx-wrap{overflow-x:auto}
-  .fx{border-collapse:collapse;font-size:14px;width:100%;min-width:620px}
+  .fx{border-collapse:collapse;font-size:14px;width:auto;max-width:980px;min-width:620px}
   .fx caption{text-align:left;font-weight:700;font-size:17px;padding-bottom:8px}
   .fx th,.fx td{border-bottom:1px solid var(--rule-2);padding:6px;text-align:center}
   .fx thead th{font-size:12.5px;font-weight:700;color:var(--muted);
     border-bottom:1px solid var(--ink);white-space:nowrap}
   .fx thead tr:first-child th{border-bottom:none;padding-bottom:1px}
   .fx thead th.grp{border-bottom:1px solid var(--rule)}
-  .fx th.who{text-align:left;font-weight:400;font-size:13.5px;min-width:210px}
+  .fx th.who{text-align:left;font-weight:400;font-size:13.5px;width:250px;min-width:250px}
   .fx th.who .sw{display:inline-block;width:16px;height:0;border-top:3px solid var(--live);
     margin-right:9px;vertical-align:middle}
-  .fx td.v{font-size:16px;width:8%}
+  .fx td.v{font-size:22px;font-weight:700;line-height:1;width:8%;padding:9px 6px}
   .fx td.up{color:var(--up)}
   .fx td.down{color:var(--down)}
-  .fx td.same{color:var(--muted)}
+  .fx td.same{color:var(--muted);font-weight:400}
   .fx td.dunno{color:var(--dunno);font-weight:700}
-  .fx td.sr{border-left:1px solid var(--rule)}
+  .fx td.sr,.fx thead th.sr{border-left:2px solid var(--ink-2);padding-left:18px}
   .fx tr.total th,.fx tr.total td{border-top:1px solid var(--ink);font-weight:700}
   .fx-legend{font-size:12.5px;color:var(--muted);margin:9px 0 0;display:flex;gap:16px;flex-wrap:wrap}
   .fx-legend b{font-weight:400}
@@ -152,8 +156,8 @@
   /* ---------- right panel ---------- */
   .block{margin-bottom:22px}
   .block > h3,.blockhead h3{
-    font-size:11.5px;font-weight:700;margin:0 0 9px;
-    text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+    font-size:12.5px;font-weight:700;margin:0 0 9px;
+    text-transform:uppercase;letter-spacing:.1em;color:#4F555E;
   }
   .blockhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
   .blockhead h3{margin-bottom:9px}
@@ -203,26 +207,37 @@
   .numbox.bad{border-color:var(--down);color:var(--down)}
   .numbox.free{color:var(--muted);background:var(--card-2)}
 
+  /* Это главный переключатель инструмента — тот, что превращает «?»
+     в стрелку. Три состояния обязаны отличаться формой, а не прозрачностью:
+     раньше включённое, свободное и запертое выглядели одинаково. */
   .pin{
-    flex:0 0 auto;font:inherit;font-size:11px;padding:2px 7px;border-radius:5px;cursor:pointer;
-    border:1px solid var(--rule);background:var(--paper);color:var(--muted);white-space:nowrap;
+    flex:0 0 auto;font:inherit;font-size:12px;padding:5px 10px;border-radius:5px;cursor:pointer;
+    border:1px solid var(--ink-2);background:var(--ink-2);color:var(--paper);white-space:nowrap;
+    font-weight:600;
   }
-  .pin[aria-pressed="false"]{border-style:dashed;color:var(--dunno);border-color:var(--dunno)}
-  .pin[disabled]{cursor:not-allowed;opacity:.55}
+  .pin[aria-pressed="false"]{
+    border-style:dashed;color:var(--dunno);border-color:var(--dunno);font-weight:400;
+    background:rgba(125,97,28,.10);
+  }
+  .pin[disabled]{
+    cursor:not-allowed;background:var(--rule-2);color:var(--muted);
+    border:1px solid var(--rule);font-weight:400;
+  }
+  .pin[disabled]::before{content:"⦸ ";font-size:11px}
   .pin:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 
   input[type=range]{
     -webkit-appearance:none;appearance:none;
-    width:100%;height:16px;background:none;margin:0;cursor:pointer;display:block;
+    width:100%;height:28px;background:none;margin:0;cursor:pointer;display:block;
   }
-  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--rule);border-radius:2px}
-  input[type=range]::-moz-range-track{height:2px;background:var(--rule);border-radius:2px}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;background:#C2C8D2;border-radius:2px}
+  input[type=range]::-moz-range-track{height:4px;background:#C2C8D2;border-radius:2px}
   input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;appearance:none;width:12px;height:12px;margin-top:-5px;
+    -webkit-appearance:none;appearance:none;width:20px;height:20px;margin-top:-8px;
     border-radius:50%;background:var(--paper);border:2px solid var(--live,var(--ink));
   }
   input[type=range]::-moz-range-thumb{
-    width:12px;height:12px;border-radius:50%;
+    width:20px;height:20px;border-radius:50%;
     background:var(--paper);border:2px solid var(--live,var(--ink));
   }
   input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(18,22,28,.2)}
