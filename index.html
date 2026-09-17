@@ -36,6 +36,9 @@
   }
 
   *{box-sizing:border-box}
+  /* display в классе перебивает атрибут hidden — так подпись развилки
+     оставалась на странице после того, как шоки убрали. */
+  [hidden]{display:none !important}
   html,body{margin:0;padding:0}
   body{
     background:var(--paper);
@@ -1440,8 +1443,8 @@ function drawMain(){
       "выпуск поднимает, левее — опускает. Где стоит экономика, решает " +
       META[fk.key].sym + ", а условие её не задаёт — поэтому ниже две " +
       "диаграммы, и обе одинаково возможны.";
-    paintOn("main", fk.below, true);
-    paintOn("main2", fk.above, false);
+    paintOn("main", fk.cases[0].vals, true);
+    paintOn("main2", fk.cases[1].vals, false);
   }
   const rb = document.getElementById("zoomreset");
   if (rb) rb.hidden = !view || !!fk;
