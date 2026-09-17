@@ -70,7 +70,7 @@
   canvas{
     display:block;width:100%;
     border:1px solid var(--rule);border-radius:var(--r);
-    background:var(--paper);touch-action:none;cursor:crosshair;
+    background:var(--paper);touch-action:pan-y;cursor:crosshair;
   }
   canvas:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
@@ -304,6 +304,58 @@
     .sheet{padding:20px 16px 36px}
     .masthead h1{font-size:22px}
     .fx th.who{min-width:150px}
+  }
+  @media (max-width:620px){
+    /* Таблица шириной 620 px на экране 390 прячет весь длинный период
+       за горизонтальную прокрутку, о которой ничего не сообщает: половина
+       ответа семинарской задачи для телефона просто не существует.
+       Поэтому строка становится карточкой, и всё влезает без прокрутки. */
+    .fx-wrap{overflow:visible;border:0;padding:0;background:none}
+    .fx{display:block;width:100%;min-width:0;max-width:none;border-collapse:collapse}
+    .fx caption{display:block;padding-bottom:10px}
+    .fx thead{display:none}
+    .fx tbody{display:block}
+    .fx tbody tr{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;
+      border:1px solid var(--rule);border-radius:var(--r);
+      padding:12px 13px 13px;margin:0 0 10px;background:var(--card-2);
+    }
+    .fx tbody tr.total{border-color:var(--ink-2);background:var(--card)}
+    .fx tbody tr::before,.fx tbody tr::after{
+      font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+      color:var(--muted);grid-column:1/-1;padding-top:7px;
+    }
+    .fx tbody tr::before{content:"Краткосрочные";grid-row:2}
+    .fx tbody tr::after{content:"Долгосрочные";grid-row:4}
+    .fx tbody th.who{
+      display:block;border:0;padding:0;grid-column:1/-1;grid-row:1;
+      font-size:14.5px;font-weight:700;text-align:left;
+    }
+    .fx tbody td.v{
+      border:0;padding:1px 0 0;width:auto;text-align:center;
+      font-size:21px;font-weight:700;line-height:1.15;
+    }
+    .fx tbody td.v::before{
+      content:attr(data-v);display:block;font-size:11px;font-weight:400;
+      color:var(--muted);line-height:1;
+    }
+    .fx tbody td.v:nth-of-type(1){grid-row:3;grid-column:1}
+    .fx tbody td.v:nth-of-type(2){grid-row:3;grid-column:2}
+    .fx tbody td.v:nth-of-type(3){grid-row:3;grid-column:3}
+    .fx tbody td.v:nth-of-type(4){grid-row:3;grid-column:4}
+    .fx tbody td.v:nth-of-type(5){grid-row:5;grid-column:1}
+    .fx tbody td.v:nth-of-type(6){grid-row:5;grid-column:2}
+    .fx tbody td.v:nth-of-type(7){grid-row:5;grid-column:3}
+    .fx tbody td.v:nth-of-type(8){grid-row:5;grid-column:4}
+  }
+  @media (hover:none){
+    /* колеса нет — подсказка про него врёт; мишени крупнее */
+    .viewhint{display:none}
+    .pin{padding:6px 11px}
+    input[type=range]{height:30px}
+    input[type=range]::-webkit-slider-thumb{width:22px;height:22px;margin-top:-9px}
+    input[type=range]::-moz-range-thumb{width:22px;height:22px}
+    .acts button{padding:5px 10px}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -749,7 +801,14 @@ function thresholds(rowIdx, per, vi){
 /* ===================== canvas ===================== */
 function fitCanvas(cv){
   const dpr = window.devicePixelRatio || 1;
-  const w = cv.clientWidth, h = parseInt(cv.dataset.h, 10);
+  const w = cv.clientWidth;
+  /* Диаграмма Солоу по природе горизонтальная, а высота была прибита
+     к 620 px: на телефоне получалось поле 358×620, то есть колодец.
+     Множитель 0,85 подобран так, чтобы 620 держалось на любом нормальном
+     экране (в том числе на ноутбуке 1280, где поле графика ~830 px)
+     и ужималось только там, где иначе не читается: 390 → ~300. */
+  const h = Math.round(Math.min(+cv.dataset.h, Math.max(300, w * 0.85)));
+  cv.dataset.hNow = h;
   cv.width = Math.round(w * dpr);
   cv.height = Math.round(h * dpr);
   cv.style.height = h + "px";
@@ -977,10 +1036,14 @@ let view = null;                       // null — авто; иначе окно
 let autoFrame = {k0:0, k1:1, y0:0, y1:1};
 let showGold = false;
 
-const geomOf = (w, h) => ({L:58, R:w - (w > 900 ? 186 : 120), T:28, B:h - 52});
+const geomOf = (w, h) => ({
+  L: Math.max(38, Math.min(58, w * 0.12)),
+  R: w - (w > 900 ? 186 : Math.max(54, Math.min(120, w * 0.19))),
+  T: 28, B: h - 52
+});
 function geom(){
   const cv = document.getElementById("main");
-  return geomOf(cv.clientWidth, parseInt(cv.dataset.h, 10));
+  return geomOf(cv.clientWidth, parseInt(cv.dataset.hNow || cv.dataset.h, 10));
 }
 
 function renderMain(ctx, w, h, capture){
@@ -1092,12 +1155,19 @@ function renderMain(ctx, w, h, capture){
   const lab = items.map(i => ({y: Y(curveFn(i.c, i.P)(fr.k1)), t: CURVE_LABEL[i.c],
                                s: subOf(i), c: i.color, b: i.kind !== "base"}))
                    .filter(l => isFinite(l.y));
+  /* На узком экране вторая строка не влезает в правую полосу — там
+     остаётся только формула, а чей это шок, говорит легенда под графиком. */
+  ctx.save(); ctx.font = "10.5px " + FONT();
+  const room = w - R - 12;
+  const wide = lab.every(l => ctx.measureText(l.s).width <= room);
+  ctx.restore();
   lab.sort((p1, p2) => p1.y - p2.y);
-  const LH = 27;
+  const LH = wide ? 27 : 16;
   for (let i = 1; i < lab.length; i++)
     if (lab[i].y - lab[i-1].y < LH) lab[i].y = lab[i-1].y + LH;
   lab.forEach(l => {
     const y = Math.max(T + 2, Math.min(B + 10, l.y));
+    if (!wide){ tag(ctx, R + 9, y, l.t, l.c, "left", 12.5, l.b); return; }
     tag(ctx, R + 9, y - 6, l.t, l.c, "left", 12.5, l.b);
     tag(ctx, R + 9, y + 8, l.s, l.b ? l.c : col("--muted"), "left", 10.5);
   });
@@ -1210,17 +1280,18 @@ function renderFx(){
       "Пока нет ни одного шока — добавьте его справа или откройте готовую задачу.</td></tr>";
     return;
   }
-  const cell = (code, first) => {
+  const cell = (code, first, vi) => {
     const c = FX[code] || FX.dunno;
-    return '<td class="v ' + c.cls + (first ? " sr" : "") + '" title="' + c.word + '">' + c.gl + "</td>";
+    return '<td class="v ' + c.cls + (first ? " sr" : "") + '" title="' + c.word +
+      '" data-v="' + VARS[vi] + '">' + c.gl + "</td>";
   };
   body.innerHTML = rows.map((r, i) => {
     const total = i >= act.length;
     return '<tr class="' + (total ? "total" : "") + '"' +
       (total ? "" : ' style="--live:' + colVar(act[i].ci) + '"') + ">" +
       '<th class="who">' + (total ? "" : '<i class="sw"></i>') + escArr(names[i]) + "</th>" +
-      r.sr.map((c, j) => cell(c, j === 0)).join("") +
-      r.lr.map((c, j) => cell(c, j === 0)).join("") + "</tr>";
+      r.sr.map((c, j) => cell(c, j === 0, j)).join("") +
+      r.lr.map((c, j) => cell(c, j === 0, j)).join("") + "</tr>";
   }).join("");
 }
 
@@ -1913,6 +1984,10 @@ cv.addEventListener("wheel", e => {
 
 let drag = null;
 cv.addEventListener("pointerdown", e => {
+  /* Пальцем по графику — прокрутка страницы, а не панорама: канвас занимает
+     три четверти экрана телефона, и панорама означала бы, что мимо него
+     вообще не проскроллить. Щелчок по точке при этом работает, мышь тоже. */
+  if (e.pointerType === "touch") return;
   drag = {sx: e.clientX, sy: e.clientY, moved: 0, base: view ? {...view} : {...autoFrame}};
   try { cv.setPointerCapture(e.pointerId); } catch (err) { /* не критично */ }
 });
