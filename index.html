@@ -134,7 +134,18 @@
   }
   .solution h3{margin:0 0 6px;font-size:16px}
   .solution .ask{margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--ink-2)}
-  .solution .why{margin:0;font-size:14px;line-height:1.6}
+  .solution details summary{
+    display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    font-size:13.5px;font-weight:700;color:var(--ink-2);
+    border:1px solid var(--rule);border-radius:6px;padding:5px 11px;
+    list-style:none;user-select:none;
+  }
+  .solution details summary::-webkit-details-marker{display:none}
+  .solution details summary::before{content:"▸";font-size:11px;color:var(--muted)}
+  .solution details[open] summary::before{content:"▾"}
+  .solution details summary:hover{background:var(--card)}
+  .solution details summary:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+  .solution .why{margin:12px 0 0;font-size:14px;line-height:1.6}
   .solution .why b{font-weight:700}
   .solution .src{margin:10px 0 0;font-size:12.5px;color:var(--muted)}
 
@@ -1542,10 +1553,15 @@ function renderProblems(){
   const el = document.getElementById("solution"), q = PROBLEMS[probIdx];
   if (!q){ el.hidden = true; el.innerHTML = ""; return; }
   el.hidden = false;
+  /* Разбор спрятан за кнопку нарочно: сначала студент смотрит на диаграмму
+     и таблицу, и только потом сверяется. Открытый по умолчанию разбор
+     превращает инструмент в решебник. */
   el.innerHTML = "<h3>" + esc(q.title) + "</h3>" +
     '<p class="ask">' + q.ask + "</p>" +
-    '<p class="why">' + q.why + "</p>" +
-    (q.src ? '<p class="src">' + esc(q.src) + "</p>" : "") +
+    "<details><summary>Показать разбор</summary>" +
+      '<div class="why">' + q.why + "</div>" +
+      (q.src ? '<p class="src">' + esc(q.src) + "</p>" : "") +
+    "</details>" +
     (problemIntact() ? "" :
       '<p class="src">Конфигурация изменена вручную — разбор относится к исходной постановке.</p>');
 }
