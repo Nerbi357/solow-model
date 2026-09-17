@@ -14,6 +14,7 @@ catch (e) {
 }
 const EXE = process.env.CHROME_PATH || undefined;
 const BASE = process.env.URL || 'http://localhost:8000/';
+let PROBN = 0;                       // сколько задач на странице — узнаём у неё самой
 const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === undefined ? '' : JSON.stringify(x)]);
 
 (async () => {
@@ -52,6 +53,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
 
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await wait(500);
+  PROBN = await ev(()=>PROBLEMS.length);
 
   /* ============ 0. пустая страница молчит ============ */
   ok('без шоков под таблицей пусто', (await notes()).trim() === '', (await notes()).slice(0,120));
@@ -144,14 +146,13 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   /* ============ 6. задачи не поехали ============ */
   await reset();
   const EXP = [
-    ['Листок 1 · i',  ['↓↓↓↓====','↓↓↓↓====','↓↓↓↓====']],
-    ['Листок 1 · ii', ['==↓↑↑↑?↑','====↓↓↓↓','==↓↑↑↑?↑']],
-    ['Листок 2 · i',  ['↑↑↑↑====','====↓↓↓↓','↑↑↑↑↓↓↓↓']],
-    ['Листок 2 · ii', ['==↓↑↑↑↑↑','?=??????','?=??????']],
-    ['Листок 3 · i',  ['↓↓↓↓====','↑↑↑↑====','↑↑↑↑====']],
-    ['Листок 3 · ii', ['====↑↑↑↑','?=??????','?=???↑??']]
+    ['Задача 1', ['↓↓↓↓====','↓↓↓↓====','↓↓↓↓====']],
+    ['Задача 2', ['==↓↑↑↑?↑','====↓↓↓↓','==↓↑↑↑?↑']],
+    ['Задача 3', ['↑↑↑↑====','====↓↓↓↓','↑↑↑↑↓↓↓↓']],
+    ['Задача 4', ['==↓↑↑↑↑↑','?=??????','?=??????']],
+    ['Задача 5', ['====↓↓↓↓','?=??????','?=???↓??']]
   ];
-  for (let i = 0; i < 6; i++){
+  for (let i = 0; i < PROBN; i++){
     await ev(i => document.querySelector('[data-p="'+i+'"]').click(), i);
     await wait(420);
     const t = await tbl();

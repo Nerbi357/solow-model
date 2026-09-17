@@ -14,6 +14,7 @@ catch (e) {
 }
 const EXE = process.env.CHROME_PATH || undefined;
 const BASE = process.env.URL || 'http://localhost:8000/';
+let PROBN = 0;                       // сколько задач на странице — узнаём у неё самой
 const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === undefined ? '' : JSON.stringify(x)]);
 
 (async () => {
@@ -28,6 +29,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
 
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.waitForTimeout(500);
+  PROBN = await p.evaluate(()=>PROBLEMS.length);
 
   /* ---- 1.i: стационар не двигается, значит new быть не должно ---- */
   await load(0);
@@ -74,7 +76,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
 
   /* ---- никаких звёздочек и форм у new, нигде ---- */
   const dirty = [];
-  for (let i = 0; i < 6; i++){
+  for (let i = 0; i < PROBN; i++){
     await load(i);
     const m = await marks();
     if (m.some(x => /new.+/.test(x))) dirty.push([i, m]);

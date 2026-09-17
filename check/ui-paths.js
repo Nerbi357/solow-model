@@ -14,6 +14,7 @@ catch (e) {
 }
 const EXE = process.env.CHROME_PATH || undefined;
 const BASE = process.env.URL || 'http://localhost:8000/';
+let PROBN = 0;                       // сколько задач на странице — узнаём у неё самой
 const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?'':JSON.stringify(x)]);
 
 (async () => {
@@ -25,10 +26,11 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
                             await p.waitForTimeout(700); };
   await p.goto(BASE, {waitUntil:'networkidle'});
   await p.waitForTimeout(600);
+  PROBN = await p.evaluate(()=>PROBLEMS.length);
 
   ok('без шоков блок траекторий скрыт', await ev(()=>document.getElementById('pathsblock').hidden));
 
-  for (let i = 0; i < 6; i++){
+  for (let i = 0; i < PROBN; i++){
     await load(i);
     const r = await ev(()=>{
       const d = pathData(); if (!d) return null;

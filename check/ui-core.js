@@ -109,9 +109,9 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
     1: {rows:['==↓↑↑↑?↑','====↓↓↓↓','==↓↑↑↑?↑'], free:['a']},
     2: {rows:['↑↑↑↑====','====↓↓↓↓','↑↑↑↑↓↓↓↓'], free:['s','d','a']},
     3: {rows:['==↓↑↑↑↑↑','?=??????','?=??????'], free:['d']},
-    4: {rows:['↓↓↓↓====','↑↑↑↑====','↑↑↑↑===='], free:['s','d','a']},
-    5: {rows:['====↑↑↑↑','?=??????','?=???↑??'], free:['s']}
+    4: {rows:['====↓↓↓↓','?=??????','?=???↓??'], free:['s']}
   };
+
   for (const [i, exp] of Object.entries(EXPECT)){
     await loadP(+i);
     const got = await tbl(), free = await ev(()=>freeKeys());
