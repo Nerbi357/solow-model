@@ -109,6 +109,15 @@
   .fxhead{display:flex;align-items:center;justify-content:space-between;gap:14px;
     flex-wrap:wrap;margin:0 0 10px}
   .fxhead h2{margin:0;font-size:17px;font-weight:700}
+  .pathsblock{margin:26px 0 30px}
+  .pathgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .pathc{
+    width:100%;display:block;background:var(--paper);
+    border:1px solid var(--rule);border-radius:var(--r);
+  }
+  .pathnote{font-size:12.5px;color:var(--muted);max-width:62ch}
+  @media (max-width:900px){ .pathgrid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:430px){ .pathgrid{grid-template-columns:1fr} }
   .fx caption{text-align:left;font-weight:700;font-size:17px;padding-bottom:8px}
   .fx td.hid{color:var(--rule);font-weight:400}
   .fx th,.fx td{border-bottom:1px solid var(--rule-2);padding:6px;text-align:center}
@@ -413,6 +422,19 @@
       <div class="coords" id="coords" hidden><div id="coords-body"></div></div>
 
       <div class="solution" id="solution" hidden></div>
+
+      <div class="pathsblock" id="pathsblock" hidden>
+        <div class="fxhead">
+          <h2>Как это происходит во времени</h2>
+          <span class="pathnote" id="pathnote"></span>
+        </div>
+        <div class="pathgrid">
+          <canvas class="pathc" id="path-y" data-v="y" data-h="150"></canvas>
+          <canvas class="pathc" id="path-k" data-v="k" data-h="150"></canvas>
+          <canvas class="pathc" id="path-c" data-v="c" data-h="150"></canvas>
+          <canvas class="pathc" id="path-i" data-v="i" data-h="150"></canvas>
+        </div>
+      </div>
 
       <div class="fxhead">
         <h2>Что происходит с переменными</h2>
@@ -1307,6 +1329,113 @@ function drawMain(){
   if (rb) rb.hidden = !view;
 }
 
+/* ===================== траектории во времени =====================
+   Четыре маленьких графика: что делает каждая величина от шока до нового
+   стационара. На большой диаграмме видно «откуда куда», здесь — «как»:
+   скачок в момент шока и медленное сползание после него. Всё в долях
+   от исходного стационара, как и координаты точек.
+
+   Считается прямым интегрированием Δk = s·f(k) − (δ+n+g)k по схеме Хойна
+   с шагом DT. Горизонт берётся от скорости сходимости λ = (1−α)(δ+n+g):
+   за 6/λ проходит 99,75% пути, дальше картинка стоит на месте. */
+const PATH_DT = 0.25, PATH_PRE = 0.12;
+
+function pathData(){
+  const pv = dispVals(), act = active();
+  if (!act.length) return null;
+  const PF = finalP(pv);
+  if (!OK(pv) || !OK(PF)) return null;
+  const k0 = kStar(pv), kJ = k0 * stockMulOf(act), kN = kStar(PF);
+  if (!(k0 > 0) || !(kJ > 0) || !(kN > 0)) return null;
+
+  const lam = (1 - PF.a) * dep(PF);
+  const span = Math.min(500, Math.max(8, 6 / Math.max(lam, 1e-4)));
+  const at = (k, P) => { const y = f(k, P);
+    return {y, k, c: (1 - P.s) * y, i: P.s * y}; };
+  const base0 = at(k0, pv);
+
+  const pts = [];
+  let k = kJ;
+  for (let t = 0; t <= span + 1e-9; t += PATH_DT){
+    pts.push({t, v: at(k, PF)});
+    const g1 = PF.s * f(k, PF) - dep(PF) * k;              // схема Хойна
+    const kp = Math.max(1e-300, k + PATH_DT * g1);
+    const g2 = PF.s * f(kp, PF) - dep(PF) * kp;
+    k = Math.max(1e-300, k + PATH_DT * (g1 + g2) / 2);
+  }
+  return {pts, span, base0, endAt: at(kN, PF), jumpAt: at(kJ, PF), free: freeKeys()};
+}
+
+function drawPath(cv, key, d){
+  const {ctx, w, h} = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  const L = 34, R = w - 10, T = 20, B = h - 18;
+  const pre = (R - L) * PATH_PRE;
+  const rel = v => v / d.base0[key];
+
+  let lo = 1, hi = 1;
+  d.pts.forEach(p => { const r = rel(p.v[key]); lo = Math.min(lo, r); hi = Math.max(hi, r); });
+  const pad = Math.max((hi - lo) * 0.22, 0.04);
+  lo -= pad; hi += pad;
+  const X = t => L + pre + (t / d.span) * (R - L - pre);
+  const Y = r => B - ((r - lo) / (hi - lo)) * (B - T);
+
+  ctx.save();
+  ctx.strokeStyle = col("--rule"); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(L, T - 4); ctx.lineTo(L, B); ctx.lineTo(R, B); ctx.stroke();
+
+  /* уровень «как было» — от него и считается всё остальное */
+  dashed(ctx, L, Y(1), R, Y(1), col("--ink"), 1, [3, 4]);
+  tag(ctx, L - 4, Y(1), "1,00", col("--muted"), "right", 10);
+
+  /* новый стационар */
+  const end = rel(d.endAt[key]);
+  if (Math.abs(end - 1) > 1e-9){
+    dashed(ctx, L, Y(end), R, Y(end), col("--res"), 1, [3, 4]);
+    tag(ctx, L - 4, Y(end), num(end, 2), col("--res"), "right", 10);
+  }
+
+  ctx.strokeStyle = col("--ink"); ctx.lineWidth = 2; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(L, Y(1)); ctx.lineTo(L + pre, Y(1)); ctx.stroke();
+
+  /* скачок в момент шока: величина меняется разрывом, а не по траектории */
+  const j = rel(d.pts[0].v[key]);
+  ctx.strokeStyle = col("--res"); ctx.lineWidth = 2;
+  if (Math.abs(j - 1) > 1e-9){
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(L + pre, Y(1)); ctx.lineTo(L + pre, Y(j)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.beginPath();
+  d.pts.forEach((p, n) => { const x = X(p.t), y = Y(rel(p.v[key]));
+    n ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.stroke();
+
+  ctx.fillStyle = col("--res");
+  ctx.beginPath(); ctx.arc(L + pre, Y(j), 2.8, 0, 7); ctx.fill();
+  ctx.restore();
+
+  tag(ctx, L + 2, T - 8, key, col("--ink"), "left", 13, true);
+  tag(ctx, L + pre, B + 10, "шок", col("--muted"), "center", 10);
+  tag(ctx, R, B + 10, "время", col("--muted"), "right", 10);
+}
+
+function drawPaths(){
+  const host = document.getElementById("pathsblock");
+  const d = pathData();
+  host.hidden = !d;
+  if (!d) return;
+  VARS.forEach(v => drawPath(document.getElementById("path-" + v), v, d));
+  /* Путь считается по одной калибровке. Там, где таблица отвечает «нельзя
+     определить», он показывает лишь один из возможных — и врать об этом
+     нельзя: картинка выглядит убедительнее таблицы. */
+  document.getElementById("pathnote").textContent = d.free.length
+    ? "Свободные параметры (" + d.free.map(k => META[k].sym).join(", ") +
+      ") взяты иллюстративными, как и на диаграмме. Где в таблице стоит " +
+      "«нельзя определить», путь показывает лишь один из возможных."
+    : "В долях от исходного стационара. Пунктир — уровень «как было» и новый стационар.";
+}
+
 /* ===================== относительные координаты ===================== */
 /* Картинка безразмерная, поэтому всё читается в долях от исходного стационара:
    он равен (1; 1), остальное — во сколько раз. */
@@ -1932,7 +2061,7 @@ function refreshLive(defer){
   syncValues();
   renderReadout();
   drawMain();                       // заполняет FRAME, его читает легенда
-  renderLegend(); renderCoords();
+  renderLegend(); renderCoords(); drawPaths();
   /* Перебор дороже отрисовки, поэтому во время перетаскивания таблица
      обновляется с паузой — иначе ползунок начинает спотыкаться. */
   clearTimeout(heavyTimer);
