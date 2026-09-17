@@ -155,7 +155,7 @@
     padding:15px 18px;margin:0 0 22px;
   }
   .solution h3{margin:0 0 6px;font-size:16px}
-  .solution .ask{margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--ink-2);max-width:92ch}
+  .solution .ask{margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--ink-2)}
   .solution details summary{
     display:inline-flex;align-items:center;gap:6px;cursor:pointer;
     font-size:13.5px;font-weight:700;color:var(--ink-2);
@@ -167,15 +167,22 @@
   .solution details[open] summary::before{content:"▾"}
   .solution details summary:hover{background:var(--card)}
   .solution details summary:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+  /* Рамка во всю ширину графика, а строка обязана остаться читаемой —
+     поэтому на широком экране шаги идут в две колонки, а не тянутся
+     на полтораста знаков. Расширил контейнер — позаботься, чем его заполнить. */
   .solution .why{margin:12px 0 0;padding:0 0 0 22px;font-size:14px;line-height:1.6}
-  .solution .why li{margin:0 0 11px}
+  .solution .why li{margin:0 0 11px;break-inside:avoid}
   .solution .why li:last-child{margin-bottom:0}
+  @media (min-width:1000px){
+    .solution .why{columns:2;column-gap:38px;padding-left:24px}
+    .solution .why .ans{column-span:all;margin-top:4px}
+  }
   .solution .why li::marker{color:var(--muted);font-weight:700}
   /* блочный только заголовок шага — прямой ребёнок li; выделения внутри
      текста остаются строчными, иначе «K» и «L» уезжают на свои строки */
   .solution .why > li > b{display:block;font-weight:700;margin-bottom:2px}
   .solution .why p b{font-weight:700}
-  .solution .why p{margin:0;max-width:78ch}
+  .solution .why p{margin:0}
   .solution .why .ans{
     list-style:none;margin-left:-22px;padding:9px 12px;background:var(--card);
     border-radius:6px;border-left:3px solid var(--ink-2);
@@ -329,11 +336,6 @@
   .readout td{font-variant-numeric:tabular-nums;text-align:right;width:46%}
   .readout tr:last-child th,.readout tr:last-child td{border-bottom:none}
 
-  .foot{
-    margin-top:34px;padding-top:15px;border-top:1px solid var(--rule);
-    color:var(--muted);font-size:13.5px;max-width:92ch;line-height:1.6;
-  }
-  .foot code{font-weight:700;color:var(--ink-2)}
 
   @media (max-width:1140px){
     .work{grid-template-columns:1fr}
@@ -524,19 +526,6 @@
 
     </div>
   </div>
-
-  <p class="foot">
-    Производственная функция — Кобб — Дуглас, <code>f(k) = k<sup>α</sup></code>;
-    накопление <code>Δk = s·f(k) − (δ+n+g)·k</code>; стационар
-    <code>k* = (s/(δ+n+g))<sup>1/(1−α)</sup></code>. В краткосрочном периоде запас
-    капитала предопределён прошлым и не двигается — меняются только кривые;
-    в долгосрочном экономика доходит до нового стационара.
-    Знаки в таблице считаются перебором: свободные параметры прогоняются по всей
-    области допустимых значений, и если знак где-то переворачивается, ответом
-    становится «нельзя определить», а под таблицей появляется пояснение с порогом.
-    Всё считается в логарифмах — при <code>α</code> близких к единице обычная
-    арифметика переполняется и перебор начинает выдумывать ответы.
-  </p>
 
 </div>
 <script>
@@ -1345,7 +1334,7 @@ function pathData(){
 function drawPath(cv, key, d){
   const {ctx, w, h} = fitCanvas(cv);
   ctx.clearRect(0, 0, w, h);
-  const L = 44, R = w - 10, T = 20, B = h - 18;
+  const L = 58, R = w - 10, T = 20, B = h - 18;
   const pre = (R - L) * PATH_PRE;
   const rel = v => v / d.base0[key];
 
@@ -1364,23 +1353,28 @@ function drawPath(cv, key, d){
      свободные параметры, и выдавать его за ответ нельзя. Важно только,
      выше новый уровень прежнего или ниже. */
   dashed(ctx, L, Y(1), R, Y(1), col("--ink"), 1, [3, 4]);
-  tagSub(ctx, L - 17, Y(1), key, "old", col("--ink-2"));
+  tagSub(ctx, L - 24, Y(1), key, "old", col("--ink-2"));
 
   const end = rel(d.endAt[key]);
   if (Math.abs(end - 1) > 1e-9){
     dashed(ctx, L, Y(end), R, Y(end), col("--res"), 1, [3, 4]);
-    tagSub(ctx, L - 17, Y(end), key, "new", col("--res"));
+    tagSub(ctx, L - 24, Y(end), key, "new", col("--res"));
   }
+  /* Уровень сразу после шоков зовётся так же, как точка на большой диаграмме:
+     «скачок». Одно и то же место обязано называться одинаково — разные имена
+     для него уже однажды вышли боком (new против new*). */
+  const jump = rel(d.pts[0].v[key]);
+  if (Math.abs(jump - 1) > 1e-9 && Math.abs(jump - end) > 1e-9)
+    tagSub(ctx, L - 24, Y(jump), key, "скачок", col("--res"));
 
   ctx.strokeStyle = col("--ink"); ctx.lineWidth = 2; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(L, Y(1)); ctx.lineTo(L + pre, Y(1)); ctx.stroke();
 
   /* скачок в момент шока: величина меняется разрывом, а не по траектории */
-  const j = rel(d.pts[0].v[key]);
   ctx.strokeStyle = col("--res"); ctx.lineWidth = 2;
-  if (Math.abs(j - 1) > 1e-9){
+  if (Math.abs(jump - 1) > 1e-9){
     ctx.setLineDash([3, 3]);
-    ctx.beginPath(); ctx.moveTo(L + pre, Y(1)); ctx.lineTo(L + pre, Y(j)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(L + pre, Y(1)); ctx.lineTo(L + pre, Y(jump)); ctx.stroke();
     ctx.setLineDash([]);
   }
   ctx.beginPath();
@@ -1389,7 +1383,7 @@ function drawPath(cv, key, d){
   ctx.stroke();
 
   ctx.fillStyle = col("--res");
-  ctx.beginPath(); ctx.arc(L + pre, Y(j), 2.8, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(L + pre, Y(jump), 2.8, 0, 7); ctx.fill();
   ctx.restore();
 
   tag(ctx, L + 2, T - 8, key, col("--ink"), "left", 13, true);

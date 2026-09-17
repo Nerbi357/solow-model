@@ -13,7 +13,7 @@ catch (e) {
   }
 }
 const EXE = process.env.CHROME_PATH || undefined;
-const BASE = process.env.URL || BASE;
+const BASE = process.env.URL || 'http://localhost:8000/';
 const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === undefined ? '' : JSON.stringify(x)]);
 
 (async () => {

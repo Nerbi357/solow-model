@@ -13,7 +13,7 @@ catch (e) {
   }
 }
 const EXE = process.env.CHROME_PATH || undefined;
-const BASE = process.env.URL || BASE;
+const BASE = process.env.URL || 'http://localhost:8000/';
 const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?'':JSON.stringify(x)]);
 
 (async () => {
@@ -60,6 +60,23 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
     ok(r.title + ': долгосрочные знаки совпадают с таблицей',
        fits(r.lr, r.tbl.lr), {путь:r.lr, таблица:r.tbl.lr});
   }
+
+  /* уровень сразу после шоков подписан там же, где на большой диаграмме */
+  await load(2);                                   // L ×0,90 и δ +5 п.п.: скачок есть
+  ok('на траектории есть уровень «скачок», когда он отличается от old и new',
+     await ev(()=>{
+       const d = pathData();
+       const rel = (v,k) => v / d.base0[k];
+       return ['y','k','c','i'].some(k => {
+         const j = rel(d.pts[0].v[k], k), e = rel(d.endAt[k], k);
+         return Math.abs(j-1) > 1e-9 && Math.abs(j-e) > 1e-9;
+       });
+     }));
+  await load(1);                                   // s и δ: запас не скачет, y и k без скачка
+  ok('а где скачка нет — и подписи нет', await ev(()=>{
+       const d = pathData(), rel = (v,k) => v / d.base0[k];
+       return ['y','k'].every(k => Math.abs(rel(d.pts[0].v[k], k) - 1) < 1e-9);
+     }));
 
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
