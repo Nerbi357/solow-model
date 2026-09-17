@@ -117,18 +117,29 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
     ok('задача ' + (i+1) + ': α меняется при свободном параметре — две диаграммы',
        f.key !== null && f.two, f);
   }
-  ok('две картинки стоят по разные стороны от s = δ+n+g', await ev(()=>{
-    const f = forkCase();
-    const dep = q => q.d + q.n + q.g;
-    return f.below.s < dep(f.below) && f.above.s > dep(f.above);
+  ok('две картинки стоят по разные стороны от k = 1', await ev(()=>{
+    const f = forkCase(), dep = q => q.d + q.n + q.g;
+    const [lo, hi] = f.cases.map(c => c.vals);
+    return lo.s < dep(lo) && hi.s > dep(hi);
   }));
-  ok('и знак выпуска в них противоположный — ради этого всё и затевалось',
+  ok('и подписаны они «k < 1» и «k > 1»',
+     JSON.stringify(await ev(()=>forkCase().cases.map(c=>c.text))) === '["k < 1","k > 1"]',
+     await ev(()=>forkCase().cases.map(c=>c.text)));
+  ok('знак выпуска в них противоположный — ради этого всё и затевалось',
      await ev(()=>{
-       const f = forkCase(), act = active();
-       const yAt = q => { const k = kStar(q), P = finalP(q);
-         return Math.log(f_(k, P)) - Math.log(f_(k, q)); };
-       const f_ = (k, p) => Math.pow(k, p.a);
-       return yAt(f.below) * yAt(f.above) < 0;
+       const pw = (k, p) => Math.pow(k, p.a);
+       const yAt = q => Math.log(pw(kStar(q), finalP(q))) - Math.log(pw(kStar(q), q));
+       const [lo, hi] = forkCase().cases.map(c => c.vals);
+       return yAt(lo) * yAt(hi) < 0;
+     }));
+  ok('в ряду траекторий столько же рядов, сколько случаев', await ev(()=>{
+       revealed = true; renderHeavy();
+       return document.querySelectorAll('#pathrows .pathgrid').length === forkCase().cases.length;
+     }));
+  ok('там, где направление не определено, вместо кривой вопрос', await ev(()=>{
+       const q = document.querySelectorAll('#pathrows .pathq').length;
+       const c = document.querySelectorAll('#pathrows canvas').length;
+       return q > 0 && q + c === 4 * forkCase().cases.length;
      }));
   ok('всё задано — развилки нет даже при шоке по α', await ev(()=>{
     PKEYS.forEach(k => base[k].fixed = true);

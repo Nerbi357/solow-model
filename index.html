@@ -71,6 +71,12 @@
   }
   /* Развилка: две диаграммы друг под другом, у каждой своя шапка.
      Ни одна из них не «настоящая» — в том и суть. */
+  .forklead{
+    margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--ink-2);
+    background:rgba(125,97,28,.10);border-left:3px solid var(--dunno);
+    border-radius:0 var(--r) var(--r) 0;padding:10px 14px;
+  }
+  .forklead b{font-weight:700;color:var(--ink)}
   .forkcap{
     margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--ink-2);
     display:flex;align-items:center;gap:9px;
@@ -79,10 +85,6 @@
     content:attr(data-n);flex:0 0 auto;width:22px;height:22px;border-radius:50%;
     background:var(--ink-2);color:var(--paper);font-size:12px;font-weight:700;
     display:inline-flex;align-items:center;justify-content:center;
-  }
-  .forknote{
-    margin:10px 0 0;font-size:12.5px;color:var(--muted);line-height:1.5;
-    border-left:3px solid var(--dunno);padding-left:10px;
   }
   #fork2{margin-top:16px}
   .coords{margin:14px 0 24px}
@@ -131,6 +133,19 @@
     width:100%;display:block;background:var(--paper);
     border:1px solid var(--rule);border-radius:var(--r);
   }
+  /* Клетка, где знак не определён даже внутри своего случая. Рисовать там
+     уверенную кривую нельзя: она соврала бы ровно так же, как одна диаграмма
+     на развилке. */
+  .pathq{
+    border:1px dashed var(--dunno);border-radius:var(--r);background:rgba(125,97,28,.06);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:4px;color:var(--dunno);text-align:center;
+  }
+  .pathq b{font-size:15px;font-weight:700;color:var(--ink-2)}
+  .pathq .q{font-size:30px;font-weight:700;line-height:1}
+  .pathq small{font-size:11.5px;color:var(--muted);max-width:19ch;line-height:1.3}
+  #pathrows .forkcap{margin-top:18px}
+  #pathrows > .forkcap:first-child{margin-top:0}
   .pathnote{margin:10px 0 0;font-size:12.5px;color:var(--muted);line-height:1.5}
   @media (max-width:900px){ .pathgrid{grid-template-columns:repeat(2,1fr)} }
   @media (max-width:430px){ .pathgrid{grid-template-columns:1fr} }
@@ -452,6 +467,7 @@
                   title="Как пользоваться диаграммой" aria-label="Как пользоваться диаграммой">?</button>
         </div>
       </div>
+      <p class="forklead" id="forklead" hidden></p>
       <div class="phelp" id="phelp" hidden>Колесо мыши приближает, перетаскивание сдвигает,
         двойной щелчок возвращает масштаб. Кружки на линиях — пересечения: щёлкните по кружку,
         появятся его координаты; отметьте второй, чтобы увидеть разницу. Картинка безразмерная,
@@ -464,7 +480,6 @@
         <canvas id="main2" data-h="620" tabindex="0"
                 aria-label="Та же диаграмма для второго случая."></canvas>
       </div>
-      <p class="forknote" id="forknote" hidden></p>
 
       <div class="coords" id="coords" hidden><div id="coords-body"></div></div>
 
@@ -505,12 +520,7 @@
         <div class="fxhead">
           <h2>Как это происходит во времени</h2>
         </div>
-        <div class="pathgrid">
-          <canvas class="pathc" id="path-y" data-v="y" data-h="150"></canvas>
-          <canvas class="pathc" id="path-k" data-v="k" data-h="150"></canvas>
-          <canvas class="pathc" id="path-c" data-v="c" data-h="150"></canvas>
-          <canvas class="pathc" id="path-i" data-v="i" data-h="150"></canvas>
-        </div>
+        <div id="pathrows"></div>
         <p class="pathnote" id="pathnote"></p>
       </div>
 
@@ -808,7 +818,12 @@ function rowsAt(pv){
 const gridN = n => n <= 1 ? 1401 : n === 2 ? 121 : n === 3 ? 29 : n === 4 ? 15 : 11;
 const cartesian = lists => lists.reduce((acc, l) => acc.flatMap(a => l.map(x => a.concat([x]))), [[]]);
 
-function sweep(){
+/* limit — {key, lo, hi}: зажимает один свободный параметр. Им считаются
+   знаки внутри одной ветки развилки, когда одного ответа на всю область нет. */
+const limRange = (k, limit) =>
+  (limit && limit.key === k) ? [limit.lo, limit.hi] : [META[k].min, META[k].max];
+
+function sweep(limit){
   const act = active();
   const nrows = act.length + (act.length > 1 ? 1 : 0);
   if (!nrows) return [];
@@ -836,7 +851,8 @@ function sweep(){
     let r = idx;
     for (const k of free){
       const j = r % N; r = (r - j) / N;
-      pv[k] = META[k].min + (META[k].max - META[k].min) * j / (N - 1);
+      const [lo, hi] = limRange(k, limit);
+      pv[k] = lo + (hi - lo) * j / (N - 1);
     }
     take(pv);
   }
@@ -850,13 +866,14 @@ function sweep(){
   const spots = free.length <= 2 ? [0.12, 0.5, 0.88] : [0.15, 0.85];
   free.forEach(k => {
     const others = free.filter(o => o !== k);
-    const grids = others.map(o => spots.map(
-      t => META[o].min + (META[o].max - META[o].min) * t));
+    const grids = others.map(o => { const [lo, hi] = limRange(o, limit);
+      return spots.map(t => lo + (hi - lo) * t); });
     cartesian(grids).forEach(combo => {
       for (let j = 0; j < fine; j++){
         const pv = dispVals();
         others.forEach((o, oi) => { pv[o] = combo[oi]; });
-        pv[k] = META[k].min + (META[k].max - META[k].min) * j / (fine - 1);
+        const [lo, hi] = limRange(k, limit);
+        pv[k] = lo + (hi - lo) * j / (fine - 1);
         take(pv);
       }
     });
@@ -874,6 +891,18 @@ let sweepCache = {key: null, val: null, stat: null};
 const sweepKey = () =>
   PKEYS.map(k => base[k].fixed ? "f" + base[k].v : "x").join(",") + "|" +
   active().map(s => s.key + s.form + s.value).join(";");
+/* Знаки внутри одной ветки развилки. Отдельный кэш: веток всего две,
+   а перебор дорогой. */
+let caseCache = {};
+function caseSweep(lim){
+  const key = sweepKey() + "|" + (lim ? lim.key + ":" + lim.lo + ":" + lim.hi : "-");
+  if (!(key in caseCache)){
+    if (Object.keys(caseCache).length > 8) caseCache = {};
+    caseCache[key] = sweep(lim);
+  }
+  return caseCache[key];
+}
+
 function sweepCached(){
   const key = sweepKey();
   if (sweepCache.key !== key){
@@ -1092,9 +1121,10 @@ function forkCase(){
     const mid = a => a[Math.floor(a.length / 2)];
     const below = {...pv}, above = {...pv};
     below[k] = mid(lo); above[k] = mid(hi);
-    return {key: k, below, above,
-            lowText: "s < δ+n+g — капитала на работника мало",
-            highText: "s > δ+n+g — капитала на работника много"};
+    const rng = a => ({key: k, lo: Math.min(...a), hi: Math.max(...a)});
+    return {key: k,
+            cases: [{vals: below, lim: rng(lo), text: "k < 1"},
+                    {vals: above, lim: rng(hi), text: "k > 1"}]};
   }
   return null;
 }
@@ -1387,12 +1417,13 @@ function paintOn(id, vals, capture){
 function drawMain(){
   const fk = forkCase();
   const cap1 = document.getElementById("cap1"), cap2 = document.getElementById("cap2");
-  const box2 = document.getElementById("fork2"), note = document.getElementById("forknote");
-  const cv = document.getElementById("main");
+  const box2 = document.getElementById("fork2");
+  const cv = document.getElementById("main"), lead = document.getElementById("forklead");
 
   if (!fk){
     cv.dataset.h = 620;
-    box2.hidden = cap1.hidden = note.hidden = true;
+    lead.hidden = true;
+    box2.hidden = cap1.hidden = true;
     paintOn("main", null, true);
   } else {
     /* На развилке зум выключается: у двух картинок разные калибровки,
@@ -1400,13 +1431,15 @@ function drawMain(){
     view = null;
     cv.dataset.h = 420;
     document.getElementById("main2").dataset.h = 420;
-    cap1.hidden = false; box2.hidden = false; note.hidden = false;
-    cap1.textContent = fk.lowText;  cap1.dataset.n = "1";
-    cap2.textContent = fk.highText; cap2.dataset.n = "2";
-    note.textContent = "Меняется α, а " + META[fk.key].sym + " условие не задаёт — " +
-      "значит экономика может стоять по любую сторону от границы, и картинки " +
-      "получаются разными. Обе одинаково возможны: какая верна, из условия " +
-      "не следует, поэтому в таблице и стоит «нельзя определить».";
+    cap1.hidden = false; box2.hidden = false;
+    cap1.textContent = fk.cases[0].text; cap1.dataset.n = "1";
+    cap2.textContent = fk.cases[1].text;  cap2.dataset.n = "2";
+    lead.hidden = false;
+    lead.innerHTML = "<b>Изменение α распадается на два случая.</b> Кривые " +
+      "k<sup>α</sup> при разных α пересекаются ровно в k = 1: правее рост α " +
+      "выпуск поднимает, левее — опускает. Где стоит экономика, решает " +
+      META[fk.key].sym + ", а условие её не задаёт — поэтому ниже две " +
+      "диаграммы, и обе одинаково возможны.";
     paintOn("main", fk.below, true);
     paintOn("main2", fk.above, false);
   }
@@ -1511,21 +1544,58 @@ function drawPath(cv, key, d){
   tag(ctx, R, B + 10, "время", col("--muted"), "right", 10);
 }
 
+/* Траектории повторяют устройство диаграммы: развилка — значит два ряда,
+   по ряду на случай. А там, где знак не определён даже внутри своего случая,
+   вместо кривой стоит вопрос: уверенная линия соврала бы ровно так же, как
+   одна диаграмма на развилке. */
 function drawPaths(){
   const host = document.getElementById("pathsblock");
-  /* Траектория показывает знак каждой величины прямее, чем таблица,
-     поэтому открывается той же кнопкой. */
-  const d = revealed ? pathData() : null;
-  host.hidden = !d;
-  if (!d) return;
-  VARS.forEach(v => drawPath(document.getElementById("path-" + v), v, d));
-  /* Путь считается по одной калибровке. Там, где таблица отвечает «нельзя
-     определить», он показывает лишь один из возможных — и врать об этом
-     нельзя: картинка выглядит убедительнее таблицы. */
-  document.getElementById("pathnote").textContent = d.free.length
-    ? "Свободные параметры (" + d.free.map(k => META[k].sym).join(", ") +
-      ") взяты иллюстративными, как и на диаграмме. Где в таблице стоит " +
-      "«нельзя определить», путь показывает лишь один из возможных."
+  const rowsHost = document.getElementById("pathrows");
+  if (!revealed || !active().length){ host.hidden = true; return; }
+
+  const fk = forkCase();
+  const cases = fk ? fk.cases : [{vals: null, lim: null, text: null}];
+
+  /* что в каком случае вообще определено */
+  const known = cases.map(c => {
+    const r = caseSweep(c.lim);
+    if (!r.length) return VARS.map(() => false);
+    const last = r[r.length - 1];
+    return VARS.map((_, j) => last.sr[j] !== "dunno" && last.lr[j] !== "dunno");
+  });
+
+  const data = cases.map(c => { VOVR = c.vals; try { return pathData(); } finally { VOVR = null; } });
+  if (data.every(d => !d)){ host.hidden = true; return; }
+  host.hidden = false;
+
+  rowsHost.innerHTML = cases.map((c, ci) =>
+    (c.text ? '<p class="forkcap" data-n="' + (ci + 1) + '">' + esc(c.text) + "</p>" : "") +
+    '<div class="pathgrid">' +
+      VARS.map((v, j) => (known[ci][j] && data[ci])
+        ? '<canvas class="pathc" id="path-' + ci + "-" + v + '" data-h="150"></canvas>'
+        : '<div class="pathq" id="path-' + ci + "-" + v + '"><b>' + v +
+          '</b><span class="q">?</span><small>направление не определено</small></div>'
+      ).join("") +
+    "</div>").join("");
+
+  cases.forEach((c, ci) => {
+    if (!data[ci]) return;
+    VARS.forEach((v, j) => {
+      if (!known[ci][j]) return;
+      const cv = document.getElementById("path-" + ci + "-" + v);
+      VOVR = c.vals;
+      try { drawPath(cv, v, data[ci]); } finally { VOVR = null; }
+    });
+  });
+  /* высота «вопросов» равна высоте графиков, иначе ряд разъезжается */
+  const h = (document.querySelector("#pathrows canvas") || {}).clientHeight;
+  if (h) rowsHost.querySelectorAll(".pathq").forEach(e => { e.style.height = h + "px"; });
+
+  const free = freeKeys();
+  document.getElementById("pathnote").textContent = free.length
+    ? "Форма пути зависит от того, какими взяты свободные параметры (" +
+      free.map(k => META[k].sym).join(", ") + "), направление — нет: где " +
+      "направление не определено, вместо кривой стоит вопрос."
     : "В долях от исходного стационара. Пунктир — уровень «как было» и новый стационар.";
 }
 
