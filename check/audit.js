@@ -121,7 +121,7 @@ const EXE = process.env.CHROME_PATH || undefined;   // по умолчанию �
 
     const run = (bv, free, shs, tag) => {
       seen.cfgs++;
-      base = {}; KEYS.forEach(k => base[k] = {v: bv[k], fixed: free.indexOf(k)<0});
+      base = {}; KEYS.forEach(k => base[k] = {v: bv[k], fixed: free.indexOf(k)<0, def: bv[k]});
       shocks = shs.map((s,i)=>({key:s.key, form:s.form, value:s.value, on:true, ci:i}));
       const wanted = shocks.map(s=>s.value);
 

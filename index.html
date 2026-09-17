@@ -101,7 +101,11 @@
   /* ---------- effects table ---------- */
   .fx-wrap{overflow-x:auto}
   .fx{border-collapse:collapse;font-size:14px;width:auto;max-width:980px;min-width:620px}
+  .fxhead{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    flex-wrap:wrap;margin:0 0 10px}
+  .fxhead h2{margin:0;font-size:17px;font-weight:700}
   .fx caption{text-align:left;font-weight:700;font-size:17px;padding-bottom:8px}
+  .fx td.hid{color:var(--rule);font-weight:400}
   .fx th,.fx td{border-bottom:1px solid var(--rule-2);padding:6px;text-align:center}
   .fx thead th{font-size:12.5px;font-weight:700;color:var(--muted);
     border-bottom:1px solid var(--ink);white-space:nowrap}
@@ -152,6 +156,10 @@
   .solution .why{margin:12px 0 0;font-size:14px;line-height:1.6}
   .solution .why b{font-weight:700}
   .solution .src{margin:10px 0 0;font-size:12.5px;color:var(--muted)}
+  .solution .mod{
+    margin:11px 0 0;font-size:12.5px;color:var(--dunno);font-weight:600;
+    border-left:3px solid var(--dunno);padding-left:9px;
+  }
 
   /* ---------- right panel ---------- */
   .block{margin-bottom:22px}
@@ -393,9 +401,12 @@
 
       <div class="solution" id="solution" hidden></div>
 
+      <div class="fxhead">
+        <h2>Что происходит с переменными</h2>
+        <button class="btn" id="reveal" aria-pressed="false">Показать ответ</button>
+      </div>
       <div class="fx-wrap">
         <table class="fx">
-          <caption>Что происходит с переменными</caption>
           <thead>
             <tr>
               <th rowspan="2" class="who">Шок</th>
@@ -610,15 +621,24 @@ let base = {};
 let shocks = [];        // {key, form, value, on, ci}
 let probIdx = -1;
 let picked = [];
+/* Ответ в таблице закрыт, пока его не откроют: инструмент для семинара,
+   а не решебник. Открывается кнопкой и снова закрывается, когда меняется
+   состав шоков — потому что это уже другая задача. */
+let revealed = false;
 
+/* s = 0,50 нарочно: при 0,20 линия s·f(k) лежит впятеро ниже f(k) и
+   пересечение с выбытием жмётся к самой оси — главное место диаграммы
+   оказывается самым мелким. Это не «реалистичная» норма сбережений,
+   а читаемая картинка; в задачах свои значения. */
 const DEFAULT_BASE = {
-  s:{v:0.20, fixed:true},  d:{v:0.10, fixed:true},
+  s:{v:0.50, fixed:true},  d:{v:0.10, fixed:true},
   n:{v:0,    fixed:true},  g:{v:0,    fixed:true},
   a:{v:1/3,  fixed:false}
 };
+const withDef = b => { const o = {...b}; o.def = o.v; return o; };
 const resetAll = () => {
-  base = {}; PKEYS.forEach(k => base[k] = {...DEFAULT_BASE[k]});
-  shocks = []; probIdx = -1; picked = [];
+  base = {}; PKEYS.forEach(k => base[k] = withDef(DEFAULT_BASE[k]));
+  shocks = []; probIdx = -1; picked = []; revealed = false;
 };
 
 const colVar = ci => "var(--sh" + ((ci % 3) + 1) + ")";
@@ -632,7 +652,18 @@ const bites = sh => sh.form === "set" ? Math.abs(sh.value - base[sh.key].v) > 1e
                   :                     Math.abs(sh.value - 1) > 1e-12;
 const active = () => shocks.filter(s => s.on && bites(s));
 
-const dispVals = () => { const o = {}; PKEYS.forEach(k => o[k] = base[k].v); return o; };
+/* Картинку рисуют только заданные параметры. У свободного значение
+   неизвестно, поэтому график берёт иллюстративное `def` — то, с которым
+   задача загрузилась, — и ползунок у него заблокирован. Иначе выходило,
+   что неизвестный параметр двигает картинку, а ответ в таблице при этом
+   не меняется: студент читал картинку как ответ. Таблица по свободному
+   параметру по-прежнему гоняет весь диапазон. */
+const dispVals = () => {
+  const o = {};
+  PKEYS.forEach(k => o[k] = base[k].fixed ? base[k].v
+                          : (base[k].def !== undefined ? base[k].def : base[k].v));
+  return o;
+};
 const freeKeys = () => PKEYS.filter(k => !base[k].fixed);
 
 function applyTo(p, sh){
@@ -1000,7 +1031,7 @@ function statesOf(){
        она из него уходит. «new» — новое равновесие, и это имя принадлежит
        только ему. Каждая подпись появляется, лишь когда есть что подписывать:
        не скакнул запас — нет «скачка», не уехал стационар — нет «new»,
-       и в задачах вроде листка 1.i экономика просто возвращается в old. */
+       и в задаче 1 экономика просто возвращается в old. */
     const jumped = Math.abs(kS / k0 - 1) > 1e-9;
     const moved  = Math.abs(kN / k0 - 1) > 1e-9;
     push({id:"short", label:"скачок", mark:"скачок", P:PF, k:kS,
@@ -1282,8 +1313,9 @@ function renderFx(){
   }
   const cell = (code, first, vi) => {
     const c = FX[code] || FX.dunno;
-    return '<td class="v ' + c.cls + (first ? " sr" : "") + '" title="' + c.word +
-      '" data-v="' + VARS[vi] + '">' + c.gl + "</td>";
+    return '<td class="v ' + (revealed ? c.cls : "hid") + (first ? " sr" : "") + '" title="' +
+      (revealed ? c.word : "ответ скрыт") + '" data-v="' + VARS[vi] + '">' +
+      (revealed ? c.gl : "·") + "</td>";
   };
   body.innerHTML = rows.map((r, i) => {
     const total = i >= act.length;
@@ -1348,6 +1380,10 @@ function renderNotes(){
       num(c.to, d) + "</code> — вне этого отрезка шок выводит " + sym +
       " за границы модели.</p></div>");
   });
+  /* Дальше идут пороги — а это уже ответ, он ждёт кнопки. Две плашки выше
+     ответом не являются: они сообщают, что конфигурация сломана, и прятать
+     их нельзя — иначе студент видит таблицу из точек и никакого объяснения. */
+  if (!revealed){ host.innerHTML = out.join(""); return; }
   rows.forEach((row, ri) => {
     const lines = [];
     [["sr", "в краткосрочном периоде"], ["lr", "в долгосрочном периоде"]].forEach(([per, perName]) => {
@@ -1436,11 +1472,13 @@ function paramRow(key, value, idp, live, fixed, fromVal, form){
           num(fromVal, META[key].dig) + " " + gl + '</span><span class="nm"></span>') +
       '<input class="numbox' + (fixed === false ? " free" : "") + '" id="n' + id +
         '" data-num="' + key + '" data-scope="' + idp + '" inputmode="decimal" value="' +
-        num(value, dig) + '" aria-label="' + m.sym + ' — значение числом">' +
+        num(value, dig) + '"' + (fixed === false ? " disabled" : "") +
+        ' aria-label="' + m.sym + ' — значение числом">' +
       pin +
     "</div>" +
     '<input type="range" id="' + id + '" data-rng="' + key + '" data-scope="' + idp +
-      '" min="' + lo + '" max="' + hi + '" step="' + m.step + '" value="' + value + '">' +
+      '" min="' + lo + '" max="' + hi + '" step="' + m.step + '" value="' + value + '"' +
+      (fixed === false ? " disabled" : "") + ">" +
     "</div>";
 }
 
@@ -1512,7 +1550,7 @@ function renderShocks(){
 /* Чтобы добавить разбор, скопируйте элемент и заполните поля:
      title  — как называется задача
      hint   — строка под названием в списке
-     ask    — постановка, дословно из листка (можно с HTML)
+     ask    — постановка: самодостаточная, без ссылок на другие задачи
      why    — разбор, показывается над таблицей
      base   — исходное состояние: {ключ: [значение, задано]}, где задано —
               1, если условие называет это значение, и 0, если молчит.
@@ -1521,13 +1559,11 @@ function renderShocks(){
               {key:"s"|"d"|"n"|"g"|"a"|"K"|"L", form:"set"|"add"|"mul", value:число}  */
 const PROBLEMS = [
   {
-    title: "Листок 1 · i — миграция",
-    hint : "L ×1,25 и K ×0,80 одновременно",
-    ask  : "Модель Солоу без трендового технического прогресса и роста населения. " +
-           "Экономика изначально в стационарном режиме. Количество людей в экономике " +
-           "за счёт миграции увеличилось на 25%, а объём капитала упал на 20%. " +
-           "Что произойдёт с выпуском, инвестициями, потреблением и капиталом " +
-           "в краткосрочном и долгосрочном периоде?",
+    title: "Задача 1",
+    hint : "K вниз, L вверх",
+    ask  : "Модель Солоу с производственной функцией Кобба — Дугласа, без роста населения и технического прогресса. Экономика находится в стационарном состоянии. " +
+           "Из-за миграции количество людей в экономике выросло на 25%, " +
+           "а объём капитала одновременно упал на 20%. Что произойдёт с подушевыми выпуском, капиталом, потреблением и инвестициями в краткосрочном и долгосрочном периоде?",
     why  : "<b>Краткосрочные изменения.</b> Ни s, ни δ, ни α не тронуты — все три кривые стоят " +
            "на месте. Двигается только точка: k = K/L падает в 0,8 / 1,25 = 0,64 раза, " +
            "то есть на 36%. За ней вниз идут y = f(k), c = (1−s)·y и i = s·f(k). " +
@@ -1541,11 +1577,11 @@ const PROBLEMS = [
     shocks: [{key:"K", form:"mul", value:.8}, {key:"L", form:"mul", value:1.25}]
   },
   {
-    title: "Листок 1 · ii — δ и s вверх",
-    hint : "δ 10 → 12% и s 10 → 20% одновременно",
-    ask  : "Та же модель, экономика в стационаре. Амортизация капитала растёт с 10% " +
-           "до 12%, а уровень сбережений увеличивается с 10% до 20%. Что произойдёт " +
-           "с переменными в краткосрочном и долгосрочном периоде?",
+    title: "Задача 2",
+    hint : "s вверх, δ вверх",
+    ask  : "Модель Солоу с производственной функцией Кобба — Дугласа, без роста населения и технического прогресса. Экономика находится в стационарном состоянии. " +
+           "Норма сбережений выросла с 10% до 20%, а норма амортизации — " +
+           "с 10% до 12%. Что произойдёт с подушевыми выпуском, капиталом, потреблением и инвестициями в краткосрочном и долгосрочном периоде?",
     why  : "<b>Краткосрочные изменения.</b> Запас капитала предопределён прошлым, поэтому k " +
            "и вслед за ним y = f(k) не меняются вовсе — амортизация на выпуск при " +
            "данном k не влияет. А распределение выпуска меняется сразу: i = s·f(k) " +
@@ -1562,11 +1598,11 @@ const PROBLEMS = [
     shocks: [{key:"s", form:"set", value:.20}, {key:"d", form:"set", value:.12}]
   },
   {
-    title: "Листок 2 · i — отток и амортизация",
-    hint : "L ×0,90 и δ + 5 п.п.",
-    ask  : "Та же модель, экономика в стационаре. Количество людей в экономике за счёт " +
-           "миграции уменьшилось на 10%, а коэффициент амортизации вырос на 5 п.п. " +
-           "Что произойдёт с подушевыми выпуском, инвестициями, потреблением и капиталом?",
+    title: "Задача 3",
+    hint : "L вниз, δ вверх",
+    ask  : "Модель Солоу с производственной функцией Кобба — Дугласа, без роста населения и технического прогресса. Экономика находится в стационарном состоянии. " +
+           "Из-за миграции количество людей в экономике уменьшилось на 10%, " +
+           "а норма амортизации выросла на 5 процентных пунктов. Что произойдёт с подушевыми выпуском, капиталом, потреблением и инвестициями в краткосрочном и долгосрочном периоде?",
     why  : "<b>Краткосрочные изменения.</b> Работников на 10% меньше, капитал тот же, значит " +
            "k = K/L вырос в 1/0,9 ≈ 1,111 раза. Множитель по L двигает точку, а не " +
            "линии, а рост амортизации при данном k на выпуск не влияет — поэтому вверх " +
@@ -1579,12 +1615,12 @@ const PROBLEMS = [
     shocks: [{key:"L", form:"mul", value:.9}, {key:"d", form:"add", value:.05}]
   },
   {
-    title: "Листок 2 · ii — s и α вверх",
-    hint : "s 20 → 22% и α 30 → 35%",
-    ask  : "Та же модель, экономика в стационаре. Доля сбережений растёт с 20% до 22%, " +
-           "а доля рабочей силы в производственной функции Кобба — Дугласа (1−α) " +
-           "снижается с 70% до 65%, то есть α растёт с 30% до 35%. Что произойдёт " +
-           "с подушевыми переменными?",
+    title: "Задача 4",
+    hint : "s вверх, α вверх",
+    ask  : "Модель Солоу с производственной функцией Кобба — Дугласа, без роста населения и технического прогресса. Экономика находится в стационарном состоянии. " +
+           "Норма сбережений выросла с 20% до 22%, а доля труда в производственной " +
+           "функции (1−α) снизилась с 70% до 65% — то есть доля капитала α выросла " +
+           "с 30% до 35%. Что произойдёт с подушевыми выпуском, капиталом, потреблением и инвестициями в краткосрочном и долгосрочном периоде?",
     why  : "<b>Здесь почти всё не определено, и это правильный ответ.</b> " +
            "Как только меняется α, меняется сама форма f(k) = k^α. Две степенные " +
            "функции с разными показателями пересекаются ровно в k = 1: правее этой " +
@@ -1602,11 +1638,11 @@ const PROBLEMS = [
     shocks: [{key:"s", form:"set", value:.22}, {key:"a", form:"set", value:.35}]
   },
   {
-    title: "Листок 3 · i — дожди и отток",
-    hint : "K ×0,95 и L ×0,90",
-    ask  : "Та же модель, экономика в стационаре. Капитал в экономике из-за дождей " +
-           "уменьшился на 5%, а количество мигрантов снизилось на 10%. Что произойдёт " +
-           "с подушевыми переменными?",
+    title: "Задача 5",
+    hint : "K вниз, L вниз",
+    ask  : "Модель Солоу с производственной функцией Кобба — Дугласа, без роста населения и технического прогресса. Экономика находится в стационарном состоянии. " +
+           "Из-за дождей объём капитала уменьшился на 5%, а количество работников " +
+           "в экономике снизилось на 10%. Что произойдёт с подушевыми выпуском, капиталом, потреблением и инвестициями в краткосрочном и долгосрочном периоде?",
     why  : "<b>Краткосрочные изменения.</b> k = K/L вырос в 0,95/0,9 ≈ 1,056 раза: капитала " +
            "стало меньше, но работников — ещё меньше. Кривые стоят на месте, поэтому " +
            "вверх идут все четыре величины. " +
@@ -1621,15 +1657,15 @@ const PROBLEMS = [
     shocks: [{key:"K", form:"mul", value:.95}, {key:"L", form:"mul", value:.9}]
   },
   {
-    title: "Листок 3 · ii — δ вниз, α вверх",
-    hint : "δ 5 → 4% и α 40 → 45%",
-    ask  : "Та же модель, экономика в стационаре. Амортизация снижается с 5% до 4%, " +
-           "а доля капитала в производственной функции Кобба — Дугласа (α) растёт " +
-           "с 40% до 45%. Что произойдёт с подушевыми переменными?",
+    title: "Задача 6",
+    hint : "δ вниз, α вверх",
+    ask  : "Модель Солоу с производственной функцией Кобба — Дугласа, без роста населения и технического прогресса. Экономика находится в стационарном состоянии. " +
+           "Норма амортизации снизилась с 5% до 4%, а доля капитала α в производственной " +
+           "функции выросла с 40% до 45%. Что произойдёт с подушевыми выпуском, капиталом, потреблением и инвестициями в краткосрочном и долгосрочном периоде?",
     why  : "<b>Долгосрочные изменения — единственное, что здесь определено полностью: k* растёт.</b> " +
            "Оба изменения толкают стационар вправо: амортизация упала, значит линия " +
            "выбытия стала положе, а рост α делает показатель 1/(1−α) больше. " +
-           "<b>Остальное упирается в ту же развилку, что и в листке 2.</b> Меняется α, " +
+           "<b>Остальное упирается в развилку, которую задаёт сама α.</b> Меняется α, " +
            "а функции k^0,40 и k^0,45 пересекаются в k = 1. Здесь " +
            "k₀ = (s/0,05)^(1/0,6), и это больше единицы ровно тогда, когда s &gt; 0,05. " +
            "Про s условие молчит, поэтому знаки y, c и i не определены ни в краткосрочном, " +
@@ -1646,15 +1682,20 @@ function loadProblem(i){
   base = {};
   PKEYS.forEach(k => {
     const [v, fx] = q.base[k] || [DEFAULT_BASE[k].v, 1];
-    base[k] = {v: clampKey(k, v), fixed: !!fx};
+    base[k] = {v: clampKey(k, v), fixed: !!fx, def: clampKey(k, v)};
   });
   shocks = q.shocks.slice(0, MAXSHOCKS).map((s, j) =>
     ({key: s.key, form: s.form, value: clampKey(s.key, s.value, s.form), on: true, ci: j}));
   probIdx = i;
   picked = [];
+  revealed = false;
   view = null;
 }
 
+/* Условие показывается, пока это та же задача. Состав шоков её и определяет:
+   добавили или убрали шок — probIdx сбрасывается там же, где это случилось.
+   А значения, формы и исходные параметры условие не отменяют: их для того
+   и крутят. Тогда над разбором висит пометка, что цифры уже не те. */
 function problemIntact(){
   const q = PROBLEMS[probIdx];
   if (!q || q.shocks.length !== shocks.length) return false;
@@ -1682,8 +1723,8 @@ function renderProblems(){
       '<div class="why">' + q.why + "</div>" +
       (q.src ? '<p class="src">' + esc(q.src) + "</p>" : "") +
     "</details>" +
-    (problemIntact() ? "" :
-      '<p class="src">Конфигурация изменена вручную — разбор относится к исходной постановке.</p>');
+    '<p class="mod" id="modnote"' + (problemIntact() ? " hidden" : "") +
+      ">Параметры изменены вручную — разбор относится к исходной постановке.</p>";
 }
 
 /* ===================== ссылка ===================== */
@@ -1707,13 +1748,13 @@ function readHash(){
   raw.split("&").forEach(kv => { const i = kv.indexOf("="); if (i > 0) q[kv.slice(0, i)] = kv.slice(i + 1); });
   if (!q.b) return false;
   const nb = {};
-  PKEYS.forEach(k => nb[k] = {...DEFAULT_BASE[k]});
+  PKEYS.forEach(k => nb[k] = withDef(DEFAULT_BASE[k]));
   q.b.split(",").forEach(chunk => {
     const [k, v, fx] = chunk.split(":");
     if (PKEYS.indexOf(k) < 0) return;
     const num = parseFloat(v);
     if (!isFinite(num)) return;
-    nb[k] = {v: clampKey(k, num), fixed: fx !== "0"};
+    nb[k] = {v: clampKey(k, num), fixed: fx !== "0", def: clampKey(k, num)};
   });
   base = nb;
   shocks = [];
@@ -1731,6 +1772,7 @@ function readHash(){
   const p = parseInt(q.p, 10);
   probIdx = (isFinite(p) && p >= 0 && p < PROBLEMS.length) ? p : -1;
   picked = (q.pts || "").split(",").filter(Boolean);
+  revealed = false;
   return true;
 }
 
@@ -1832,7 +1874,17 @@ function syncValues(){
   });
 }
 let heavyTimer = 0;
-function renderHeavy(){ renderFx(); renderNotes(); }
+function syncReveal(){
+  const b = document.getElementById("reveal");
+  b.disabled = !active().length;
+  b.setAttribute("aria-pressed", revealed);
+  b.textContent = revealed ? "Скрыть ответ" : "Показать ответ";
+}
+function syncModNote(){
+  const el = document.getElementById("modnote");
+  if (el) el.hidden = problemIntact();
+}
+function renderHeavy(){ renderFx(); renderNotes(); syncReveal(); syncModNote(); }
 function refreshLive(defer){
   clampShocks();
   syncValues();
@@ -1888,7 +1940,11 @@ panel.addEventListener("keydown", e => {
 document.getElementById("base-params").addEventListener("click", e => {
   const b = e.target.closest("[data-pin]");
   if (!b || b.disabled) return;
-  base[b.dataset.pin].fixed = !base[b.dataset.pin].fixed;
+  const k = b.dataset.pin, st = base[k];
+  st.fixed = !st.fixed;
+  /* Обратно в «свободно» — значение возвращается к иллюстративному:
+     число, которое студент накрутил, было его догадкой, а не условием. */
+  if (!st.fixed) st.v = st.def;
   refreshAll();
 });
 
@@ -1907,6 +1963,10 @@ document.getElementById("shocks").addEventListener("click", e => {
     shocks[+b.dataset.eye].on = !shocks[+b.dataset.eye].on;
   } else if (b.dataset.del !== undefined){
     shocks.splice(+b.dataset.del, 1);
+    /* Убрали шок — это уже не та задача, а своя. Значения и форма шока
+       условие не отменяют: «а что если бы s выросла не до 0,20, а до 0,30»
+       — это по-прежнему разбор той же задачи, только с пометкой. */
+    probIdx = -1; revealed = false;
   } else return;
   picked = [];
   refreshAll();
@@ -1919,14 +1979,20 @@ document.getElementById("add").addEventListener("click", () => {
   shocks.push({key, form,
     value: form === "set" ? base[key].v : form === "add" ? 0 : 1,
     on: true, ci: freeCi()});
+  probIdx = -1; revealed = false;        // добавили свой шок — задача стала кастомной
   refreshAll();
+});
+
+document.getElementById("reveal").addEventListener("click", () => {
+  revealed = !revealed;
+  renderHeavy();
 });
 
 document.getElementById("basereset").addEventListener("click", () => {
   const q = PROBLEMS[probIdx];
   PKEYS.forEach(k => {
     const [v, fx] = (q && q.base[k]) ? q.base[k] : [DEFAULT_BASE[k].v, DEFAULT_BASE[k].fixed ? 1 : 0];
-    base[k] = {v: clampKey(k, v), fixed: !!fx};
+    base[k] = {v: clampKey(k, v), fixed: !!fx, def: clampKey(k, v)};
   });
   view = null;
   refreshAll();
