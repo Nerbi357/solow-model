@@ -69,6 +69,22 @@
     font-size:13px;line-height:1.55;color:var(--muted);background:var(--card-2);
     border:1px solid var(--rule);border-radius:var(--r);padding:11px 14px;margin:0 0 10px;
   }
+  /* Развилка: две диаграммы друг под другом, у каждой своя шапка.
+     Ни одна из них не «настоящая» — в том и суть. */
+  .forkcap{
+    margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--ink-2);
+    display:flex;align-items:center;gap:9px;
+  }
+  .forkcap::before{
+    content:attr(data-n);flex:0 0 auto;width:22px;height:22px;border-radius:50%;
+    background:var(--ink-2);color:var(--paper);font-size:12px;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .forknote{
+    margin:10px 0 0;font-size:12.5px;color:var(--muted);line-height:1.5;
+    border-left:3px solid var(--dunno);padding-left:10px;
+  }
+  #fork2{margin-top:16px}
   .coords{margin:14px 0 24px}
   .phead{
     display:flex;align-items:center;justify-content:space-between;
@@ -188,6 +204,27 @@
     margin:11px 0 0;font-size:12.5px;color:var(--dunno);font-weight:600;
     border-left:3px solid var(--dunno);padding-left:9px;
   }
+
+  /* Шпаргалка: какие шоки дают только временный сдвиг, какие — постоянный,
+     а какие оба. По сути это правило AFFECTS, вывернутое в сторону студента. */
+  .whatab{
+    width:100%;border-collapse:collapse;margin:14px 0 0;font-size:13px;
+    border:1px solid var(--rule);border-radius:var(--r);background:var(--card-2);
+  }
+  .whatab caption{
+    text-align:left;font-size:11.5px;font-weight:700;letter-spacing:.07em;
+    text-transform:uppercase;color:#4F555E;padding:0 0 7px;
+  }
+  .whatab th{
+    font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);padding:9px 10px 6px;text-align:center;white-space:nowrap;
+  }
+  .whatab th:first-child{text-align:left}
+  .whatab td{padding:6px 10px;border-top:1px solid var(--rule-2);text-align:center;font-size:15px}
+  .whatab td:first-child{text-align:left;font-size:14px;font-weight:700;letter-spacing:.02em}
+  .whatab tr:last-child td{padding-bottom:9px}
+  .whatab .yes{color:var(--up)}
+  .whatab .no{color:var(--rule);font-size:13px}
 
   /* ---------- right panel ---------- */
   .block{margin-bottom:22px}
@@ -419,8 +456,15 @@
         двойной щелчок возвращает масштаб. Кружки на линиях — пересечения: щёлкните по кружку,
         появятся его координаты; отметьте второй, чтобы увидеть разницу. Картинка безразмерная,
         поэтому всё считается в долях от исходного стационара — он равен (1;&nbsp;1).</div>
+      <p class="forkcap" id="cap1" hidden></p>
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
+      <div id="fork2" hidden>
+        <p class="forkcap" id="cap2"></p>
+        <canvas id="main2" data-h="620" tabindex="0"
+                aria-label="Та же диаграмма для второго случая."></canvas>
+      </div>
+      <p class="forknote" id="forknote" hidden></p>
 
       <div class="coords" id="coords" hidden><div id="coords-body"></div></div>
 
@@ -500,6 +544,14 @@
           <button class="btn" id="add">Добавить</button>
         </div>
         <p class="hintline" id="addhint"></p>
+
+        <table class="whatab">
+          <caption>Временные и постоянные изменения</caption>
+          <tr><th>Изменения</th><th>Временные</th><th>Постоянные</th></tr>
+          <tr><td>K, L</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>s, α</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>δ, n, g</td><td class="no">—</td><td class="yes">✓</td></tr>
+        </table>
       </div>
 
       <div class="block">
@@ -683,7 +735,14 @@ const active = () => shocks.filter(s => s.on && bites(s));
    что неизвестный параметр двигает картинку, а ответ в таблице при этом
    не меняется: студент читал картинку как ответ. Таблица по свободному
    параметру по-прежнему гоняет весь диапазон. */
+/* Пока VOVR не null, ВСЯ отрисовка идёт по нему. Им и рисуется вторая
+   диаграмма на развилке: renderMain, statesOf и pointList зовут dispVals()
+   каждый сама по себе, и протаскивать набор параметром пришлось бы через
+   полдесятка функций. Ставится и снимается только внутри drawMain —
+   перебор и таблица его не видят никогда. */
+let VOVR = null;
 const dispVals = () => {
+  if (VOVR) return {...VOVR};
   const o = {};
   PKEYS.forEach(k => o[k] = base[k].fixed ? base[k].v
                           : (base[k].def !== undefined ? base[k].def : base[k].v));
@@ -1004,6 +1063,42 @@ function place(items, gap){
 const SUBS = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
 const sub = i => String(i).split("").map(d => SUBS[+d]).join("");
 
+/* ===================== развилка ===================== */
+/* Одна-единственная развилка в модели — и та только у α. Степенные функции
+   k^α₀ и k^α₁ пересекаются ровно в k = 1, поэтому рост α поднимает выпуск
+   правее этой точки и опускает левее. А k₀ > 1 равносильно s > δ+n+g.
+   Все прочие параметры двигают кривые целиком в одну сторону, независимо
+   от того, где стоит экономика: развилки у них нет и быть не может.
+
+   Если α меняется, а свободные параметры допускают обе стороны, одна
+   картинка врёт: она показывает один случай из двух и выглядит ответом.
+   Тогда рисуются две. */
+const sideOf = q => q.s > dep(q);
+function forkCase(){
+  if (!active().some(sh => sh.key === "a")) return null;
+  const free = freeKeys();
+  if (!free.length) return null;
+  const pv = dispVals();
+  for (const k of free){
+    const m = META[k], lo = [], hi = [];
+    for (let i = 0; i <= 400; i++){
+      const q = {...pv};
+      q[k] = m.min + (m.max - m.min) * i / 400;
+      if (!OK(q) || !OK(finalP(q))) continue;
+      (sideOf(q) ? hi : lo).push(q[k]);
+    }
+    if (!lo.length || !hi.length) continue;
+    /* берём середину каждой половины, а не край: у края картинка вырождается */
+    const mid = a => a[Math.floor(a.length / 2)];
+    const below = {...pv}, above = {...pv};
+    below[k] = mid(lo); above[k] = mid(hi);
+    return {key: k, below, above,
+            lowText: "s < δ+n+g — капитала на работника мало",
+            highText: "s > δ+n+g — капитала на работника много"};
+  }
+  return null;
+}
+
 /* ===================== состояния на картинке ===================== */
 function statesOf(){
   const pv = dispVals(), act = active(), out = [];
@@ -1281,13 +1376,42 @@ function renderMain(ctx, w, h, capture){
   }
 }
 
-function drawMain(){
-  const cv = document.getElementById("main");
+function paintOn(id, vals, capture){
+  const cv = document.getElementById(id);
   const {ctx, w, h} = fitCanvas(cv);
   ctx.clearRect(0, 0, w, h);
-  renderMain(ctx, w, h, true);
+  VOVR = vals;
+  try { renderMain(ctx, w, h, capture); } finally { VOVR = null; }
+}
+
+function drawMain(){
+  const fk = forkCase();
+  const cap1 = document.getElementById("cap1"), cap2 = document.getElementById("cap2");
+  const box2 = document.getElementById("fork2"), note = document.getElementById("forknote");
+  const cv = document.getElementById("main");
+
+  if (!fk){
+    cv.dataset.h = 620;
+    box2.hidden = cap1.hidden = note.hidden = true;
+    paintOn("main", null, true);
+  } else {
+    /* На развилке зум выключается: у двух картинок разные калибровки,
+       и общее окно по k для них ничего не значит. */
+    view = null;
+    cv.dataset.h = 420;
+    document.getElementById("main2").dataset.h = 420;
+    cap1.hidden = false; box2.hidden = false; note.hidden = false;
+    cap1.textContent = fk.lowText;  cap1.dataset.n = "1";
+    cap2.textContent = fk.highText; cap2.dataset.n = "2";
+    note.textContent = "Меняется α, а " + META[fk.key].sym + " условие не задаёт — " +
+      "значит экономика может стоять по любую сторону от границы, и картинки " +
+      "получаются разными. Обе одинаково возможны: какая верна, из условия " +
+      "не следует, поэтому в таблице и стоит «нельзя определить».";
+    paintOn("main", fk.below, true);
+    paintOn("main2", fk.above, false);
+  }
   const rb = document.getElementById("zoomreset");
-  if (rb) rb.hidden = !view;
+  if (rb) rb.hidden = !view || !!fk;
 }
 
 /* ===================== траектории во времени =====================

@@ -103,6 +103,40 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
      JSON.stringify(m3.slice().sort()) === JSON.stringify(['k₁','k₂','k₃','new','old','скачок'].sort()), m3);
   ok('и «new» по-прежнему одна', m3.filter(x => x.indexOf('new') === 0).length === 1, m3);
 
+  /* ---- развилка: две диаграммы там, где одна соврала бы ---- */
+  const fork = async i => { await load(i); return ev(()=>{
+    const f = forkCase();
+    return {key: f && f.key, two: !document.getElementById('fork2').hidden};
+  }); };
+  for (const i of [0, 1, 2]){
+    const f = await fork(i);
+    ok('задача ' + (i+1) + ': α не меняется — развилки нет', f.key === null && !f.two, f);
+  }
+  for (const i of [3, 4]){
+    const f = await fork(i);
+    ok('задача ' + (i+1) + ': α меняется при свободном параметре — две диаграммы',
+       f.key !== null && f.two, f);
+  }
+  ok('две картинки стоят по разные стороны от s = δ+n+g', await ev(()=>{
+    const f = forkCase();
+    const dep = q => q.d + q.n + q.g;
+    return f.below.s < dep(f.below) && f.above.s > dep(f.above);
+  }));
+  ok('и знак выпуска в них противоположный — ради этого всё и затевалось',
+     await ev(()=>{
+       const f = forkCase(), act = active();
+       const yAt = q => { const k = kStar(q), P = finalP(q);
+         return Math.log(f_(k, P)) - Math.log(f_(k, q)); };
+       const f_ = (k, p) => Math.pow(k, p.a);
+       return yAt(f.below) * yAt(f.above) < 0;
+     }));
+  ok('всё задано — развилки нет даже при шоке по α', await ev(()=>{
+    PKEYS.forEach(k => base[k].fixed = true);
+    refreshAll();
+    const f = forkCase();
+    return f === null && document.getElementById('fork2').hidden;
+  }));
+
   ok('ошибок в консоли нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(r=>r[0]==='FAIL');
