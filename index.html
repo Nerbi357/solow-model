@@ -178,6 +178,8 @@
   .idx{font-size:11.5px;color:var(--muted);min-width:9px;font-variant-numeric:tabular-nums}
   .chip{width:12px;height:12px;border-radius:50%;background:var(--live);flex:0 0 auto}
   .ctitle{flex:1;min-width:0;font-size:14.5px}
+  /* тот же подъём, что и на канвасе: 0,2 кегля */
+  .arr{vertical-align:.2em}
   .ctitle .arr{color:var(--muted);margin:0 3px}
   .ctitle .to{color:var(--live);font-weight:700;font-variant-numeric:tabular-nums}
   .ctitle .sym{font-style:italic;font-weight:700}
@@ -538,6 +540,8 @@ const num = (x, dg = 2) => (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ",
 const pct = (x, dg = 1) => (!isFinite(x) ? "—" : (x * 100).toFixed(dg).replace(".", ",") + "%");
 const esc = s => String(s).replace(/[&<>"]/g,
   c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+/* esc + подъём стрелки: везде, где «→» стоит между числами. */
+const escArr = s => esc(s).replace(/→/g, '<span class="arr">→</span>');
 const parseRu = s => {
   const v = parseFloat(String(s).trim().replace(",", ".").replace(/\s/g, ""));
   return isFinite(v) ? v : NaN;
@@ -788,17 +792,35 @@ function curve(ctx, fn, k0, k1, X, Y, color, w){
   ctx.stroke(); ctx.restore();
 }
 
+/* Глиф «→» сидит на математической оси — заметно ниже середины цифр,
+   и между числами («s: 0,200 → 0,220») выглядит проваленным. Подъём
+   меряется по самому шрифту, а не подбирается константой: стек может
+   уехать с Aptos на Segoe UI или Arial, и метрики там другие. */
+function arrowLift(ctx, sz){
+  const d = ctx.measureText("0"), a = ctx.measureText("→");
+  const dc = (d.actualBoundingBoxAscent - d.actualBoundingBoxDescent) / 2;
+  const ac = (a.actualBoundingBoxAscent - a.actualBoundingBoxDescent) / 2;
+  return isFinite(dc - ac) ? dc - ac : sz * 0.2;
+}
+
 function tag(ctx, x, y, text, color, align, size, bold){
   ctx.save();
   const sz = size || 13;
   ctx.font = (bold ? "700 " : "") + sz + "px " + FONT();
-  ctx.textAlign = align || "left"; ctx.textBaseline = "middle";
-  const pad = 3, m = ctx.measureText(text);
-  const bx = align === "right" ? x - m.width - pad
-           : align === "center" ? x - m.width/2 - pad : x - pad;
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  const pad = 3, w = ctx.measureText(text).width;
+  const x0 = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
   ctx.fillStyle = "rgba(255,255,255,.9)";
-  ctx.fillRect(bx, y - sz*.66, m.width + pad*2, sz*1.32);
-  ctx.fillStyle = color; ctx.fillText(text, x, y);
+  ctx.fillRect(x0 - pad, y - sz*.66, w + pad*2, sz*1.32);
+  ctx.fillStyle = color;
+  if (text.indexOf("→") < 0){ ctx.fillText(text, x0, y); ctx.restore(); return; }
+  const lift = arrowLift(ctx, sz);
+  let cx = x0;
+  text.split(/(→)/).forEach(part => {
+    if (!part) return;
+    ctx.fillText(part, cx, part === "→" ? y - lift : y);
+    cx += ctx.measureText(part).width;
+  });
   ctx.restore();
 }
 
@@ -955,7 +977,7 @@ let view = null;                       // null — авто; иначе окно
 let autoFrame = {k0:0, k1:1, y0:0, y1:1};
 let showGold = false;
 
-const geomOf = (w, h) => ({L:58, R:w - 104, T:28, B:h - 52});
+const geomOf = (w, h) => ({L:58, R:w - (w > 900 ? 186 : 120), T:28, B:h - 52});
 function geom(){
   const cv = document.getElementById("main");
   return geomOf(cv.clientWidth, parseInt(cv.dataset.h, 10));
@@ -970,7 +992,7 @@ function renderMain(ctx, w, h, capture){
   const items = [];
   CURVES.forEach(c => items.push({c, P:pv, color:col("--ink"), w:1.5, kind:"base"}));
   act.forEach(sh => AFFECTS[sh.key].forEach(c =>
-    items.push({c, P:paramsOf(sh), color:colHex(sh.ci), w:2.6, kind:"shock"})));
+    items.push({c, P:paramsOf(sh), color:colHex(sh.ci), w:2.6, kind:"shock", sh})));
   CURVES.forEach(c => {
     const known = new Set([sigOf(pv, c)].concat(act.map(sh => sigOf(paramsOf(sh), c))));
     if (!known.has(sigOf(PF, c))) items.push({c, P:PF, color:col("--res"), w:3, kind:"res"});
@@ -1060,13 +1082,25 @@ function renderMain(ctx, w, h, capture){
   ctx.restore();
 
   /* подписи линий у правого края */
+  /* Подпись называет состояние, а не одну формулу. Раньше у правого края
+     стоял столбик из шести одинаковых «s·f(k)» разными цветами: подпись,
+     одинаковая у всех, ничего не подписывает — приходилось отматывать
+     взгляд к легенде и сопоставлять по цвету. */
+  const subOf = i => i.kind === "base" ? "было"
+                   : i.kind === "res"  ? "итог всех шоков"
+                   : shockName(i.sh);
   const lab = items.map(i => ({y: Y(curveFn(i.c, i.P)(fr.k1)), t: CURVE_LABEL[i.c],
-                               c: i.color, b: i.kind !== "base"}))
+                               s: subOf(i), c: i.color, b: i.kind !== "base"}))
                    .filter(l => isFinite(l.y));
   lab.sort((p1, p2) => p1.y - p2.y);
+  const LH = 27;
   for (let i = 1; i < lab.length; i++)
-    if (lab[i].y - lab[i-1].y < 16) lab[i].y = lab[i-1].y + 16;
-  lab.forEach(l => tag(ctx, R + 9, Math.max(T - 6, Math.min(B + 12, l.y)), l.t, l.c, "left", 12.5, l.b));
+    if (lab[i].y - lab[i-1].y < LH) lab[i].y = lab[i-1].y + LH;
+  lab.forEach(l => {
+    const y = Math.max(T + 2, Math.min(B + 10, l.y));
+    tag(ctx, R + 9, y - 6, l.t, l.c, "left", 12.5, l.b);
+    tag(ctx, R + 9, y + 8, l.s, l.b ? l.c : col("--muted"), "left", 10.5);
+  });
 
   /* подписи на оси k: совпавшие состояния склеиваются в одну */
   const marks = [];
@@ -1146,7 +1180,7 @@ function renderCoords(){
   const rows = chosen.map((q, i) => {
     const rel = relOf(q);
     return '<tr style="--live:' + q.color + '">' +
-      '<td><span class="dot"></span>' + esc(q.label) +
+      '<td><span class="dot"></span>' + escArr(q.label) +
       ' <span style="color:var(--muted)">· ' + what[q.kind] + "</span></td>" +
       "<td>" + num(rel.k, 3) + "</td><td>" + num(rel.y, 3) + "</td>" +
       (i === 0 ? "<td>—</td><td>—</td>"
@@ -1184,7 +1218,7 @@ function renderFx(){
     const total = i >= act.length;
     return '<tr class="' + (total ? "total" : "") + '"' +
       (total ? "" : ' style="--live:' + colVar(act[i].ci) + '"') + ">" +
-      '<th class="who">' + (total ? "" : '<i class="sw"></i>') + esc(names[i]) + "</th>" +
+      '<th class="who">' + (total ? "" : '<i class="sw"></i>') + escArr(names[i]) + "</th>" +
       r.sr.map((c, j) => cell(c, j === 0)).join("") +
       r.lr.map((c, j) => cell(c, j === 0)).join("") + "</tr>";
   }).join("");
@@ -1262,7 +1296,7 @@ function renderNotes(){
       });
     });
     if (lines.length)
-      out.push('<div class="note"><b>' + esc(names[ri]) + " — что осталось неопределённым</b><p>" +
+      out.push('<div class="note"><b>' + escArr(names[ri]) + " — что осталось неопределённым</b><p>" +
                lines.join("<br>") + "</p></div>");
   });
   host.innerHTML = out.join("");
@@ -1274,7 +1308,7 @@ function renderLegend(){
   active().forEach(sh => {
     if (!AFFECTS[sh.key].length) return;
     parts.push('<span><i style="border-color:' + colHex(sh.ci) +
-      ';border-top-width:3px"></i> ' + esc(shockName(sh)) + "</span>");
+      ';border-top-width:3px"></i> ' + escArr(shockName(sh)) + "</span>");
   });
   if (FRAME.res)
     parts.push('<span><i style="border-color:' + col("--res") +
