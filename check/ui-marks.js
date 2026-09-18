@@ -125,6 +125,13 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   ok('и подписаны они «k < 1» и «k > 1»',
      JSON.stringify(await ev(()=>forkCase().cases.map(c=>c.text))) === '["k < 1","k > 1"]',
      await ev(()=>forkCase().cases.map(c=>c.text)));
+  /* Картинки обязаны отличаться пикселями, а не только расчётом: однажды
+     paintOn получал undefined вместо калибровки, и обе рисовались одинаково,
+     притом что все расчётные проверки проходили. */
+  ok('и нарисованы они по-разному, а не одной калибровкой',
+     await ev(()=>document.getElementById('main').toDataURL()
+               !== document.getElementById('main2').toDataURL()));
+
   ok('знак выпуска в них противоположный — ради этого всё и затевалось',
      await ev(()=>{
        const pw = (k, p) => Math.pow(k, p.a);
@@ -146,6 +153,20 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
     refreshAll();
     const f = forkCase();
     return f === null && document.getElementById('fork2').hidden;
+  }));
+
+  /* display в классе перебивал атрибут hidden, и подпись случая оставалась
+     висеть после того, как шоки убрали. */
+  await load(3);
+  while (await ev(()=>!!document.querySelector('[data-del]'))){
+    await ev(()=>document.querySelector('[data-del]').click());
+    await p.waitForTimeout(300);
+  }
+  await p.waitForTimeout(400);
+  ok('убрали шоки — подпись случая ушла с экрана', await ev(()=>{
+    const vis = e => !!e.offsetParent;
+    return !forkCase() && ![...document.querySelectorAll('.forkcap')].some(vis) &&
+           !vis(document.getElementById('forklead'));
   }));
 
   ok('ошибок в консоли нет', errs.length === 0, errs);

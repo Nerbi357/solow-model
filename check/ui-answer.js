@@ -128,6 +128,35 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
      meta.every(q=>q.a.indexOf('Кобба — Дугласа') > 0 && q.a.indexOf('стационарном') > 0),
      meta.filter(q=>!(q.a.indexOf('Кобба — Дугласа') > 0 && q.a.indexOf('стационарном') > 0)).map(q=>q.t));
 
+  /* --- 7. разбор: свой ответ под каждым шагом, и он ни на кого не ссылается --- */
+  const why = await ev(()=>PROBLEMS.map(q=>({t:q.title, w:q.why})));
+  ok('в разборе три шага, и у каждого свой ответ',
+     why.every(q=>q.w.length === 3 && q.w.every(st=>st.length === 3 && st[2].trim().length > 10)),
+     why.map(q=>q.w.length + ':' + q.w.map(st=>st.length).join(',')));
+  ok('заголовки шагов — те же три вопроса во всех задачах',
+     why.every(q=>JSON.stringify(q.w.map(st=>st[0])) === JSON.stringify(
+       ['Какие кривые двигаются?', 'Что происходит в краткосрочном периоде?',
+        'Что происходит в долгосрочном периоде?'])),
+     why.map(q=>q.w.map(st=>st[0])));
+  ok('ни один разбор не ссылается на другую задачу',
+     why.every(q=>!/Та же задача|листк|задач[еи] \d|как выше|как в предыдущ/i.test(
+       q.w.map(st=>st.join(' ')).join(' '))),
+     why.filter(q=>/Та же задача|листк|задач[еи] \d|как выше|как в предыдущ/i.test(
+       q.w.map(st=>st.join(' ')).join(' '))).map(q=>q.t));
+  ok('в разборе нет формулы стационара и слова «запас»',
+     why.every(q=>{ const txt = q.w.map(st=>st.join(' ')).join(' ');
+                    return !/1\s*[−-]\s*α\s*\)/.test(txt) && !/запас/i.test(txt); }),
+     why.filter(q=>{ const txt = q.w.map(st=>st.join(' ')).join(' ');
+                     return /1\s*[−-]\s*α\s*\)/.test(txt) || /запас/i.test(txt); }).map(q=>q.t));
+  await load(0);
+  ok('ответ шага назван ответом на странице',
+     await ev(()=>{ const d = document.querySelector('.solution details');
+                    if (d) d.open = true;
+                    const li = [...document.querySelectorAll('.why > li')];
+                    return li.length === 3 && li.every(e=>{
+                      const a = e.querySelector('.ans');
+                      return a && /^Ответ\./.test(a.textContent.trim()); }); }));
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(r=>r[0]==='FAIL');
