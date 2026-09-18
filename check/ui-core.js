@@ -155,16 +155,16 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
     const bb0 = await p.locator('#main').boundingBox();
     await p.mouse.move(bb0.x+bb0.width*0.45, bb0.y+bb0.height*0.78);
     for (let i=0;i<5;i++){ await p.mouse.wheel(0,-120); await p.waitForTimeout(60); }
-    ok('колесо приближает', await ev(()=>!!view && view.k1-view.k0 < autoFrame.k1-autoFrame.k0),
-       await ev(()=>view));
+    ok('колесо приближает', await ev(()=>!!PANE.main.view && PANE.main.view.k1-PANE.main.view.k0 < PANE.main.auto.k1-PANE.main.auto.k0),
+       await ev(()=>PANE.main.view));
     ok('кнопка сброса масштаба появилась', await ev(()=>!document.getElementById('zoomreset').hidden));
-    const v1 = await ev(()=>({...view}));
+    const v1 = await ev(()=>({...PANE.main.view}));
     await p.mouse.move(bb0.x+600, bb0.y+400); await p.mouse.down();
     await p.mouse.move(bb0.x+490, bb0.y+440, {steps:6}); await p.mouse.up();
     await p.waitForTimeout(200);
-    ok('перетаскивание сдвигает окно', await ev(v=>view.k0 !== v.k0, v1), await ev(()=>view));
+    ok('перетаскивание сдвигает окно', await ev(v=>PANE.main.view.k0 !== v.k0, v1), await ev(()=>PANE.main.view));
     await p.locator('#zoomreset').click(); await p.waitForTimeout(220);
-    ok('сброс возвращает авто', await ev(()=>view===null));
+    ok('сброс возвращает авто', await ev(()=>PANE.main.view===null));
   }
 
   // ---- значение шока в шапке карточки ----
@@ -184,7 +184,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   await loadP(1); await show();
 
   // ---- 9. точки и координаты ----
-  const hits = await ev(()=>HITS.map(h=>({id:h.id,x:h.x,y:h.y})));
+  const hits = await ev(()=>PANE.main.hits.map(h=>({id:h.id,x:h.x,y:h.y})));
   const bb = await p.locator('#main').boundingBox();
   const click = async id => { const h = hits.find(x=>x.id===id); await p.mouse.click(bb.x+h.x+1, bb.y+h.y+1); await p.waitForTimeout(220); };
   await click('base-out');

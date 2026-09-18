@@ -71,7 +71,7 @@ const pick = a => a[Math.floor(rand() * a.length)];
               base[k] = {v: clampKey(k, v), fixed: !!fx, def: clampKey(k, v)}; });
             shocks = [{key: cfg.key, form: cfg.form,
                        value: clampKey(cfg.key, cfg.value, cfg.form), on: true, ci: 0}];
-            probIdx = -1; picked = []; revealed = true; view = null; refreshAll();
+            probIdx = -1; picked = []; revealed = true; zoomReset(); refreshAll();
           }, {base: bset, key, form, value});
           await p.waitForTimeout(190);
           const r = await probe(); n++;

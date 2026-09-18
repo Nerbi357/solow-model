@@ -89,8 +89,17 @@
     background:var(--ink-2);color:var(--paper);font-size:12px;font-weight:700;
     display:inline-flex;align-items:center;justify-content:center;
   }
+  /* Когда s мала, инвестиции и выбытие ложатся на саму ось: отношение
+     f(k) к s·f(k) равно 1/s, и никакой выбор рамки его не меняет. Молчать
+     об этом нельзя — студент читает картинку как ответ. */
+  .tight{
+    margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--muted);
+    background:var(--card-2);border:1px solid var(--rule);
+    border-radius:var(--r);padding:9px 13px;
+  }
   #fork2{margin-top:16px}
   .coords{margin:14px 0 24px}
+  .ccase{margin:0 0 8px;font-size:13px;font-weight:700;color:var(--ink-2)}
   .phead{
     display:flex;align-items:center;justify-content:space-between;
     gap:16px;margin-bottom:9px;flex-wrap:wrap;
@@ -516,10 +525,12 @@
       <p class="forkcap" id="cap1" hidden></p>
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
+      <p class="tight" id="tight1" hidden></p>
       <div id="fork2" hidden>
         <p class="forkcap" id="cap2"></p>
         <canvas id="main2" data-h="620" tabindex="0"
                 aria-label="Та же диаграмма для второго случая."></canvas>
+        <p class="tight" id="tight2" hidden></p>
       </div>
 
       <div class="coords" id="coords" hidden><div id="coords-body"></div></div>
@@ -1219,29 +1230,60 @@ const sideOf = q => {
    входят сразу четыре параметра. */
 const forkGridN = n => n <= 1 ? 121 : n === 2 ? 25 : n === 3 ? 13 : n === 4 ? 7 : 5;
 const SIDE_FAR = Math.log(3);        // насколько далеко от k = 1 брать картинку
+
+/* Значения по одной свободной оси: равномерная сетка плюс само иллюстративное
+   значение. Без него представитель обязан сойти с иллюстративной калибровки
+   по всем осям сразу — в том числе там, где сторона от k = 1 этого вовсе
+   не требует, — и два случая различались бы не тем одним, ради чего они
+   и нарисованы. */
+function forkAxis(k, ill, N){
+  const m = META[k], v = [];
+  for (let j = 0; j < N; j++) v.push(m.min + (m.max - m.min) * j / (N - 1));
+  if (ill > m.min && ill < m.max && !v.some(x => Math.abs(x - ill) < 1e-9)) v.push(ill);
+  return v;
+}
+
+/* Насколько картинка при такой калибровке вообще читается. Расстояние между
+   f(k) и s·f(k) — это и есть s: при s около единицы линии сливаются в одну,
+   и на экране это выглядит не как жирная линия, а как линия с зазором внутри
+   (две антиалиасные линии в полутора пикселях друг от друга). При s около
+   нуля s·f(k) ложится на ось, и главное место диаграммы — пересечение
+   с выбытием — оказывается самым мелким. Середина шкалы лучше обоих краёв;
+   ровно поэтому и DEFAULT_BASE стоит на s = 0,50. */
+const forkBlur = q => {
+  const s = Math.min(Math.max(q.s, 1e-6), 1 - 1e-6);
+  return Math.abs(Math.log(s / (1 - s)));
+};
+const FORK_W_BLUR = 0.30, FORK_W_ILL = 0.25;
 function forkCase(){
   if (!active().some(sh => sh.key === "a")) return null;
   const free = freeKeys();
   if (!free.length) return null;
   const pv = dispVals(), N = forkGridN(free.length);
+  const axes = free.map(k => forkAxis(k, pv[k], N));
   const best = {lo: null, hi: null};
-  const total = Math.pow(N, free.length);
+  let total = 1; axes.forEach(a => { total *= a.length; });
   for (let idx = 0; idx < total; idx++){
     const q = {...pv};
-    let r = idx;
-    for (const k of free){
-      const j = r % N; r = (r - j) / N;
-      const m = META[k];
-      q[k] = m.min + (m.max - m.min) * j / (N - 1);
+    let r = idx, ill = 0;
+    for (let t = 0; t < free.length; t++){
+      const a = axes[t], j = r % a.length; r = (r - j) / a.length;
+      const k = free[t], m = META[k];
+      q[k] = a[j];
+      ill += Math.abs(q[k] - pv[k]) / (m.max - m.min);
     }
     if (!OK(q) || !OK(finalP(q))) continue;
-    const k0 = kStar(q);
-    if (!isFinite(k0) || k0 <= 0) continue;
-    /* представителем берётся не край области, а точка, где k отстоит
-       от единицы примерно втрое: у края картинка вырождается */
-    const score = Math.abs(Math.abs(Math.log(k0)) - SIDE_FAR);
     const st = sideOf(q);
     if (st === null) continue;                 // ровно на границе — ничья точка
+    const k0 = kStar(q);
+    if (!isFinite(k0) || k0 <= 0) continue;
+    /* Счёт складывается из трёх слагаемых: насколько k отстоит от единицы
+       (у самого края картинка вырождается), насколько сливаются f(k)
+       и s·f(k), и насколько калибровка ушла от иллюстративной. Раньше
+       считалось только первое — и перебор спокойно брал s = 0,99, при
+       которой обе кривые выпуска ложатся одна на другую. */
+    const score = Math.abs(Math.abs(Math.log(k0)) - SIDE_FAR)
+                + FORK_W_BLUR * forkBlur(q) + FORK_W_ILL * ill;
     const side = st ? "hi" : "lo";
     if (!best[side] || score < best[side].score) best[side] = {q, score};
   }
@@ -1308,9 +1350,23 @@ function pointList(){
 }
 
 /* ===================== главная диаграмма ===================== */
-let HITS = [], FRAME = {gold:false, points:0};
-let view = null;                       // null — авто; иначе окно {k0,k1,y0,y1}
-let autoFrame = {k0:0, k1:1, y0:0, y1:1};
+/* Зум, авторамка и отмеченные точки принадлежат каждой диаграмме отдельно:
+   на развилке их две, калибровки у них разные, и общее окно по k для них
+   не значит ничего. Раньше на развилке зум просто выключался — нижнюю
+   картинку нельзя было ни приблизить, ни сдвинуть, а она там нужнее всего:
+   когда s меньше выбытия, инвестиции жмутся к самой оси.
+   `CUR` — набор той диаграммы, которую рисуют прямо сейчас; ставит его
+   и снимает только `withPane()`. */
+const PANES = ["main", "main2"];
+const PANE = {};
+PANES.forEach(id => { PANE[id] = {id, view:null, auto:{k0:0,k1:1,y0:0,y1:1},
+                                  hits:[], tight:false, apart:Infinity, cursor:-1}; });
+let CUR = PANE.main;
+function withPane(p, fn){
+  const was = CUR; CUR = p;
+  try { return fn(); } finally { CUR = was; }
+}
+const zoomReset = () => { PANES.forEach(id => { PANE[id].view = null; }); };
 let showGold = false;
 
 const geomOf = (w, h) => ({
@@ -1399,13 +1455,37 @@ function renderMain(ctx, w, h, capture){
   pts.forEach(q => { yTop = Math.max(yTop, q.y); });
   yTop *= 1.1;
   if (!(yTop > 0) || !isFinite(yTop)) yTop = 1;
-  autoFrame = {k0:0, k1:kTop, y0:0, y1:yTop};
+  CUR.auto = {k0:0, k1:kTop, y0:0, y1:yTop};
 
-  const fr = view || autoFrame, home = !view;
+  const fr = CUR.view || CUR.auto, home = !CUR.view;
   const X = k => L + ((k - fr.k0) / (fr.k1 - fr.k0)) * (R - L);
   const Y = y => B - ((y - fr.y0) / (fr.y1 - fr.y0)) * (B - T);
   const onX = k => k >= fr.k0 - 1e-9 && k <= fr.k1 + 1e-9;
   const onY = y => y >= fr.y0 - 1e-9 && y <= fr.y1 + 1e-9;
+
+  /* Две линии одного цвета, разошедшиеся на несколько пикселей, читаются
+     не как две линии, а как одна с зазором внутри. Так бывает, когда s близка
+     к единице (сливаются f и s·f) и когда s близка к выбытию (сливаются s·f
+     и (δ+n+g)k). Расстояние между ними задаёт сама модель — отношение равно
+     1/s и 1/(s·k^(α−1)) соответственно, — и выбором рамки его не исправить.
+     Значит про это надо сказать словами и дать приблизить. Считается
+     по тем же кривым, которые сейчас рисуются, и в тех же пикселях:
+     приблизили — линии разошлись, и заметка уходит сама. */
+  let apart = Infinity;
+  for (let i = 0; i < items.length; i++)
+    for (let j = i + 1; j < items.length; j++){
+      if (items[i].color !== items[j].color) continue;
+      const c1 = curveFn(items[i].c, items[i].P), c2 = curveFn(items[j].c, items[j].P);
+      let mx = 0;
+      for (let t = 0; t <= 24; t++){
+        const k = fr.k0 + (fr.k1 - fr.k0) * t / 24;
+        const a = Y(c1(k)), b = Y(c2(k));
+        if (isFinite(a) && isFinite(b)) mx = Math.max(mx, Math.abs(a - b));
+      }
+      apart = Math.min(apart, mx);
+    }
+  CUR.apart = apart;
+  CUR.tight = isFinite(apart) && apart < TIGHT_PX;
 
   axes(ctx, L, B, R, T, home);
   tag(ctx, R + 22, B + 18, "k", col("--ink"), "center", 15, true);
@@ -1567,22 +1647,29 @@ function renderMain(ctx, w, h, capture){
   ylab.forEach(l => tagSub(ctx, L - 24, l.y, "y", l.low, l.c, true));
 
   drawLegend(ctx, L, T, sts, R - L);
-  if (capture){
-    HITS = hits;
-    FRAME = {gold: showGold && goldFits, points: hits.length,
-             jump: !!(jmp && jmp.axis),
-             res:  !!(fin && fin.axis) || items.some(i => i.kind === "res")};
-  }
+  if (capture) CUR.hits = hits;
 }
+
+const TIGHT_PX = 16;
+const TIGHT_NOTE = "Две линии почти легли друг на друга и читаются как одна " +
+  "с зазором внутри. Развести их рамкой нельзя — расстояние между ними задаёт " +
+  "сама модель. Приблизьте колесом или перетащите картинку.";
 
 function paintOn(id, vals, capture){
   const cv = document.getElementById(id);
   const {ctx, w, h} = fitCanvas(cv);
   ctx.clearRect(0, 0, w, h);
   VOVR = vals;
-  try { renderMain(ctx, w, h, capture); } finally { VOVR = null; }
+  try { withPane(PANE[id], () => renderMain(ctx, w, h, capture)); }
+  finally { VOVR = null; }
+  const note = document.getElementById(id === "main" ? "tight1" : "tight2");
+  if (note){
+    note.hidden = !PANE[id].tight;
+    if (PANE[id].tight) note.textContent = TIGHT_NOTE;
+  }
 }
 
+let forkWas = false;
 function drawMain(){
   const fk = forkCase();
   const cap1 = document.getElementById("cap1"), cap2 = document.getElementById("cap2");
@@ -1591,16 +1678,17 @@ function drawMain(){
 
   const cv2 = document.getElementById("main2");
   const ALT = "Диаграмма накопления. Щелчок по точке показывает её координаты.";
+  /* Развилка появилась или исчезла — калибровка сменилась целиком,
+     и старое окно зума в единицах k больше ничего не значит. */
+  if (!!fk !== forkWas){ zoomReset(); forkWas = !!fk; }
   if (!fk){
+    PANE.main2.hits = []; PANE.main2.tight = false;
     cv.dataset.h = 620;
     cv.setAttribute("aria-label", ALT);
     lead.hidden = true;
     box2.hidden = cap1.hidden = true;
     paintOn("main", null, true);
   } else {
-    /* На развилке зум выключается: у двух картинок разные калибровки,
-       и общее окно по k для них ничего не значит. */
-    view = null;
     cv.dataset.h = 420;
     cv2.dataset.h = 420;
     /* Подписи случаев видит и тот, кто читает страницу экранным диктором */
@@ -1616,10 +1704,10 @@ function drawMain(){
       "решает " + META[fk.key].sym + ", а условие " + META[fk.key].sym +
       " не называет. Поэтому диаграммы две, и обе одинаково возможны.";
     paintOn("main", fk.cases[0].vals, true);
-    paintOn("main2", fk.cases[1].vals, false);
+    paintOn("main2", fk.cases[1].vals, true);
   }
   const rb = document.getElementById("zoomreset");
-  if (rb) rb.hidden = !view || !!fk;
+  if (rb) rb.hidden = !PANES.some(id => PANE[id].view);
 }
 
 /* ===================== траектории во времени =====================
@@ -1808,7 +1896,16 @@ const relOf = q => { const r = refs(); return {k: q.k / r.k, y: q.y / r.y}; };
 const coordText = q => { const r = relOf(q); return "(" + num(r.k, 2) + "; " + num(r.y, 2) + ")"; };
 
 /* ===================== координаты отмеченных точек ===================== */
+/* На развилке координаты обязаны считаться по калибровке той диаграммы,
+   с которой отмечают точку. Раньше они считались по иллюстративной — то есть
+   по картинке, которой на экране нет вовсе: ни первый случай, ни второй. */
 function renderCoords(){
+  const fk = forkCase();
+  const c = fk ? (fk.cases[PANES.indexOf(pickPane)] || fk.cases[0]) : null;
+  VOVR = c ? c.vals : null;
+  try { coordsBody(c ? c.text : null); } finally { VOVR = null; }
+}
+function coordsBody(caseText){
   const body = document.getElementById("coords-body"), clear = document.getElementById("clearpts");
   const pts = pointList(), chosen = picked.map(id => pts.find(q => q.id === id)).filter(Boolean);
   /* Точка, которой больше нет (убрали шок), не должна жить в ссылке. */
@@ -1835,7 +1932,8 @@ function renderCoords(){
                : "<td>" + d(rel.k, first.k) + "</td><td>" + d(rel.y, first.y) + "</td>") +
       "</tr>";
   }).join("");
-  body.innerHTML = '<table class="ctab"><thead><tr><th>точка</th><th>k</th><th>y</th>' +
+  body.innerHTML = (caseText ? '<p class="ccase">Случай ' + caseText + "</p>" : "") +
+    '<table class="ctab"><thead><tr><th>точка</th><th>k</th><th>y</th>' +
     "<th>Δk к первой</th><th>Δy к первой</th></tr></thead><tbody>" + rows + "</tbody></table>";
 }
 
@@ -2274,8 +2372,9 @@ function loadProblem(i){
     ({key: s.key, form: s.form, value: clampKey(s.key, s.value, s.form), on: true, ci: j}));
   probIdx = i;
   picked = [];
+  pickPane = "main";
   revealed = false;
-  view = null;
+  zoomReset();
 }
 
 /* Условие показывается, пока это та же задача. Состав шоков её и определяет:
@@ -2462,8 +2561,12 @@ document.getElementById("png").addEventListener("click", e => {
     ctx.save();
     ctx.translate(0, i * (CAP + h + GAP));
     if (c){ capTag(ctx, i + 1, c.text); ctx.translate(0, CAP); }
+    const pane = PANE[PANES[i]] || PANE.main;
     VOVR = c ? c.vals : null;
-    try { renderMain(ctx, w, h, false); } finally { VOVR = null; }
+    try {
+      withPane({view: pane.view, auto: pane.auto, hits: [], tight: false, apart: Infinity},
+               () => renderMain(ctx, w, h, false));
+    } finally { VOVR = null; }
     ctx.restore();
   });
   const name = "solow-" + PKEYS.map(k => k + trim(base[k].v)).join("-").replace(/\./g, "_") +
@@ -2630,7 +2733,7 @@ document.getElementById("basereset").addEventListener("click", () => {
     const [v, fx] = (q && q.base[k]) ? q.base[k] : [DEFAULT_BASE[k].v, DEFAULT_BASE[k].fixed ? 1 : 0];
     base[k] = {v: clampKey(k, v), fixed: !!fx, def: clampKey(k, v)};
   });
-  view = null;
+  zoomReset();
   refreshAll();
 });
 
@@ -2647,7 +2750,7 @@ document.getElementById("helpbtn").addEventListener("click", e => {
   e.currentTarget.setAttribute("aria-pressed", !el.hidden);
 });
 document.getElementById("zoomreset").addEventListener("click", () => {
-  view = null; drawMain(); renderLegend();
+  zoomReset(); drawMain(); renderLegend();
 });
 
 document.getElementById("probs").addEventListener("click", e => {
@@ -2658,86 +2761,100 @@ document.getElementById("probs").addEventListener("click", e => {
 });
 
 /* ---------- отметки точек ---------- */
-function togglePoint(id){
+/* На развилке координаты читаются с той диаграммы, по которой щёлкнули:
+   у случаев разные калибровки, и смешивать точки из обеих в одной таблице
+   нельзя — числа в ней относительные, отсчитываются от своего стационара. */
+let pickPane = "main";
+function togglePoint(id, pane){
+  if (pane && pane !== pickPane){ pickPane = pane; picked = []; }
   const i = picked.indexOf(id);
   if (i >= 0) picked.splice(i, 1); else picked.push(id);
   drawMain(); renderCoords(); syncHash();
 }
-const cv = document.getElementById("main");
-const nearest = (x, y) => {
-  let best = null, bd = 18;
-  HITS.forEach(h => { const d = Math.hypot(h.x - x, h.y - y); if (d < bd){ bd = d; best = h; } });
-  return best;
-};
 
 /* Колесо приближает вокруг курсора, перетаскивание сдвигает. Если окно стало
-   шире домашнего, возвращаемся к авто — так из зума всегда есть выход. */
-cv.addEventListener("wheel", e => {
-  e.preventDefault();
-  const fr = view || autoFrame, g = geom();
-  const kw = fr.k1 - fr.k0, yh = fr.y1 - fr.y0;
-  const kx = fr.k0 + (e.offsetX - g.L) / (g.R - g.L) * kw;
-  const ky = fr.y0 + (g.B - e.offsetY) / (g.B - g.T) * yh;
-  const z = e.deltaY < 0 ? 1 / 1.18 : 1.18;
-  const nw = kw * z, nh = yh * z;
-  if (nw >= (autoFrame.k1 - autoFrame.k0) * 1.02){ view = null; drawMain(); return; }
-  if (nw < 1e-7 || nh < 1e-10) return;
-  let k0 = kx - (kx - fr.k0) * z, y0 = ky - (ky - fr.y0) * z;
-  if (k0 < 0) k0 = 0;
-  if (y0 < 0) y0 = 0;
-  view = {k0, k1: k0 + nw, y0, y1: y0 + nh};
-  drawMain();
-}, {passive: false});
+   шире домашнего, возвращаемся к авто — так из зума всегда есть выход.
+   Обработчики висят на обеих диаграммах: у каждой своё окно и свои точки. */
+function bindPane(id){
+  const cv = document.getElementById(id), P = PANE[id];
+  const geo = () => geomOf(cv.clientWidth, parseInt(cv.dataset.hNow || cv.dataset.h, 10));
+  const nearest = (x, y) => {
+    let best = null, bd = 18;
+    P.hits.forEach(h => { const d = Math.hypot(h.x - x, h.y - y); if (d < bd){ bd = d; best = h; } });
+    return best;
+  };
 
-let drag = null;
-cv.addEventListener("pointerdown", e => {
-  /* Пальцем по графику — прокрутка страницы, а не панорама: канвас занимает
-     три четверти экрана телефона, и панорама означала бы, что мимо него
-     вообще не проскроллить. Щелчок по точке при этом работает, мышь тоже. */
-  if (e.pointerType === "touch") return;
-  drag = {sx: e.clientX, sy: e.clientY, moved: 0, base: view ? {...view} : {...autoFrame}};
-  try { cv.setPointerCapture(e.pointerId); } catch (err) { /* не критично */ }
-});
-cv.addEventListener("pointermove", e => {
-  if (!drag){
-    cv.style.cursor = nearest(e.offsetX, e.offsetY) ? "pointer" : (view ? "grab" : "crosshair");
-    return;
-  }
-  const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
-  drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
-  if (drag.moved < 4) return;
-  cv.style.cursor = "grabbing";
-  const fr = drag.base, g = geom();
-  const kPer = (fr.k1 - fr.k0) / (g.R - g.L), yPer = (fr.y1 - fr.y0) / (g.B - g.T);
-  let k0 = fr.k0 - dx * kPer, y0 = fr.y0 + dy * yPer;
-  if (k0 < 0) k0 = 0;
-  if (y0 < 0) y0 = 0;
-  view = {k0, k1: k0 + (fr.k1 - fr.k0), y0, y1: y0 + (fr.y1 - fr.y0)};
-  drawMain();
-});
-cv.addEventListener("pointerup", e => {
-  if (!drag) return;
-  const click = drag.moved < 4;
-  drag = null;
-  try { cv.releasePointerCapture(e.pointerId); } catch (err) { /* уже отпущен */ }
-  cv.style.cursor = "crosshair";
-  if (click){ const h = nearest(e.offsetX, e.offsetY); if (h) togglePoint(h.id); }
-});
-cv.addEventListener("pointercancel", () => { drag = null; });
-cv.addEventListener("dblclick", () => { view = null; drawMain(); });
-let cursor = -1;
-cv.addEventListener("keydown", e => {
-  if (!HITS.length) return;
-  if (e.key === "ArrowRight" || e.key === "ArrowDown") cursor = (cursor + 1) % HITS.length;
-  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") cursor = (cursor - 1 + HITS.length) % HITS.length;
-  else if (e.key === "Enter" || e.key === " "){
-    if (cursor >= 0 && HITS[cursor]) togglePoint(HITS[cursor].id);
-    e.preventDefault(); return;
-  } else if (e.key === "Escape"){ picked = []; drawMain(); renderCoords(); syncHash(); return; }
-  else return;
-  e.preventDefault();
-  if (HITS[cursor] && picked.indexOf(HITS[cursor].id) < 0) togglePoint(HITS[cursor].id);
-});
+  cv.addEventListener("wheel", e => {
+    e.preventDefault();
+    const fr = P.view || P.auto, g = geo();
+    const kw = fr.k1 - fr.k0, yh = fr.y1 - fr.y0;
+    const kx = fr.k0 + (e.offsetX - g.L) / (g.R - g.L) * kw;
+    const ky = fr.y0 + (g.B - e.offsetY) / (g.B - g.T) * yh;
+    const z = e.deltaY < 0 ? 1 / 1.18 : 1.18;
+    const nw = kw * z, nh = yh * z;
+    if (nw >= (P.auto.k1 - P.auto.k0) * 1.02){ P.view = null; drawMain(); return; }
+    if (nw < 1e-7 || nh < 1e-10) return;
+    let k0 = kx - (kx - fr.k0) * z, y0 = ky - (ky - fr.y0) * z;
+    if (k0 < 0) k0 = 0;
+    if (y0 < 0) y0 = 0;
+    P.view = {k0, k1: k0 + nw, y0, y1: y0 + nh};
+    drawMain();
+  }, {passive: false});
+
+  let drag = null;
+  cv.addEventListener("pointerdown", e => {
+    /* Пальцем по графику — прокрутка страницы, а не панорама: канвас занимает
+       три четверти экрана телефона, и панорама означала бы, что мимо него
+       вообще не проскроллить. Щелчок по точке при этом работает, мышь тоже. */
+    if (e.pointerType === "touch") return;
+    drag = {sx: e.clientX, sy: e.clientY, moved: 0, base: P.view ? {...P.view} : {...P.auto}};
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* не критично */ }
+  });
+  cv.addEventListener("pointermove", e => {
+    if (!drag){
+      cv.style.cursor = nearest(e.offsetX, e.offsetY) ? "pointer" : (P.view ? "grab" : "crosshair");
+      return;
+    }
+    const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
+    if (drag.moved < 4) return;
+    cv.style.cursor = "grabbing";
+    const fr = drag.base, g = geo();
+    const kPer = (fr.k1 - fr.k0) / (g.R - g.L), yPer = (fr.y1 - fr.y0) / (g.B - g.T);
+    let k0 = fr.k0 - dx * kPer, y0 = fr.y0 + dy * yPer;
+    if (k0 < 0) k0 = 0;
+    if (y0 < 0) y0 = 0;
+    P.view = {k0, k1: k0 + (fr.k1 - fr.k0), y0, y1: y0 + (fr.y1 - fr.y0)};
+    drawMain();
+  });
+  cv.addEventListener("pointerup", e => {
+    if (!drag) return;
+    const click = drag.moved < 4;
+    drag = null;
+    try { cv.releasePointerCapture(e.pointerId); } catch (err) { /* уже отпущен */ }
+    cv.style.cursor = "crosshair";
+    if (click){ const h = nearest(e.offsetX, e.offsetY); if (h) togglePoint(h.id, id); }
+  });
+  cv.addEventListener("pointercancel", () => { drag = null; });
+  cv.addEventListener("dblclick", () => { P.view = null; drawMain(); });
+
+  cv.addEventListener("keydown", e => {
+    const n = P.hits.length;
+    if (!n) return;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") P.cursor = (P.cursor + 1) % n;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") P.cursor = (P.cursor - 1 + n) % n;
+    else if (e.key === "Enter" || e.key === " "){
+      if (P.cursor >= 0 && P.hits[P.cursor]) togglePoint(P.hits[P.cursor].id, id);
+      e.preventDefault(); return;
+    } else if (e.key === "Escape"){ picked = []; drawMain(); renderCoords(); syncHash(); return; }
+    else return;
+    e.preventDefault();
+    if (P.hits[P.cursor] && picked.indexOf(P.hits[P.cursor].id) < 0)
+      togglePoint(P.hits[P.cursor].id, id);
+  });
+}
+PANES.forEach(bindPane);
+
 document.getElementById("clearpts").addEventListener("click", () => {
   picked = []; drawMain(); renderCoords(); syncHash();
 });
