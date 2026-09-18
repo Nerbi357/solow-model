@@ -63,6 +63,25 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
        fits(r.lr, r.tbl.lr), {путь:r.lr, таблица:r.tbl.lr});
   }
 
+  /* Горизонт считается от скорости сходимости, а она мала при α, близкой
+     к единице. Раньше горизонт обрезался пятьюстами единицами времени, и путь
+     не доходил до стационара вовсе: пунктир «new» оказывался за полем. */
+  for (const [name, a, sh] of [['α = 0,95', 0.95, ['s','mul',1.8]],
+                               ['α = 0,99', 0.99, ['d','add',0.01]],
+                               ['α = 0,05', 0.05, ['s','mul',2]]]){
+    const r = await ev(({a, sh}) => {
+      PKEYS.forEach(k => { const v = k === 'a' ? a : DEFAULT_BASE[k].v;
+        base[k] = {v: clampKey(k, v), fixed: true, def: clampKey(k, v)}; });
+      shocks = [{key: sh[0], form: sh[1], value: clampKey(sh[0], sh[2], sh[1]), on: true, ci: 0}];
+      revealed = true; refreshAll();
+      const d = pathData(); if (!d) return null;
+      const last = d.pts[d.pts.length - 1].v.k, kN = kStar(finalP(dispVals()));
+      return {rel: last / kN, pts: d.pts.length};
+    }, {a, sh});
+    ok('при ' + name + ' путь доходит до нового стационара',
+       r && Math.abs(r.rel - 1) < 0.05 && r.pts < 3000, r);
+  }
+
   /* уровень сразу после шоков подписан там же, где на большой диаграмме */
   await load(2);                                   // L ×0,90 и δ +5 п.п.: скачок есть
   ok('на траектории есть уровень «скачок», когда он отличается от old и new',
