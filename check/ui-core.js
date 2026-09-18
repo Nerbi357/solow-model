@@ -103,7 +103,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
      return !t.some(r=>r.includes('?')); }), await tbl());
   await loadP(1); await show();
 
-  // ---- 6. шесть задач против независимого расчёта ----
+  // ---- 6. задачи против независимого расчёта ----
   const EXPECT = {
     0: {rows:['↓↓↓↓====','↓↓↓↓====','↓↓↓↓===='], free:['s','d','a']},
     1: {rows:['==↓↑↑↑?↑','====↓↓↓↓','==↓↑↑↑?↑'], free:['a']},
