@@ -226,9 +226,11 @@
   }
 
   /* Шпаргалка: какие шоки дают только временный сдвиг, какие — постоянный,
-     а какие оба. По сути это правило AFFECTS, вывернутое в сторону студента. */
+     а какие оба. По сути это правило AFFECTS, вывернутое в сторону студента.
+     Стоит первой в панели: под карточками шоков её приходилось искать
+     прокруткой, а подсказку читают до того, как начали крутить. */
   .whatab{
-    width:100%;border-collapse:collapse;margin:14px 0 0;font-size:13px;
+    width:100%;border-collapse:collapse;margin:0;font-size:13px;
     border:1px solid var(--rule);border-radius:var(--r);background:var(--card-2);
   }
   .whatab caption{
@@ -533,6 +535,18 @@
 
     <div class="panel">
 
+      <!-- Памятка стоит первой в панели: это шпаргалка, а не итог, и читать
+           её надо до того, как студент начал крутить ползунки. -->
+      <div class="block">
+        <table class="whatab">
+          <caption>Временный сдвиг или новый стационар</caption>
+          <tr><th>Изменения</th><th>Временные</th><th>Постоянные</th></tr>
+          <tr><td>K, L</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>s, α</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>δ, n, g</td><td class="no">—</td><td class="yes">✓</td></tr>
+        </table>
+      </div>
+
       <div class="block">
         <div class="blockhead">
           <h3>Исходное состояние</h3>
@@ -559,14 +573,6 @@
           <button class="btn" id="add">Добавить</button>
         </div>
         <p class="hintline" id="addhint"></p>
-
-        <table class="whatab">
-          <caption>Временный сдвиг или новый стационар</caption>
-          <tr><th>Изменения</th><th>Временные</th><th>Постоянные</th></tr>
-          <tr><td>K, L</td><td class="yes">✓</td><td class="no">—</td></tr>
-          <tr><td>s, α</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-          <tr><td>δ, n, g</td><td class="no">—</td><td class="yes">✓</td></tr>
-        </table>
       </div>
 
       <div class="block">
