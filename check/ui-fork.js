@@ -162,6 +162,45 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   }
   ok('заметки нет там, где линии и так разведены', lies.length === 0, lies.slice(0, 4));
 
+  /* ---------- 3a. куда уехал стационар на картинке ---------- */
+  /* Две диаграммы рисуются ради того, чтобы стало видно: ответ в случаях
+     разный. Значит нарисованный сдвиг стационара обязан сходиться с тем,
+     что отвечает про него ветка: разные знаки в ветках — стационары
+     на картинках в разные стороны, одинаковые — в одну. Односторонняя
+     картинка при разных ответах читается как «какая разница», а сдвиг
+     против ответа своей ветки — прямая ложь. */
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  const dirs = await ev(cs => {
+    const out = [];
+    cs.forEach(c => {
+      PKEYS.forEach(k => { base[k] = {v: DEFAULT_BASE[k].v, fixed: c.free.indexOf(k) < 0,
+                                      def: DEFAULT_BASE[k].v}; });
+      shocks = [{key:'a', form:c.sh.form, value:c.sh.value, on:true, ci:0}];
+      enforceLocks(); clampShocks();
+      const fk = forkCase();
+      if (!fk) return;
+      const got = fk.cases.map(cc => {
+        const k0 = kStar(cc.vals), kN = kStar(finalP(cc.vals));
+        const rows = caseSweep(cc.lim), last = rows[rows.length - 1];
+        return {рисует: Math.abs(Math.log(kN / k0)) < 1e-9 ? 'flat' : kN > k0 ? 'up' : 'down',
+                отвечает: last.lr[1]};          // долгосрочный k
+      });
+      const [a, b] = got;
+      if (a.отвечает !== 'dunno' && a.рисует !== 'flat' &&
+          ((a.отвечает === 'up') !== (a.рисует === 'up')))
+        out.push({free:c.free.join(''), форма:c.sh.form, беда:'верхняя рисует против своего ответа', got});
+      if (b.отвечает !== 'dunno' && b.рисует !== 'flat' &&
+          ((b.отвечает === 'up') !== (b.рисует === 'up')))
+        out.push({free:c.free.join(''), форма:c.sh.form, беда:'нижняя рисует против своего ответа', got});
+      if (a.отвечает !== 'dunno' && b.отвечает !== 'dunno' &&
+          a.отвечает !== b.отвечает && a.рисует === b.рисует)
+        out.push({free:c.free.join(''), форма:c.sh.form, беда:'ответы разные, а стационары в одну сторону', got});
+    });
+    return out;
+  }, cases);
+  ok('нарисованный сдвиг стационара сходится с ответом ветки', dirs.length === 0,
+     {проверено: cases.length, беды: dirs.slice(0, 4)});
+
   /* ---------- 4. зум у каждой диаграммы свой ---------- */
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await ev(`shocks=[{key:'a',form:'set',value:0.55,on:true,ci:0}];refreshAll()`);

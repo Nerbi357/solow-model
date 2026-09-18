@@ -1310,13 +1310,33 @@ const forkBlur = q => {
   return Math.abs(Math.log(s / (1 - s)));
 };
 const FORK_W_BLUR = 0.30, FORK_W_ILL = 0.25;
+
+/* Две диаграммы рисуются ради одного: показать, что ответ в случаях разный.
+   Если на обеих новый стационар уезжает в ту же сторону, картинка говорит
+   ровно обратное — «какая разница», — и студент читает её как «ответ один».
+   Поэтому, когда сторона допускает оба направления сдвига, представители
+   выбираются так, чтобы стационары разошлись. Это не подгонка: обе точки
+   допустимы и обе лежат на своей стороне от k = 1, выбирается лишь какая
+   из них рисуется. Там, где модель двигает стационар в одну сторону при
+   любых свободных параметрах, развести нельзя — и не надо: односторонний
+   сдвиг там и есть ответ, и таблица отвечает то же самое.
+
+   Скидка даётся только когда оба сдвига видны глазом (не меньше MOVE_MIN,
+   то есть 10% от исходного k — это около полусотни пикселей на широком
+   экране). Сдвиг в три процента — это склеенная подпись «old, new»
+   и картинка «ничего не произошло»; ради такого разворачивать случай
+   в другую сторону незачем, а выдать почти неподвижный стационар
+   за «уехал влево» — прямой обман. */
+const FORK_SPLIT = 0.9, MOVE_MIN = Math.log(1.10);
 function forkCase(){
   if (!active().some(sh => sh.key === "a")) return null;
   const free = freeKeys();
   if (!free.length) return null;
   const pv = dispVals(), N = forkGridN(free.length);
   const axes = free.map(k => forkAxis(k, pv[k], N));
-  const best = {lo: null, hi: null};
+  /* лучший представитель каждой стороны — отдельно по каждому направлению
+     сдвига стационара: вправо, влево и «стационар не двинулся» */
+  const best = {lo: {}, hi: {}};
   let total = 1; axes.forEach(a => { total *= a.length; });
   for (let idx = 0; idx < total; idx++){
     const q = {...pv};
@@ -1339,10 +1359,26 @@ function forkCase(){
        которой f(k) и s·f(k) ложатся одна на другую. */
     const score = Math.abs(Math.abs(Math.log(k0)) - SIDE_FAR)
                 + FORK_W_BLUR * forkBlur(q) + FORK_W_ILL * ill;
-    const side = st ? "hi" : "lo";
-    if (!best[side] || score < best[side].score) best[side] = {q, score};
+    const kN = kStar(finalP(q));
+    const mv = !isFinite(kN) || kN <= 0 ? 0 : Math.log(kN / k0);
+    const dir = Math.abs(mv) < 1e-9 ? "flat" : mv > 0 ? "up" : "down";
+    const side = st ? "hi" : "lo", cur = best[side][dir];
+    if (!cur || score < cur.score) best[side][dir] = {q, score, seen: Math.abs(mv) >= MOVE_MIN};
   }
-  if (!best.lo || !best.hi) return null;
+  /* Пара выбирается совместно: за разошедшиеся стационары даётся скидка
+     FORK_SPLIT, но она лишь скидка — если развести можно только ценой
+     нечитаемой картинки, победит читаемая. */
+  const DIRS = ["up", "down", "flat"];
+  let pair = null;
+  DIRS.forEach(dl => DIRS.forEach(dh => {
+    const a = best.lo[dl], b = best.hi[dh];
+    if (!a || !b) return;
+    const split = dl !== dh && dl !== "flat" && dh !== "flat" && a.seen && b.seen;
+    const sc = a.score + b.score - (split ? FORK_SPLIT : 0);
+    if (!pair || sc < pair.sc) pair = {sc, lo: a, hi: b};
+  }));
+  if (!pair) return null;
+  best.lo = pair.lo; best.hi = pair.hi;
   /* сторону решают s, δ, n и g; α на неё не влияет, поэтому в пояснении
      называются только те из них, которые условие оставило свободными */
   const keys = free.filter(k => k !== "a");
