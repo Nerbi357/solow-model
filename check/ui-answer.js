@@ -45,8 +45,11 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
     return +((pv.s * f(k, pv)) / (top * 1.1)).toFixed(3); }));
 
   /* --- 2. свободный параметр картинку не двигает --- */
+  /* Проверяется именно α, поэтому остальные параметры здесь задаются явно:
+     по умолчанию свободны все пять. */
   await reset();
-  await ev(()=>{ base.a.fixed = true; base.a.v = 1/3; base.a.def = 1/3; refreshAll(); });
+  await ev(()=>{ PKEYS.forEach(k => base[k].fixed = true);
+                 base.a.v = 1/3; base.a.def = 1/3; refreshAll(); });
   await wait();
   const k1 = await ev(()=>kStar(dispVals()));
   await ev(()=>{ base.a.v = 0.8; refreshLive(); }); await wait();
@@ -63,6 +66,16 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
      Math.abs(await ev(()=>kStar(dispVals())) - k3) < 1e-12, {k3, after: await ev(()=>kStar(dispVals()))});
   ok('но в переборе он по-прежнему свободен',
      JSON.stringify(await ev(()=>freeKeys())) === JSON.stringify(['a']), await ev(()=>freeKeys()));
+  await reset();
+  ok('по умолчанию свободны все пять параметров',
+     JSON.stringify(await ev(()=>freeKeys())) === JSON.stringify(['s','d','n','g','a']),
+     await ev(()=>freeKeys()));
+  ok('и ползунки у них заперты, пока число не задано',
+     await ev(()=>PKEYS.every(k => document.getElementById('b-'+k).disabled &&
+                                   document.getElementById('nb-'+k).disabled)));
+  ok('а показатели прямо говорят, что числа иллюстративные',
+     await ev(()=>{ const n = document.getElementById('ro-note');
+                    return !n.hidden && /иллюстративн/.test(n.textContent); }));
 
   /* --- 3. ответ по кнопке --- */
   await reset();
