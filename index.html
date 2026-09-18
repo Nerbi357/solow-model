@@ -1106,8 +1106,10 @@ function adjust(ctx, x0, x1, y, color, label){
   ctx.lineWidth = 1.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (let i = 0; i < n; i++) archArrow(ctx, x0 + step * i, x0 + step * (i + 1), y);
   ctx.restore();
-  if (label)
-    tag(ctx, (x0 + x1) / 2, y - Math.abs(step) / 2 - 15, label, color, "center", 12);
+  /* Подпись возвращается, а не рисуется здесь: кружки пересечений рисуются
+     позже и затирали её. Лучше спрятать под подписью кружок, чем оставить
+     нечитаемую надпись. */
+  return label ? {x: (x0 + x1) / 2, y: y - Math.abs(step) / 2 - 15, label, color} : null;
 }
 
 /* Подпись с нижним индексом: k с «golden rule» под строкой. */
@@ -1140,14 +1142,31 @@ function tagSub(ctx, x, y, main, low, color, bold){
   ctx.restore();
 }
 
-/* развести подписи по двум строкам под осью */
-function place(items, gap){
-  const rows = [[], []], out = [];
-  items.slice().sort((a,b) => a.x - b.x).forEach(it => {
+/* Ширина подписи под осью — чтобы разводить их по строкам не на глазок.
+   Шрифты повторяют tagParts и tagSub: если поменять там, поменять и здесь. */
+function partsWidth(ctx, parts, bold){
+  ctx.save(); ctx.font = (bold ? "700 " : "") + "13px " + FONT();
+  const w = parts.reduce((a, p) => a + ctx.measureText(p.t).width, 0);
+  ctx.restore(); return w;
+}
+function subWidth(ctx, main, low){
+  ctx.save();
+  ctx.font = "700 13px " + FONT();  const w1 = ctx.measureText(main).width;
+  ctx.font = "9.5px " + FONT();     const w2 = ctx.measureText(low).width;
+  ctx.restore(); return w1 + w2 + 1.5;
+}
+/* Развести подписи под осью по строкам. Раньше строк было две, а сосед
+   считался далёким, если его центр дальше 56 px, — при узком графике
+   «k₁» и «new» стояли ближе и налезали, а «golden rule» шире любой отметки
+   и задевал соседнюю даже через строку. Теперь сравниваются сами рамки,
+   а в нулевой строке заранее занято место подписи оси k. */
+function placeLabels(items, blocked){
+  const rows = [blocked ? [blocked] : [], [], []], out = [];
+  items.slice().sort((p1, p2) => p1.x0 - p2.x0).forEach(it => {
     let r = 0;
-    while (r < rows.length && rows[r].some(x => Math.abs(x - it.x) < (gap || 42))) r++;
+    while (r < rows.length && rows[r].some(o => it.x0 < o.x1 + 6 && o.x0 < it.x1 + 6)) r++;
     if (r >= rows.length) r = rows.length - 1;
-    rows[r].push(it.x);
+    rows[r].push(it);
     out.push({...it, row: r});
   });
   return out;
@@ -1292,9 +1311,14 @@ function legendItems(sts){
   return it;
 }
 
-function drawLegend(ctx, L, T, sts){
+function drawLegend(ctx, L, T, sts, frameW){
   const it = legendItems(sts);
-  const SZ = 12.5, LH = 19, SW = 22, GAP = 8, PAD = 11;
+  /* На телефоне легенда прежнего кегля занимала две трети картинки и
+     закрывала сами кривые. Она нужна именно там (в узкой правой полосе
+     подпись кривой теряет вторую строку), поэтому не убирается, а ужимается. */
+  const narrow = frameW < 430;
+  const SZ = narrow ? 10.5 : 12.5, LH = narrow ? 15 : 19,
+        SW = narrow ? 15 : 22, GAP = narrow ? 6 : 8, PAD = narrow ? 8 : 11;
   ctx.save();
   ctx.font = SZ + "px " + FONT();
   let tw = 0;
@@ -1394,10 +1418,12 @@ function renderMain(ctx, w, h, capture){
   });
 
   /* подстройка — стрелками прямо по оси k */
+  let adjLabel = null;
   const sh0 = sts.find(s => s.short) || sts.find(s => s.id === "base");
   const f0 = sts.find(s => s.final);
   if (sh0 && f0 && onX(sh0.k) && onX(f0.k))
-    adjust(ctx, X(sh0.k), X(f0.k), B, col("--res"), f0.k > sh0.k ? "k растёт" : "k падает");
+    adjLabel = adjust(ctx, X(sh0.k), X(f0.k), B, col("--res"),
+                      f0.k > sh0.k ? "k растёт" : "k падает");
 
   /* точки */
   const hits = [];
@@ -1418,6 +1444,7 @@ function renderMain(ctx, w, h, capture){
     hits.push({id: q.id, x: px, y: py});
   });
   ctx.restore();
+  if (adjLabel) tag(ctx, adjLabel.x, adjLabel.y, adjLabel.label, adjLabel.color, "center", 12);
 
   /* подписи линий у правого края */
   /* Подпись называет состояние, а не одну формулу. Раньше у правого края
@@ -1441,7 +1468,8 @@ function renderMain(ctx, w, h, capture){
      диаграмма вдвое ниже, а линий столько же. Если на подпись остаётся
      меньше двух строк, вторая строка снимается совсем — иначе строки лезли
      друг на друга у нижнего края, где кривые сходятся. */
-  const top = T + 2, bot = B + 10, n = lab.length;
+  /* нижний край — выше строки, где стоит подпись оси k */
+  const top = T + 2, bot = B - 6, n = lab.length;
   const per = n > 1 ? (bot - top) / (n - 1) : 1e3;
   const wide = fits && per >= 24;
   const LH = Math.min(wide ? 27 : 16, per);
@@ -1463,7 +1491,10 @@ function renderMain(ctx, w, h, capture){
   const marks = [];
   sts.forEach(st => {
     if (!st.axis || !onX(st.k)) return;
-    const x = X(st.k), hit = marks.find(m => Math.abs(m.x - x) < 2.5);
+    /* Порог склейки — в пикселях, а не в значениях k: на узком экране
+       две отметки в шести пикселях друг от друга стоят на одном месте,
+       и подписи к ним налезали одна на другую. */
+    const x = X(st.k), hit = marks.find(m => Math.abs(m.x - x) < 6);
     if (hit){
       if (hit.parts.some(q => q.t === st.mark)) return;      // одно и то же имя дважды не нужно
       hit.parts.push({t: ", ", c: col("--muted")}, {t: st.mark, c: st.color});
@@ -1473,11 +1504,21 @@ function renderMain(ctx, w, h, capture){
                   b: st.id === "base" || st.final});
     }
   });
-  place(marks, 56).forEach(m =>
-    tagParts(ctx, m.x, B + 18 + m.row * 17, m.parts, m.b));
-  if (showGold && goldFits && onX(kg))
-    tagSub(ctx, X(kg), B + 18 + (marks.some(m => Math.abs(m.x - X(kg)) < 48) ? 17 : 0),
-           "k", "golden rule", col("--gold"));
+  const axisLabels = marks.map(m => {
+    const half = partsWidth(ctx, m.parts, m.b) / 2;
+    return {mark: m, x: m.x, x0: m.x - half, x1: m.x + half};
+  });
+  if (showGold && goldFits && onX(kg)){
+    const half = subWidth(ctx, "k", "golden rule") / 2;
+    axisLabels.push({gold: true, x: X(kg), x0: X(kg) - half, x1: X(kg) + half});
+  }
+  /* Три строки помещаются в нижнюю полосу только с шагом 14: при 17 третья
+     уезжала за нижний край канваса. */
+  placeLabels(axisLabels, {x0: R + 12, x1: R + 34}).forEach(it => {
+    const y = B + 16 + it.row * 14;
+    if (it.gold) tagSub(ctx, it.x, y, "k", "golden rule", col("--gold"));
+    else tagParts(ctx, it.x, y, it.mark.parts, it.mark.b);
+  });
 
   /* засечки уровня выпуска на оси y */
   const b0 = sts.find(s => s.id === "base"), fin = sts.find(s => s.final);
@@ -1499,7 +1540,7 @@ function renderMain(ctx, w, h, capture){
   }
   ylab.forEach(l => tagSub(ctx, L - 24, l.y, "y", l.low, l.c, true));
 
-  drawLegend(ctx, L, T, sts);
+  drawLegend(ctx, L, T, sts, R - L);
   if (capture){
     HITS = hits;
     FRAME = {gold: showGold && goldFits, points: hits.length,
@@ -1575,19 +1616,25 @@ function pathData(){
   if (!(k0 > 0) || !(kJ > 0) || !(kN > 0)) return null;
 
   const lam = (1 - PF.a) * dep(PF);
-  const span = Math.min(500, Math.max(8, 6 / Math.max(lam, 1e-4)));
+  /* Горизонт обрезать нельзя: при α, близкой к единице, скорость сходимости
+     мала, 6/λ уходит за тысячу, и траектория не доходила до стационара —
+     пунктир «new» оказывался за пределами картинки, а подпись улетала
+     за канвас. Вместо обрезки растёт шаг: λ·dt остаётся тем же, точность
+     схемы Хойна не страдает, а число точек ограничено. */
+  const span = Math.max(8, 6 / Math.max(lam, 1e-4));
+  const dt = Math.max(PATH_DT, span / 1600);
   const at = (k, P) => { const y = f(k, P);
     return {y, k, c: (1 - P.s) * y, i: P.s * y}; };
   const base0 = at(k0, pv);
 
   const pts = [];
   let k = kJ;
-  for (let t = 0; t <= span + 1e-9; t += PATH_DT){
+  for (let t = 0; t <= span + 1e-9; t += dt){
     pts.push({t, v: at(k, PF)});
     const g1 = PF.s * f(k, PF) - dep(PF) * k;              // схема Хойна
-    const kp = Math.max(1e-300, k + PATH_DT * g1);
+    const kp = Math.max(1e-300, k + dt * g1);
     const g2 = PF.s * f(kp, PF) - dep(PF) * kp;
-    k = Math.max(1e-300, k + PATH_DT * (g1 + g2) / 2);
+    k = Math.max(1e-300, k + dt * (g1 + g2) / 2);
   }
   return {pts, span, base0, endAt: at(kN, PF), jumpAt: at(kJ, PF), free: freeKeys()};
 }
@@ -1601,6 +1648,11 @@ function drawPath(cv, key, d){
 
   let lo = 1, hi = 1;
   d.pts.forEach(p => { const r = rel(p.v[key]); lo = Math.min(lo, r); hi = Math.max(hi, r); });
+  /* уровни «скачок» и «new» тоже обязаны попасть в поле: их пунктир и подпись
+     рисуются по тем же координатам */
+  [rel(d.endAt[key]), rel(d.jumpAt[key])].forEach(r => {
+    if (isFinite(r)){ lo = Math.min(lo, r); hi = Math.max(hi, r); }
+  });
   const pad = Math.max((hi - lo) * 0.22, 0.04);
   lo -= pad; hi += pad;
   const X = t => L + pre + (t / d.span) * (R - L - pre);
@@ -1613,20 +1665,31 @@ function drawPath(cv, key, d){
   /* Подписи, а не числа: конкретное значение зависит от того, какими взяты
      свободные параметры, и выдавать его за ответ нельзя. Важно только,
      выше новый уровень прежнего или ниже. */
+  const end = rel(d.endAt[key]), jump = rel(d.pts[0].v[key]);
+  const lv = [{r: 1, low: "old", c: col("--ink-2")}];
   dashed(ctx, L, Y(1), R, Y(1), col("--ink"), 1, [3, 4]);
-  tagSub(ctx, L - 24, Y(1), key, "old", col("--ink-2"));
-
-  const end = rel(d.endAt[key]);
   if (Math.abs(end - 1) > 1e-9){
     dashed(ctx, L, Y(end), R, Y(end), col("--res"), 1, [3, 4]);
-    tagSub(ctx, L - 24, Y(end), key, "new", col("--res"));
+    lv.push({r: end, low: "new", c: col("--res")});
   }
   /* Уровень сразу после шоков зовётся так же, как точка на большой диаграмме:
      «скачок». Одно и то же место обязано называться одинаково — разные имена
      для него уже однажды вышли боком (new против new*). */
-  const jump = rel(d.pts[0].v[key]);
   if (Math.abs(jump - 1) > 1e-9 && Math.abs(jump - end) > 1e-9)
-    tagSub(ctx, L - 24, Y(jump), key, "скачок", col("--res"));
+    lv.push({r: jump, low: "скачок", c: col("--res")});
+  /* Подписи уровней растаскиваются, иначе при близких уровнях они садятся
+     друг на друга; пунктир при этом остаётся на своём месте. */
+  lv.forEach(l => { l.y = Y(l.r); });
+  lv.sort((p1, p2) => p1.y - p2.y);
+  for (let i = 0; i < lv.length; i++){
+    const floor = i ? lv[i-1].y + 14 : T - 4;
+    if (lv[i].y < floor) lv[i].y = floor;
+  }
+  for (let i = lv.length - 1; i >= 0; i--){
+    const ceil = i === lv.length - 1 ? B : lv[i+1].y - 14;
+    if (lv[i].y > ceil) lv[i].y = ceil;
+  }
+  lv.forEach(l => tagSub(ctx, L - 24, l.y, key, l.low, l.c));
 
   ctx.strokeStyle = col("--ink"); ctx.lineWidth = 2; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(L, Y(1)); ctx.lineTo(L + pre, Y(1)); ctx.stroke();
@@ -1722,6 +1785,8 @@ const coordText = q => { const r = relOf(q); return "(" + num(r.k, 2) + "; " + n
 function renderCoords(){
   const body = document.getElementById("coords-body"), clear = document.getElementById("clearpts");
   const pts = pointList(), chosen = picked.map(id => pts.find(q => q.id === id)).filter(Boolean);
+  /* Точка, которой больше нет (убрали шок), не должна жить в ссылке. */
+  if (chosen.length !== picked.length) picked = chosen.map(q => q.id);
   clear.hidden = !chosen.length;
   /* Объяснение переехало в панель управления, поэтому пустой блок теперь
      ничего не занимает: между графиком и ответом должно быть пусто. */
@@ -2275,7 +2340,10 @@ function readHash(){
   });
   const p = parseInt(q.p, 10);
   probIdx = (isFinite(p) && p >= 0 && p < PROBLEMS.length) ? p : -1;
-  picked = (q.pts || "").split(",").filter(Boolean);
+  /* Отметки проверяются по списку самих точек: из ссылки прилетает что
+     угодно, а мусор в picked оседал в состоянии и в ссылке навсегда. */
+  const ptIds = new Set(pointList().map(q => q.id));
+  picked = (q.pts || "").split(",").filter(id => ptIds.has(id));
   revealed = false;
   return true;
 }
