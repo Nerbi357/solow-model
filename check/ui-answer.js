@@ -171,9 +171,34 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
                     const c = [...document.querySelectorAll('.why .calc')];
                     return c.length >= 3 && c.every(e=>getComputedStyle(e).display === 'block'); }),
      await ev(()=>document.querySelectorAll('.why .calc').length));
-  ok('шаг разбора может занимать несколько абзацев',
+  /* Разбор — процедура, а не изложение: под каждым вопросом нумерованные
+     шаги, и каждый шаг — одно действие или один вывод. Выкладка живёт
+     внутри своего шага; шаг из одной голой формулы означает, что действие
+     осталось неназванным. */
+  ok('шаги разбора пронумерованы и их не меньше трёх на вопрос',
+     await ev(()=>{ const d = document.querySelector('.solution details');
+                    if (d) d.open = true;
+                    const q = [...document.querySelectorAll('.why > li')];
+                    return q.length === 3 && q.every(li => {
+                      const ol = li.querySelector('ol.mini');
+                      return ol && getComputedStyle(ol).listStyleType === 'decimal' &&
+                             ol.children.length >= 3; }); }),
      await ev(()=>[...document.querySelectorAll('.why > li')]
-       .some(li=>li.querySelectorAll('p:not(.ans)').length > 1)));
+       .map(li=>(li.querySelector('ol.mini')||{children:[]}).children.length)));
+  const stepBad = await ev(()=>{
+    const bad = [];
+    PROBLEMS.forEach((q, i) => q.why.forEach((w, j) => {
+      const st = [].concat(w[1]);
+      if (st.length < 3) bad.push({задача:i+1, вопрос:j+1, шагов:st.length});
+      st.forEach((t, k) => {
+        const own = String(t).replace(/<code class="calc">[\s\S]*?<\/code>/g, '')
+                             .replace(/<[^>]+>/g, '').trim();
+        if (own.length < 12) bad.push({задача:i+1, вопрос:j+1, шаг:k+1, беда:'шаг без своего текста'});
+      });
+    }));
+    return bad;
+  });
+  ok('у каждого шага есть свой текст, а не одна голая выкладка', stepBad.length === 0, stepBad.slice(0,4));
   ok('ответ шага назван ответом на странице',
      await ev(()=>{ const d = document.querySelector('.solution details');
                     if (d) d.open = true;
