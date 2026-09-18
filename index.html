@@ -357,6 +357,19 @@
   }
   input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(18,22,28,.2)}
   input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px rgba(18,22,28,.2)}
+  /* Запертый ползунок обязан выглядеть запертым: у свободного параметра он
+     не двигается, а бегунок был такой же, как у рабочего, — за него тянули
+     и решали, что инструмент сломан. */
+  input[type=range]:disabled{cursor:not-allowed}
+  input[type=range]:disabled::-webkit-slider-runnable-track{background:var(--rule-2)}
+  input[type=range]:disabled::-moz-range-track{background:var(--rule-2)}
+  input[type=range]:disabled::-webkit-slider-thumb{
+    background:var(--card);border-color:var(--rule);border-width:1px;
+  }
+  input[type=range]:disabled::-moz-range-thumb{
+    background:var(--card);border-color:var(--rule);border-width:1px;
+  }
+  .numbox:disabled{cursor:not-allowed}
 
   .ftabs{display:flex;margin:-10px -11px 11px;padding:0 6px;border-bottom:1px solid var(--rule)}
   .ftabs button{
@@ -1838,8 +1851,15 @@ function renderFx(){
     : "y — подушевой доход, k — капиталовооружённость, " +
       "c — подушевое потребление, i — подушевые инвестиции";
   if (!rows.length){
+    /* Шоки могут стоять в панели и при этом ничего не менять: их скрыли
+       глазом или оставили на нейтральном значении. Говорить в этом случае
+       «нет ни одного шока» — врать про то, что человек видит рядом. */
+    const idle = shocks.length
+      ? "Шоки есть, но ни один ничего не меняет: они скрыты или стоят на " +
+        "нейтральном значении."
+      : "Пока нет ни одного шока — добавьте его на панели или откройте готовую задачу.";
     body.innerHTML = '<tr><td colspan="9" style="text-align:left;color:var(--muted);padding:10px 6px">' +
-      "Пока нет ни одного шока — добавьте его на панели или откройте готовую задачу.</td></tr>";
+      idle + "</td></tr>";
     return;
   }
   const cell = (code, first, vi) => {
@@ -2007,7 +2027,11 @@ function renderShocks(){
       (sh.form === "set" && !isStock(sh.key)
         ? ". Форма «новое» называет и начало, и конец, поэтому исходное " + m.sym +
           " держится заданным"
-        : "");
+        : "") +
+      /* Шок на нейтрали ничего не красит и не попадает в таблицу — про это
+         надо сказать в самой карточке, иначе непонятно, почему картинка
+         не шелохнулась. Свежий шок всегда такой. */
+      (sh.on && !bites(sh) ? ". Сейчас значение такое, что шок ничего не меняет" : "");
     return "<li>" +
       '<div class="card' + (sh.on ? "" : " off") + '" data-card="' + i + '" style="--live:' + live + '">' +
         '<div class="chead"><span class="idx">' + (i + 1) + '</span><i class="chip"></i>' +

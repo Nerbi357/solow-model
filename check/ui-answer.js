@@ -73,6 +73,9 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
   ok('и ползунки у них заперты, пока число не задано',
      await ev(()=>PKEYS.every(k => document.getElementById('b-'+k).disabled &&
                                    document.getElementById('nb-'+k).disabled)));
+  ok('запертый ползунок и выглядит запертым',
+     await ev(()=>{ const r = document.getElementById('b-s');
+       return getComputedStyle(r).cursor === 'not-allowed'; }));
   ok('а показатели прямо говорят, что числа иллюстративные',
      await ev(()=>{ const n = document.getElementById('ro-note');
                     return !n.hidden && /иллюстративн/.test(n.textContent); }));
