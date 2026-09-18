@@ -1367,6 +1367,11 @@ function withPane(p, fn){
   try { return fn(); } finally { CUR = was; }
 }
 const zoomReset = () => { PANES.forEach(id => { PANE[id].view = null; }); };
+/* Отметки принадлежат одной диаграмме — той, с которой их ставят. Числа
+   в таблице координат относительные, и точка с тем же именем стоит в двух
+   случаях на разной высоте: подсветить её на обеих значило бы показать
+   рядом с одним кружком чужие координаты. */
+let pickPane = "main";
 let showGold = false;
 
 const geomOf = (w, h) => ({
@@ -1532,10 +1537,10 @@ function renderMain(ctx, w, h, capture){
                       f0.k > sh0.k ? "k растёт" : "k падает");
 
   /* точки */
-  const hits = [];
+  const hits = [], mine = CUR.id === pickPane;
   pts.forEach(q => {
     if (!onX(q.k) || !onY(q.y)) return;
-    const px = X(q.k), py = Y(q.y), on = picked.indexOf(q.id) >= 0;
+    const px = X(q.k), py = Y(q.y), on = mine && picked.indexOf(q.id) >= 0;
     if (on){
       dashed(ctx, L, py, px, py, q.color, 1, [3, 3]);
       dashed(ctx, px, py, px, B, q.color, 1, [3, 3]);
@@ -1680,7 +1685,7 @@ function drawMain(){
   const ALT = "Диаграмма накопления. Щелчок по точке показывает её координаты.";
   /* Развилка появилась или исчезла — калибровка сменилась целиком,
      и старое окно зума в единицах k больше ничего не значит. */
-  if (!!fk !== forkWas){ zoomReset(); forkWas = !!fk; }
+  if (!!fk !== forkWas){ zoomReset(); pickPane = "main"; forkWas = !!fk; }
   if (!fk){
     PANE.main2.hits = []; PANE.main2.tight = false;
     cv.dataset.h = 620;
@@ -2564,7 +2569,8 @@ document.getElementById("png").addEventListener("click", e => {
     const pane = PANE[PANES[i]] || PANE.main;
     VOVR = c ? c.vals : null;
     try {
-      withPane({view: pane.view, auto: pane.auto, hits: [], tight: false, apart: Infinity},
+      withPane({id: pane.id, view: pane.view, auto: pane.auto,
+                hits: [], tight: false, apart: Infinity},
                () => renderMain(ctx, w, h, false));
     } finally { VOVR = null; }
     ctx.restore();
@@ -2761,10 +2767,6 @@ document.getElementById("probs").addEventListener("click", e => {
 });
 
 /* ---------- отметки точек ---------- */
-/* На развилке координаты читаются с той диаграммы, по которой щёлкнули:
-   у случаев разные калибровки, и смешивать точки из обеих в одной таблице
-   нельзя — числа в ней относительные, отсчитываются от своего стационара. */
-let pickPane = "main";
 function togglePoint(id, pane){
   if (pane && pane !== pickPane){ pickPane = pane; picked = []; }
   const i = picked.indexOf(id);

@@ -224,6 +224,29 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
      /k < 1/.test(co.main.случай || '') && /k > 1/.test(co.main2.случай || ''), co);
   ok('числа у случаев разные', JSON.stringify(co.main.ячейки) !== JSON.stringify(co.main2.ячейки), co);
 
+  /* Кружок подсвечивается только на своей диаграмме: рядом с ним стоят
+     координаты, а у той же точки в другом случае они другие. */
+  const own = await ev(() => {
+    /* считаем чернила: отмеченная точка — залитый кружок побольше,
+       две пунктирные направляющие и подпись координат */
+    const filled = () => ['main','main2'].map(id => {
+      const cv = document.getElementById(id), g = cv.getContext('2d');
+      const d = g.getImageData(0, 0, cv.width, cv.height).data;
+      let c = 0;
+      for (let i = 0; i < d.length; i += 4)
+        if (d[i+3] > 200 && (d[i] < 235 || d[i+1] < 235 || d[i+2] < 235)) c++;
+      return c;
+    });
+    const base = filled();
+    pickPane = 'main2'; picked = [PANE.main2.hits[PANE.main2.hits.length-1].id];
+    drawMain();
+    const after = filled();
+    picked = []; pickPane = 'main'; drawMain();
+    return {верхБыло: base[0], верхСтало: after[0], низБыло: base[1], низСтало: after[1]};
+  });
+  ok('отметка красит только свою диаграмму',
+     own.верхСтало === own.верхБыло && own.низСтало > own.низБыло, own);
+
   /* ---------- 6. края диапазонов ---------- */
   /* Равномерная сетка садится на вырожденные множества точно, а не почти
      никогда: край диапазона обязан быть именованным случаем, а не надеждой
