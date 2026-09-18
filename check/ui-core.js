@@ -245,6 +245,22 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   ok('PNG — белый фон, ×2', buf.readUInt32BE(16)===css.w*2 && buf.readUInt32BE(20)===css.h*2,
      {w:buf.readUInt32BE(16), h:buf.readUInt32BE(20), css});
 
+  /* На развилке диаграмм две, и в файл обязаны попасть обе: раньше PNG
+     звал renderMain один раз и без калибровки случая. */
+  await loadP(3);
+  const dl2 = p.waitForEvent('download', {timeout:9000});
+  await p.locator('#png').click();
+  const d2 = await dl2;
+  const path2 = pathmod.join(TMP, 'fork.png');
+  await d2.saveAs(path2);
+  const b2 = fs.readFileSync(path2);
+  const css2 = await ev(()=>({w:document.getElementById('main').clientWidth,
+                              h:+document.getElementById('main').dataset.h,
+                              two:!!forkCase()}));
+  ok('PNG на развилке отдаёт обе диаграммы',
+     css2.two && b2.readUInt32BE(16)===css2.w*2 && b2.readUInt32BE(20) >= css2.h*4,
+     {w:b2.readUInt32BE(16), h:b2.readUInt32BE(20), css:css2});
+
   // ---- 12. отзывчивость ползунка ----
   await loadP(0);                                    // три свободных — самый тяжёлый перебор
   const t0 = Date.now();

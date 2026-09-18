@@ -1932,7 +1932,7 @@ const PROBLEMS = [
     why  : [
              ["Какие кривые двигаются?",
               ["Где проходят кривые, решают пять параметров:",
-               '<code class="calc">f(k) = k<sup>α</sup>&nbsp;&nbsp;&nbsp; s·f(k)&nbsp;&nbsp;&nbsp; (δ+n+g)·k</code>',
+               '<code class="calc">s&nbsp;&nbsp;&nbsp; δ&nbsp;&nbsp;&nbsp; n&nbsp;&nbsp;&nbsp; g&nbsp;&nbsp;&nbsp; α</code>',
                "Ни одного из них шок не трогает. K и L входят только в саму капиталовооружённость:",
                '<code class="calc">k = K / L</code>',
                "Меняется k, а это положение точки на кривых, а не сами кривые."],
@@ -2256,15 +2256,42 @@ document.getElementById("copy").addEventListener("click", async e => {
   if (!ok) ok = legacyCopy(url);
   flash(btn, ok ? "Скопировано" : "Ссылка — в адресной строке");
 });
+/* Подпись случая для PNG — кружок с номером и текст, как на странице. */
+function capTag(ctx, n, text){
+  ctx.save();
+  ctx.fillStyle = col("--ink");
+  ctx.beginPath(); ctx.arc(11, 13, 10, 0, 7); ctx.fill();
+  ctx.font = "700 12px " + FONT();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = col("--paper"); ctx.fillText(String(n), 11, 13.5);
+  ctx.textAlign = "left"; ctx.font = "700 14px " + FONT();
+  ctx.fillStyle = col("--ink-2"); ctx.fillText(text, 28, 13.5);
+  ctx.restore();
+}
+
 document.getElementById("png").addEventListener("click", e => {
   const btn = e.currentTarget, src = document.getElementById("main");
   const scale = 2, w = src.clientWidth, h = parseInt(src.dataset.h, 10);
+  /* На развилке диаграмм две, и PNG обязан отдать обе. Раньше он звал
+     renderMain один раз и без VOVR — то есть выдавал картинку, которой
+     на странице нет вовсе: не первый случай и не второй, а калибровка
+     по умолчанию. */
+  const fk = forkCase(), cases = fk ? fk.cases : [null];
+  const CAP = fk ? 30 : 0, GAP = fk ? 20 : 0;
+  const pageH = cases.length * (CAP + h) + (cases.length - 1) * GAP;
   const out = document.createElement("canvas");
-  out.width = Math.round(w * scale); out.height = Math.round(h * scale);
+  out.width = Math.round(w * scale); out.height = Math.round(pageH * scale);
   const ctx = out.getContext("2d");
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, w, h);
-  renderMain(ctx, w, h, false);
+  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, w, pageH);
+  cases.forEach((c, i) => {
+    ctx.save();
+    ctx.translate(0, i * (CAP + h + GAP));
+    if (c){ capTag(ctx, i + 1, c.text); ctx.translate(0, CAP); }
+    VOVR = c ? c.vals : null;
+    try { renderMain(ctx, w, h, false); } finally { VOVR = null; }
+    ctx.restore();
+  });
   const name = "solow-" + PKEYS.map(k => k + trim(base[k].v)).join("-").replace(/\./g, "_") +
     (shocks.length ? "-" + shocks.map(s => s.key + s.form + trim(s.value)).join("-").replace(/\./g, "_") : "") +
     ".png";
