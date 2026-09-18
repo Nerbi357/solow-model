@@ -475,8 +475,8 @@
       <p class="forklead" id="forklead" hidden></p>
       <div class="phelp" id="phelp" hidden>Колесо мыши приближает, перетаскивание сдвигает,
         двойной щелчок возвращает масштаб. Кружки на линиях — пересечения: щёлкните по кружку,
-        появятся его координаты; отметьте второй, чтобы увидеть разницу. Картинка безразмерная,
-        поэтому всё считается в долях от исходного стационара — он равен (1;&nbsp;1).</div>
+        и появятся его координаты; отметьте второй — увидите разницу между ними. Картинка
+        безразмерная, поэтому всё считается в долях от исходного стационара: он равен (1;&nbsp;1).</div>
       <p class="forkcap" id="cap1" hidden></p>
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
@@ -561,7 +561,7 @@
         <p class="hintline" id="addhint"></p>
 
         <table class="whatab">
-          <caption>Временные и постоянные изменения</caption>
+          <caption>Временный сдвиг или новый стационар</caption>
           <tr><th>Изменения</th><th>Временные</th><th>Постоянные</th></tr>
           <tr><td>K, L</td><td class="yes">✓</td><td class="no">—</td></tr>
           <tr><td>s, α</td><td class="yes">✓</td><td class="yes">✓</td></tr>
@@ -608,9 +608,9 @@ const MAXSHOCKS = 3;
 
 const META = {
   s:{sym:"s", name:"норма сбережений", min:0.01, max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
-  d:{sym:"δ", name:"амортизация",      min:0.01, max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
+  d:{sym:"δ", name:"норма амортизации", min:0.01, max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
   n:{sym:"n", name:"рост населения",   min:0,    max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
-  g:{sym:"g", name:"техпрогресс",      min:0,    max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
+  g:{sym:"g", name:"технический прогресс", min:0,    max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
   a:{sym:"α", name:"доля капитала",    min:0.01, max:0.99, step:0.005, dig:3, forms:["set","add","mul"]},
   K:{sym:"K", name:"запас капитала",   min:0.05, max:3, step:0.01, dig:2, forms:["mul"], stock:true},
   L:{sym:"L", name:"число работников", min:0.05, max:3, step:0.01, dig:2, forms:["mul"], stock:true}
@@ -1359,17 +1359,29 @@ function renderMain(ctx, w, h, capture){
      остаётся только формула, а чей это шок, говорит легенда под графиком. */
   ctx.save(); ctx.font = "10.5px " + FONT();
   const room = w - R - 12;
-  const wide = lab.every(l => ctx.measureText(l.s).width <= room);
+  const fits = lab.every(l => ctx.measureText(l.s).width <= room);
   ctx.restore();
   lab.sort((p1, p2) => p1.y - p2.y);
-  const LH = wide ? 27 : 16;
-  for (let i = 1; i < lab.length; i++)
+  /* Подписи растаскиваются по высоте, но полоса не резиновая: на развилке
+     диаграмма вдвое ниже, а линий столько же. Если на подпись остаётся
+     меньше двух строк, вторая строка снимается совсем — иначе строки лезли
+     друг на друга у нижнего края, где кривые сходятся. */
+  const top = T + 2, bot = B + 10, n = lab.length;
+  const per = n > 1 ? (bot - top) / (n - 1) : 1e3;
+  const wide = fits && per >= 24;
+  const LH = Math.min(wide ? 27 : 16, per);
+  for (let i = 1; i < n; i++)
     if (lab[i].y - lab[i-1].y < LH) lab[i].y = lab[i-1].y + LH;
+  /* обратный проход: последнюю подпись прижимаем к низу полосы и тянем
+     остальные за ней вверх, иначе всё лишнее сваливалось в одну точку */
+  if (n) lab[n-1].y = Math.min(lab[n-1].y, bot);
+  for (let i = n - 2; i >= 0; i--) lab[i].y = Math.min(lab[i].y, lab[i+1].y - LH);
+  if (n) lab[0].y = Math.max(lab[0].y, top);
+  for (let i = 1; i < n; i++) lab[i].y = Math.max(lab[i].y, lab[i-1].y + LH);
   lab.forEach(l => {
-    const y = Math.max(T + 2, Math.min(B + 10, l.y));
-    if (!wide){ tag(ctx, R + 9, y, l.t, l.c, "left", 12.5, l.b); return; }
-    tag(ctx, R + 9, y - 6, l.t, l.c, "left", 12.5, l.b);
-    tag(ctx, R + 9, y + 8, l.s, l.b ? l.c : col("--muted"), "left", 10.5);
+    if (!wide){ tag(ctx, R + 9, l.y, l.t, l.c, "left", 12.5, l.b); return; }
+    tag(ctx, R + 9, l.y - 6, l.t, l.c, "left", 12.5, l.b);
+    tag(ctx, R + 9, l.y + 8, l.s, l.b ? l.c : col("--muted"), "left", 10.5);
   });
 
   /* подписи на оси k: совпавшие состояния склеиваются в одну */
@@ -1442,9 +1454,9 @@ function drawMain(){
     lead.hidden = false;
     lead.innerHTML = "<b>Изменение α распадается на два случая.</b> Кривые " +
       "k<sup>α</sup> при разных α пересекаются ровно в k = 1: правее рост α " +
-      "выпуск поднимает, левее — опускает. Где стоит экономика, решает " +
-      META[fk.key].sym + ", а условие её не задаёт — поэтому ниже две " +
-      "диаграммы, и обе одинаково возможны.";
+      "поднимает выпуск, левее — опускает. По какую сторону стоит экономика, " +
+      "решает " + META[fk.key].sym + ", а условие " + META[fk.key].sym +
+      " не называет. Поэтому диаграммы две, и обе одинаково возможны.";
     paintOn("main", fk.cases[0].vals, true);
     paintOn("main2", fk.cases[1].vals, false);
   }
@@ -1598,9 +1610,9 @@ function drawPaths(){
 
   const free = freeKeys();
   document.getElementById("pathnote").textContent = free.length
-    ? "Форма пути зависит от того, какими взяты свободные параметры (" +
-      free.map(k => META[k].sym).join(", ") + "), направление — нет: где " +
-      "направление не определено, вместо кривой стоит вопрос."
+    ? "Свободные параметры (" + free.map(k => META[k].sym).join(", ") +
+      ") задают форму пути, но не его направление. Где направление не определено, " +
+      "вместо кривой стоит вопрос."
     : "В долях от исходного стационара. Пунктир — уровень «как было» и новый стационар.";
 }
 
@@ -1661,7 +1673,7 @@ function renderFx(){
   const rows = sweepCached(), act = active(), names = rowNames(), body = document.getElementById("fx");
   if (!rows.length){
     body.innerHTML = '<tr><td colspan="9" style="text-align:left;color:var(--muted);padding:10px 6px">' +
-      "Пока нет ни одного шока — добавьте его справа или откройте готовую задачу.</td></tr>";
+      "Пока нет ни одного шока — добавьте его на панели или откройте готовую задачу.</td></tr>";
     return;
   }
   const cell = (code, first, vi) => {
@@ -1720,17 +1732,16 @@ function renderNotes(){
   if (dead.length || !SWEEPSTAT.seen){
     const who = dead.map(c => META[c.key].sym).join(", ");
     host.innerHTML = '<div class="note"><b>Модель не определена</b><p>' +
-      (who ? "Шок выводит " + who + " за допустимые границы" : "Шок выводит параметр за границы") +
-      " при любых значениях остальных, поэтому считать нечего и в таблице всюду «?». " +
-      "Поправьте величину шока или исходное значение.</p></div>";
+      "Шок выводит " + (who || "параметр") + " за границы модели при любых значениях " +
+      "остальных, поэтому считать нечего: в таблице всюду «?». Поправьте величину шока " +
+      "или исходное значение.</p></div>";
     return;
   }
   cuts.filter(c => c.big).forEach(c => {
     const sym = META[c.key].sym, d = META[c.key].dig;
-    out.push('<div class="note"><b>Перебор сужен</b><p>Шок осмыслен не на всём диапазоне: ' +
-      "перебор шёл только по <code>" + sym + " от " + num(c.from, d) + " до " +
-      num(c.to, d) + "</code> — вне этого отрезка шок выводит " + sym +
-      " за границы модели.</p></div>");
+    out.push('<div class="note"><b>Перебор сужен</b><p>Вне отрезка <code>' + sym + " от " +
+      num(c.from, d) + " до " + num(c.to, d) + "</code> шок выводит " + sym +
+      " за границы модели, поэтому перебор шёл только по нему.</p></div>");
   });
   /* Порогов здесь больше нет. Они считались точно, но при нескольких
      свободных параметрах порог по одному зависит от того, какими взяты
@@ -1748,16 +1759,16 @@ function renderReadout(){
   const k0 = kStar(pv), kSR = k0 * stockMulOf(act), k1 = kStar(PF);
   const y1 = f(k1, PF);
   document.getElementById("ro-cap").textContent =
-    act.length ? "Показатели при значениях с картинки" : "Показатели исходного состояния";
+    act.length ? "Показатели с учётом шоков" : "Показатели исходного состояния";
   const rows = [
     ["k" + sub(0) + "* — исходный стационар", num(k0, 3)],
-    ["k′ — сразу после шоков",  num(kSR, 3)],
+    ["k′ — скачок после шоков", num(kSR, 3)],
     ["k* — новый стационар",    num(k1, 3)],
     ["y* — выпуск",             num(y1, 3)],
     ["c* — потребление",        num((1 - PF.s) * y1, 3)],
     ["i* — инвестиции",         num(PF.s * y1, 3)],
     ["s* — золотое правило",    num(sGold(PF), 3)],
-    ["λ — скорость схождения",  pct((1 - PF.a) * dep(PF))]
+    ["λ — скорость сходимости",  pct((1 - PF.a) * dep(PF))]
   ];
   document.getElementById("ro").innerHTML =
     rows.map(([k, v]) => "<tr><th>" + k + "</th><td>" + v + "</td></tr>").join("");
