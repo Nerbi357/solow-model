@@ -229,14 +229,7 @@
      а какие оба. По сути это правило AFFECTS, вывернутое в сторону студента.
      Стоит первой в панели: под карточками шоков её приходилось искать
      прокруткой, а подсказку читают до того, как начали крутить. */
-  .whatab{
-    width:100%;border-collapse:collapse;margin:0;font-size:13px;
-    border:1px solid var(--rule);border-radius:var(--r);background:var(--card-2);
-  }
-  .whatab caption{
-    text-align:left;font-size:11.5px;font-weight:700;letter-spacing:.07em;
-    text-transform:uppercase;color:#4F555E;padding:0 0 7px;
-  }
+  .whatab{width:100%;border-collapse:collapse;margin:0;font-size:13px}
   .whatab th{
     font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
     color:var(--muted);padding:9px 10px 6px;text-align:center;white-space:nowrap;
@@ -249,24 +242,42 @@
   .whatab .no{color:var(--rule);font-size:13px}
 
   /* ---------- right panel ---------- */
-  .block{margin-bottom:22px}
-  .block > h3,.blockhead h3{
-    font-size:12.5px;font-weight:700;margin:0 0 9px;
-    text-transform:uppercase;letter-spacing:.1em;color:#4F555E;
+  /* Блок — рамка с шапкой: раньше границу видел глаз только у карточек
+     внутри блоков, а сам блок не был очерчен ничем, и пояснение под
+     карточкой висело между блоками — непонятно, к какому относится.
+     Номер в шапке говорит, сколько тут вообще блоков и в каком порядке
+     их читать. Служебные блоки (Поделиться, Показатели) номера не имеют. */
+  .block{
+    border:1px solid var(--rule);border-radius:var(--r);background:var(--paper);
+    padding:11px 13px 13px;margin-bottom:14px;
   }
-  .blockhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-  .blockhead h3{margin-bottom:9px}
+  .block > h3,.blockhead{
+    margin:0 0 11px;padding-bottom:8px;border-bottom:1px solid var(--rule-2);
+  }
+  .block > h3,.blockhead h3{
+    font-size:13.5px;font-weight:700;color:var(--ink);
+    text-transform:none;letter-spacing:0;
+    display:flex;align-items:center;gap:8px;min-width:0;
+  }
+  .blockhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .blockhead h3{margin:0;padding:0;border:0}
+  /* без номера — значит служебный: тише заголовок, тише и блок */
+  .block > h3:not([data-n]){color:var(--muted);font-weight:600;font-size:12.5px}
+  .block > h3[data-n]::before,.blockhead h3[data-n]::before{
+    content:attr(data-n);flex:0 0 auto;width:21px;height:21px;border-radius:50%;
+    background:var(--ink);color:var(--paper);font-size:12px;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
   .btn.small{font-size:12px;padding:3px 9px}
 
   .btn.ghost[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 
-  .card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);margin-bottom:9px}
+  .card{background:var(--card);border:1px solid var(--rule-2);border-radius:var(--r);margin-bottom:9px}
+  /* Рамка в рамке не нужна, а чёрная полоса «До шоков» повторяла заголовок
+     блока и была самым тяжёлым пятном панели. */
+  .card.base{border:0;background:none;margin:0}
+  .card.base > .cbody{padding:0}
   .chead{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--rule)}
-  .card.base > .chead{
-    background:var(--ink);border-color:var(--ink);border-radius:var(--r) var(--r) 0 0;
-  }
-  .card.base > .chead .ctitle,.card.base > .chead .idx{color:var(--paper)}
-  .card.base > .chead .chip{background:var(--paper)}
   .card.off{opacity:.5}
   .idx{font-size:11.5px;color:var(--muted);min-width:9px;font-variant-numeric:tabular-nums}
   .chip{width:12px;height:12px;border-radius:50%;background:var(--live);flex:0 0 auto}
@@ -367,7 +378,8 @@
   .btn-row{display:flex;gap:7px;flex-wrap:wrap}
   .btn-row .btn{flex:1 1 auto;text-align:center}
 
-  .hintline{margin:8px 0 0;font-size:12.5px;color:var(--muted);line-height:1.45}
+  .hintline{margin:9px 0 0;font-size:12.5px;color:var(--muted);line-height:1.45}
+  .hintline + .hintline{margin-top:4px}
   .hintline b{color:var(--ink-2);font-weight:700}
 
   .probs{display:flex;flex-direction:column;gap:6px}
@@ -538,8 +550,8 @@
       <!-- Памятка стоит первой в панели: это шпаргалка, а не итог, и читать
            её надо до того, как студент начал крутить ползунки. -->
       <div class="block">
+        <h3 data-n="1">Временный сдвиг или новый стационар</h3>
         <table class="whatab">
-          <caption>Временный сдвиг или новый стационар</caption>
           <tr><th>Изменения</th><th>Временные</th><th>Постоянные</th></tr>
           <tr><td>K, L</td><td class="yes">✓</td><td class="no">—</td></tr>
           <tr><td>s, α</td><td class="yes">✓</td><td class="yes">✓</td></tr>
@@ -549,23 +561,21 @@
 
       <div class="block">
         <div class="blockhead">
-          <h3>Исходное состояние</h3>
+          <h3 data-n="2">Исходное состояние</h3>
           <button class="btn ghost small" id="basereset">Сбросить</button>
         </div>
         <div class="card base">
-          <div class="chead">
-            <span class="idx">0</span><i class="chip"></i>
-            <span class="ctitle">До шоков</span>
-          </div>
           <div class="cbody" id="base-params"></div>
         </div>
-        <p class="hintline"><b>задано</b> — число известно из условия.
-           <b>свободно</b> — неизвестно, и таблица перебирает весь диапазон,
-           а картинка берёт одно значение для примера.</p>
+        <!-- Каждое пояснение с отдельной строки: в подбор два определения
+             читались как одно предложение. -->
+        <p class="hintline"><b>задано</b> — число известно из условия.</p>
+        <p class="hintline"><b>свободно</b> — неизвестно, и таблица перебирает
+           весь диапазон, а картинка берёт одно значение для примера.</p>
       </div>
 
       <div class="block">
-        <h3>Шоки — происходят одновременно</h3>
+        <h3 data-n="3">Шоки — происходят одновременно</h3>
         <ol class="shocks" id="shocks"></ol>
         <div class="addbar">
           <label class="vh" for="addsel">Что меняет новый шок</label>
@@ -576,7 +586,7 @@
       </div>
 
       <div class="block">
-        <h3>Задачи с семинара</h3>
+        <h3 data-n="4">Задачи с семинара</h3>
         <div class="probs" id="probs"></div>
       </div>
 
