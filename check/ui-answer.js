@@ -182,6 +182,37 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
                       const a = e.querySelector('.ans');
                       return a && /^Ответ\./.test(a.textContent.trim()); }); }));
 
+  /* --- названия кривых --- */
+  /* У трёх линий диаграммы три имени, и они не взаимозаменяемы: f(k) —
+     кривая выпуска, s·f(k) — кривая инвестиций, (δ+n+g)·k — линия выбытия.
+     «Обе кривые выпуска» про f(k) и s·f(k) — ровно та ошибка, из-за которой
+     студент решает, что шок по α двигает одну кривую дважды. Множественное
+     число допустимо только про старую и новую f(k). */
+  const naming = await ev(() => {
+    const OUT = /крив(ая|ую|ой|ые) выпуска/,
+          INV = /крив(ая|ую|ой) инвестиций|инвестиционн(ая|ую|ой) крив/,
+          DEP = /лини(я|ю|и) выбытия/;
+    const bad = [];
+    PROBLEMS.forEach((q, i) => {
+      /* что на самом деле двигают шоки задачи */
+      const moves = new Set();
+      q.shocks.forEach(sh => (AFFECTS[sh.key] || []).forEach(c => moves.add(c)));
+      const ans = String(q.why[0][2]);
+      if (moves.has('out') && !OUT.test(ans)) bad.push({задача:i+1, нет:'кривой выпуска', ans});
+      if (moves.has('inv') && !INV.test(ans)) bad.push({задача:i+1, нет:'кривой инвестиций', ans});
+      if (moves.has('dep') && !DEP.test(ans)) bad.push({задача:i+1, нет:'линии выбытия', ans});
+      /* множественное число про выпуск — только про старую и новую f(k) */
+      const all = [q.ask].concat(q.why.map(w => [].concat(w[1]).join(' ') + ' ' + w[2])).join(' ');
+      all.replace(/[^.!?]*кривые выпуска[^.!?]*/g, frag => {
+        if (!/старая и новая/.test(frag)) bad.push({задача:i+1, фраза:frag.trim().slice(0,90)});
+        return frag;
+      });
+    });
+    return bad;
+  });
+  ok('каждая кривая названа своим именем, и оно сходится с AFFECTS',
+     naming.length === 0, naming.slice(0, 4));
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(r=>r[0]==='FAIL');
