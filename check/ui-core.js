@@ -276,6 +276,47 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
      await ev(()=>document.documentElement.scrollWidth<=window.innerWidth+1),
      await ev(()=>[document.documentElement.scrollWidth, window.innerWidth]));
   await p.setViewportSize({width:1600,height:1250}); await p.waitForTimeout(400);
+  /* ---------- гайд сверху ---------- */
+  /* Он обещает три вещи: не занимать места, пока его не открыли; называть
+     блоки панели теми же номерами и теми же словами; открываться
+     с клавиатуры. Номера — самое хрупкое: порядок блоков в панели это
+     и есть их нумерация, и первая же перестановка сделает гайд лгущим. */
+  ok('гайд свёрнут по умолчанию и не ест место', await ev(()=>{
+     const g = document.getElementById('guide');
+     return !g.open && g.getBoundingClientRect().height < 70;
+  }), await ev(()=>document.getElementById('guide').getBoundingClientRect().height));
+
+  ok('гайд называет блоки панели теми же номерами и словами', await ev(()=>{
+     const g = document.getElementById('guide');
+     g.open = true;
+     const mine = [...g.querySelectorAll('li > b')].map(b=>b.textContent.trim());
+     const panel = [...document.querySelectorAll('h3[data-n]')]
+       .sort((a,c)=>+a.dataset.n - +c.dataset.n).map(h=>h.textContent.trim());
+     g.open = false;
+     return mine.length === panel.length &&
+            mine.every((t,i)=> panel[i].indexOf(t) === 0 || t.indexOf(panel[i]) === 0);
+  }), await ev(()=>({
+     гайд: [...document.querySelectorAll('#guide li > b')].map(b=>b.textContent.trim()),
+     панель: [...document.querySelectorAll('h3[data-n]')].map(h=>h.textContent.trim())})));
+
+  ok('стрелка в гайде поднята классом .arr',
+     await ev(()=>{
+       const g = document.getElementById('guide');
+       return [...g.querySelectorAll('.arr')].some(e=>e.textContent.trim()==='\u2192') &&
+              !/\d[^<]*\u2192/.test([...g.querySelectorAll('li')]
+                 .map(li=>li.innerHTML.replace(/<span class="arr">\u2192<\/span>/g,'')).join(''));
+     }));
+
+  ok('гайд открывается с клавиатуры', await (async ()=>{
+     await p.focus('#guide summary');
+     const got = await ev(()=>document.activeElement.tagName === 'SUMMARY');
+     await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+     const open = await ev(()=>document.getElementById('guide').open);
+     await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+     const shut = await ev(()=>!document.getElementById('guide').open);
+     return got && open && shut;
+  })());
+
   ok('все контролы доступны с клавиатуры', await ev(()=>
      [...document.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled])')]
        .filter(el=>!el.hidden && el.offsetParent!==null && !el.disabled)

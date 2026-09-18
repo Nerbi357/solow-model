@@ -42,7 +42,19 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
         rngH: Math.round(rng.getBoundingClientRect().height),
         hint: !!document.getElementById('helpbtn') &&
               getComputedStyle(document.getElementById('helpbtn')).display !== 'none',
-        cells: [...document.querySelectorAll('#fx td.v')].length
+        cells: [...document.querySelectorAll('#fx td.v')].length,
+        /* Гайд свёрнут — значит до графика по-прежнему один экран,
+           а не полтора. Открытым он тоже не должен ехать вбок. */
+        guide: (()=>{
+          const el = document.getElementById('guide');
+          const shutH = el.getBoundingClientRect().height;
+          const top = cv.getBoundingClientRect().top + scrollY;
+          const shutX = document.documentElement.scrollWidth <= innerWidth + 1;
+          el.open = true;
+          const openX = document.documentElement.scrollWidth <= innerWidth + 1;
+          el.open = false;
+          return {open: el.open, shutH, top, shutX, openX};
+        })()
       };
     });
     await ctx.close();
@@ -72,6 +84,11 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
   ok('390: страница не едет вбок', !ph.pageScrollX);
   ok('390: все восемь клеток на месте', ph.cells === 24, ph.cells);
   ok('390: мишени не меньше 24 px', ph.pinH >= 24 && ph.rngH >= 28, {pin:ph.pinH, rng:ph.rngH});
+  ok('390: гайд свёрнут и не отодвигает график',
+     !ph.guide.open && ph.guide.shutH < 80 && ph.guide.top < 330, ph.guide);
+  ok('390: гайд не едет вбок ни свёрнутым, ни открытым',
+     ph.guide.shutX && ph.guide.openX, ph.guide);
+  ok('1600: гайд тоже свёрнут', !wide.guide.open && wide.guide.shutH < 70, wide.guide);
 
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();

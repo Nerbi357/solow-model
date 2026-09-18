@@ -60,6 +60,41 @@
   .masthead h1{font-size:25px;font-weight:700;margin:0 0 3px;letter-spacing:-.015em}
   .masthead .lead{margin:0;color:var(--muted);font-size:14.5px;max-width:62ch}
 
+  /* Гайд сверху — свёрнут по умолчанию. На семинаре его читают один раз,
+     а место над графиком дорогое: на телефоне открытый блок означает
+     полтора экрана до картинки. Номера в нём — те же, что в шапках блоков
+     панели: прочитал строку 3, глаз сразу нашёл блок 3. */
+  .guide{
+    background:var(--card-2);border:1px solid var(--rule);border-radius:var(--r);
+    padding:11px 18px;margin:0 0 18px;color:var(--ink-2);
+  }
+  .guide summary{
+    cursor:pointer;font-size:14px;font-weight:700;color:var(--ink);
+    list-style:none;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  }
+  .guide summary::-webkit-details-marker{display:none}
+  .guide summary::before{content:"▸";font-size:12px;color:var(--muted)}
+  .guide[open] summary::before{content:"▾"}
+  .guide summary:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  .guide summary span{font-weight:400;color:var(--muted);font-size:13px}
+  .guide ol{
+    margin:12px 0 0;padding:0;list-style:none;counter-reset:g;
+    font-size:14px;line-height:1.6;
+  }
+  .guide li{counter-increment:g;position:relative;padding-left:32px;margin:0 0 9px}
+  .guide li:last-child{margin-bottom:0}
+  .guide li::before{
+    content:counter(g);position:absolute;left:0;top:1px;
+    width:22px;height:22px;border-radius:50%;background:var(--ink-2);color:var(--paper);
+    font-size:12px;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .guide b{font-weight:700;color:var(--ink)}
+  .guide .gtail{
+    margin:12px 0 0;padding-top:11px;border-top:1px solid var(--rule);
+    font-size:13px;line-height:1.55;color:var(--muted);
+  }
+
   .work{display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:34px}
   .plots{min-width:0}
   .panel{min-width:0}
@@ -502,6 +537,26 @@
   <header class="masthead">
     <h1>Модель Солоу</h1>
   </header>
+
+  <details class="guide" id="guide">
+    <summary>Как этим пользоваться <span>— четыре блока справа, по порядку</span></summary>
+    <ol>
+      <li><b>Временный сдвиг или новый стационар</b> — шпаргалка: какой шок толкает
+        экономику разово, а какой переносит само равновесие.</li>
+      <li><b>Исходное состояние</b> — пять параметров. «Свободно» значит, что условие
+        не называет это число: ползунок заперт, а перебор гонит параметр по всему
+        диапазону. Нажмите «задано» и введите своё.</li>
+      <li><b>Шоки</b> — до трёх сразу, и все происходят одновременно. Форма выбирается
+        вкладкой: «новое» (s: 0,10&nbsp;<span class="arr">→</span>&nbsp;0,20),
+        «на сколько» (δ + 5 п.п.), «во сколько» (K&nbsp;×0,80).</li>
+      <li><b>Задачи с семинара</b> — пять готовых условий с разбором. Таблица под
+        графиком показывает ответ только после кнопки «Показать ответ»: сначала
+        картинка, потом проверка.</li>
+    </ol>
+    <p class="gtail">На диаграмме чёрное — как было, цветное — что сделал шок.
+      Кружки на пересечениях открывают координаты, колесо приближает; про это
+      подробнее — под знаком «?» над графиком.</p>
+  </details>
 
   <div class="work">
 
