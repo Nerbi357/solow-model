@@ -149,6 +149,15 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
      why.filter(q=>{ const txt = q.w.map(st=>st.join(' ')).join(' ');
                      return /1\s*[−-]\s*α\s*\)/.test(txt) || /запас/i.test(txt); }).map(q=>q.t));
   await load(0);
+  ok('выкладки в разборе стоят отдельными строками',
+     await ev(()=>{ const d = document.querySelector('.solution details');
+                    if (d) d.open = true;
+                    const c = [...document.querySelectorAll('.why .calc')];
+                    return c.length >= 3 && c.every(e=>getComputedStyle(e).display === 'block'); }),
+     await ev(()=>document.querySelectorAll('.why .calc').length));
+  ok('шаг разбора может занимать несколько абзацев',
+     await ev(()=>[...document.querySelectorAll('.why > li')]
+       .some(li=>li.querySelectorAll('p:not(.ans)').length > 1)));
   ok('ответ шага назван ответом на странице',
      await ev(()=>{ const d = document.querySelector('.solution details');
                     if (d) d.open = true;

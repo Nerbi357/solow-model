@@ -36,7 +36,11 @@ def solve(free, build, n):
     for combo in itertools.product(*[a[1] for a in axes]):
         p = dict(zip([a[0] for a in axes], combo))
         args = build(p)
-        if not all(0 < x < 1 for x in args[:6]):
+        s0, d0, a0, s1, d1, a1 = args[:6]
+        # d — это сумма δ+n+g; единицей ограничен каждый параметр по
+        # отдельности, а не сумма, поэтому здесь только положительность
+        if not (0 < s0 < 1 and 0 < s1 < 1 and 0 < a0 < 1 and 0 < a1 < 1
+                and d0 > 0 and d1 > 0):
             continue
         for per, signs in enumerate(compare(*args)):
             for j, v in enumerate("ykci"):
@@ -54,8 +58,10 @@ CASES = [
      {"a":FULL},
      lambda p: (0.10, 0.10, p["a"], 0.20, 0.12, p["a"], 1.0), 981,
      "==↓↑↑↑?↑"),
-    ("Задача 3  K ×1,10 и δ +5 п.п.",
-     {"s":FULL, "d":(0.01, 0.94), "a":FULL},
+    # g входит в модель только через δ+n+g, поэтому рост g с 0 до 0,05 —
+    # это та же прибавка к выбытию, что и рост δ на 5 пунктов
+    ("Задача 3  K ×1,10 и g +5 п.п.",
+     {"s":FULL, "d":FULL, "a":FULL},
      lambda p: (p["s"], p["d"], p["a"], p["s"], p["d"]+0.05, p["a"], 1.10), 41,
      "↑↑↑↑↓↓↓↓"),
     ("Задача 4  s 0,20→0,22 и α 0,30→0,35",
