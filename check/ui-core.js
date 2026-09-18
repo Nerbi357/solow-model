@@ -49,9 +49,22 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
 
   // ---- 2. диапазоны и ввод числом ----
   const rng = await ev(() => ['s','d','n','g','a'].map(k => ({k, min:+document.getElementById('b-'+k).min, max:+document.getElementById('b-'+k).max})));
-  ok('s, δ, α: 0,01–0,99', rng.filter(r=>['s','d','a'].includes(r.k)).every(r=>r.min===0.01&&r.max===0.99), rng);
-  ok('n, g достают до нуля', rng.filter(r=>['n','g'].includes(r.k)).every(r=>r.min===0&&r.max===0.99), rng);
+  ok('δ, α: 0,01–0,99', rng.filter(r=>['d','a'].includes(r.k)).every(r=>r.min===0.01&&r.max===0.99), rng);
   const box = async (id,v) => { await ev(([id,v])=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('change',{bubbles:true}));},[id,v]); await p.waitForTimeout(260); };
+  // У s граница ниже остальных, и это не описка: 0,01 — круглое число, а не
+  // требование модели, и в задаче 5 оно в одиночку решало знак ответа.
+  // Модельная граница и граница ползунка тут — две разные вещи: ползунок
+  // обязан стоять на сетке своего шага, а до 0,0005 значение доводится числом.
+  ok('s: модельная граница 0,0005', await ev(()=>
+     Math.abs(META.s.min - 0.0005) < 1e-12 && META.s.max === 0.99),
+     await ev(()=>[META.s.min, META.s.max]));
+  ok('s: ползунок начинается с кратного шагу 0,001',
+     rng.filter(r=>r.k==='s').every(r=>r.min===0.001 && r.max===0.99), rng);
+  await box('nb-s','0,0005'); ok('ячейка достаёт до модельной границы',
+     Math.abs(await ev(()=>base.s.v) - 0.0005) < 1e-12, await ev(()=>base.s.v));
+  await box('nb-s','0,0001'); ok('ниже модельной границы ячейка клампит',
+     Math.abs(await ev(()=>base.s.v) - 0.0005) < 1e-12, await ev(()=>base.s.v));
+  ok('n, g достают до нуля', rng.filter(r=>['n','g'].includes(r.k)).every(r=>r.min===0&&r.max===0.99), rng);
   await box('nb-s','0,42'); ok('ячейка принимает запятую', Math.abs(await ev(()=>base.s.v)-0.42)<1e-9);
   await box('nb-s','9');    ok('ячейка клампит', (await ev(()=>base.s.v))===0.99);
   await box('nb-s','ерунда'); ok('мусор не применяется', (await ev(()=>base.s.v))===0.99);
@@ -87,6 +100,39 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   ok('занятый параметр исчез из списка', await ev(()=>
      [...document.querySelectorAll('#addsel option')].every(o=>!['d','s','a'].includes(o.value))));
 
+  // ---- 4а. сетка ползунка: min кратен шагу ----
+  // Ползунок ходит не по отрезку, а по сетке min + n·step. Граница, не кратная
+  // шагу, сдвигает сетку целиком: круглое значение мышкой уже не поставить,
+  // а у формы «×» уходит с сетки сама нейтральная единица — шок читается как
+  // «×1,000» и при этом красит линию. Базы взяты 0,15 нарочно: при них мимо
+  // сетки промахиваются все три формы сразу.
+  await ev(()=>{
+    shocks.length = 0;
+    ['s','d','a'].forEach(k=>{ base[k].v = 0.15; base[k].fixed = true; base[k].auto = false; });
+    refreshAll();
+    ['s','d','a'].forEach(k=>{ document.getElementById('addsel').value=k;
+                               document.getElementById('add').click(); });
+  });
+  await p.waitForTimeout(350);
+  const offGrid = () => ev(()=>[...document.querySelectorAll('input[type=range]')]
+     .map(e=>({id:e.id, min:+e.min, step:+e.step}))
+     .filter(r=>Math.abs(r.min/r.step - Math.round(r.min/r.step)) > 1e-6)
+     .map(r=>r.id + ': min ' + r.min + ' при шаге ' + r.step));
+  for (const f of ['set','add','mul']){
+    await ev(f2=>{ document.querySelectorAll('.ftabs [data-form="'+f2+'"]').forEach(b=>b.click()); }, f);
+    await p.waitForTimeout(300);
+    const bad = await offGrid();
+    ok('форма «' + f + '»: у каждого ползунка min кратен шагу', bad.length===0, bad);
+  }
+  const onGrid = await ev(()=>{
+    const put=(id,v)=>{ const e=document.getElementById(id); if(!e) return null;
+                        const was=e.value; e.value=v; const got=+e.value; e.value=was; return got; };
+    return {s200:put('b-s',0.2), s990:put('b-s',0.99), mul1:put('k0-s',1)};
+  });
+  ok('круглое значение и нейтральный множитель стоят на сетке',
+     Math.abs(onGrid.s200-0.2)<1e-9 && Math.abs(onGrid.s990-0.99)<1e-9 &&
+     Math.abs(onGrid.mul1-1)<1e-9, onGrid);
+
   // ---- 5. «задано / свободно» ----
   await loadP(1);                                        // листок 1.ii: свободно только α
   ok('задача расставляет статусы сама', await ev(()=>
@@ -109,7 +155,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
     1: {rows:['==↓↑↑↑?↑','====↓↓↓↓','==↓↑↑↑?↑'], free:['a']},
     2: {rows:['↑↑↑↑====','====↓↓↓↓','↑↑↑↑↓↓↓↓'], free:['s','d','a']},
     3: {rows:['==↓↑↑↑↑↑','?=??????','?=??????'], free:['d']},
-    4: {rows:['====↓↓↓↓','?=??????','?=???↓??'], free:['s']}
+    4: {rows:['====↓↓↓↓','?=??????','?=??????'], free:['s']}
   };
 
   for (const [i, exp] of Object.entries(EXPECT)){
