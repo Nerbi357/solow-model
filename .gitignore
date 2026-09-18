@@ -31,3 +31,7 @@ $RECYCLE.BIN/
 
 # Прочее
 *.log
+
+# Python
+__pycache__/
+*.pyc
