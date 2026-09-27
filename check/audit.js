@@ -55,8 +55,11 @@ const EXE = process.env.CHROME_PATH || undefined;   // по умолчанию �
        после шока и у перебора: точка, где хоть одно из них вне RNG, не считается. */
     const RNG  = {s:[0.000001,0.999999], d:[0.000001,0.999999], n:[0,0.999999], g:[0,0.999999], a:[0.000001,0.999]};
     const VS   = ['y','k','c','i'];
-    const okp = q => KEYS.every(k => q[k] >= RNG[k][0]-1e-12 && q[k] <= RNG[k][1]+1e-12) &&
-                     (q.d+q.n+q.g)>0;
+    /* одним выражением, без замыканий: зовётся миллионы раз */
+    const E = 1e-12, [sL, sH] = RNG.s, [dL, dH] = RNG.d, [nL, nH] = RNG.n, [gL, gH] = RNG.g, [aL, aH] = RNG.a;
+    const okp = q => q.s >= sL-E && q.s <= sH+E && q.d >= dL-E && q.d <= dH+E &&
+                     q.n >= nL-E && q.n <= nH+E && q.g >= gL-E && q.g <= gH+E &&
+                     q.a >= aL-E && q.a <= aH+E && (q.d+q.n+q.g) > 0;
     const lnk = q => (Math.log(q.s) - Math.log(q.d+q.n+q.g)) / (1-q.a);
     const bun = (l,q) => ({y:q.a*l, k:l, c:Math.log(1-q.s)+q.a*l, i:Math.log(q.s)+q.a*l});
     const ap  = (q,sh) => {
@@ -344,17 +347,24 @@ const EXE = process.env.CHROME_PATH || undefined;   // по умолчанию �
            отрезан 1%. */
         const N2 = Math.max(3, Math.round(Math.pow(2000, 1/nowFree.length))),
               T2 = Math.pow(N2, nowFree.length);
+        /* Два обхода одной сетки. По узлам с самими краями — названо ли сужение
+           вообще: у края оно бывает крошечным. По серединам ячеек — заметно ли
+           оно: на сетке 13³ каждый крайний узел весит 1/13, и узлы δ = 0,000001
+           и g = 0,999999 вдвоём выдавали 15% отрезанного там, где отрезан 1%. */
+        let okC = 0;
         for (let idx=0; idx<T2; idx++){
-          const q = {}; KEYS.forEach(k=>q[k]=base[k].v);
+          const q = {}, qc = {}; KEYS.forEach(k=>{ q[k]=base[k].v; qc[k]=base[k].v; });
           let r = idx;
-          for (const k of nowFree){ const j=r%N2; r=(r-j)/N2; q[k]=RNG[k][0]+(RNG[k][1]-RNG[k][0])*j/(N2-1); }
-          tot++; if (rowsAt(q)) ok2++;
+          for (const k of nowFree){ const j=r%N2; r=(r-j)/N2;
+            q[k]=RNG[k][0]+(RNG[k][1]-RNG[k][0])*j/(N2-1);
+            qc[k]=RNG[k][0]+(RNG[k][1]-RNG[k][0])*(j+0.5)/N2; }
+          tot++; if (rowsAt(q)) ok2++; if (rowsAt(qc)) okC++;
         }
         if (ok2 < tot && !cuts.length)
           note('mute','перебор сужен ('+ok2+'/'+tot+'), но об этом не сказано', tag);
         /* порог «мелкий край области определения» не должен прятать заметное сужение */
-        if (ok2 / tot < 0.9 && !cuts.some(c=>c.big))
-          note('mute','отрезано '+(tot-ok2)+'/'+tot+', а заметным это не считается', tag);
+        if (okC / tot < 0.9 && !cuts.some(c=>c.big))
+          note('mute','отрезано '+(tot-okC)+'/'+tot+', а заметным это не считается', tag);
       }
 
       /* --- сверка с независимым расчётом: вся таблица и каждый случай --- */
