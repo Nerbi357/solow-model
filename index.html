@@ -501,6 +501,12 @@
       padding:12px 13px 13px;margin:0 0 10px;background:var(--card-2);
     }
     .fx tbody tr.total{border-color:var(--ink-2);background:var(--card)}
+    /* Заглушка «шоков нет» — одна ячейка на всю строку. В сетке карточки
+       colspan не действует: ячейка садилась в одну колонку из четырёх,
+       текст шёл по слову на строку, а снизу прорастали чужие ярлыки
+       «Краткосрочные» и «Долгосрочные». */
+    .fx tbody tr.idle{display:block}
+    .fx tbody tr.idle::before,.fx tbody tr.idle::after{content:none}
     .fx tbody tr::before,.fx tbody tr::after{
       font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
       color:var(--muted);grid-column:1/-1;padding-top:7px;
@@ -588,12 +594,12 @@
       <p class="forkcap" id="cap1" hidden></p>
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
-      <p class="tight" id="tight1" hidden></p>
+      <p class="tight" id="tight1" hidden></p><p class="tight" id="same1" hidden></p>
       <div id="fork2" hidden>
         <p class="forkcap" id="cap2"></p>
         <canvas id="main2" data-h="620" tabindex="0"
                 aria-label="Та же диаграмма для второго случая."></canvas>
-        <p class="tight" id="tight2" hidden></p>
+        <p class="tight" id="tight2" hidden></p><p class="tight" id="same2" hidden></p>
       </div>
 
       <div class="coords" id="coords" hidden><div id="coords-body"></div></div>
@@ -793,7 +799,12 @@ const kStar = p => Math.exp(lnK(p));
 const sGold = p => p.a;                        // при Коббе — Дугласе s* = α
 const curveFn = (c, p) =>
   c === "out" ? k => f(k, p) : c === "inv" ? k => p.s * f(k, p) : k => dep(p) * k;
-const sigOf = (p, c) => DET[c].map(k => p[k]).join("|");
+/* Подпись линии — то, что её задаёт, а не набор параметров: линию выбытия
+   задаёт сумма δ+n+g, и у «n + 0,4» и «g + 0,4» она одна и та же, хотя наборы
+   (0,05|0,4|0) и (0,05|0|0,4) разные. Округление — чтобы 0,3 и
+   0,30000000000000004 после «+ 0,1» не считались разными линиями. */
+const sigOf = (p, c) => (c === "dep" ? [dep(p)] : DET[c].map(k => p[k]))
+  .map(v => +v.toPrecision(12)).join("|");
 
 const OK = p =>
   p.s > 0 && p.s < 1 && p.a > 0 && p.a < 1 &&
@@ -1591,6 +1602,20 @@ function renderMain(ctx, w, h, capture){
   CUR.apart = apart;
   CUR.tight = isFinite(apart) && apart < TIGHT_PX;
 
+  /* Кривые разных шоков, легшие точно одна на другую: у «n + 0,4» и «g + 0,4»
+     одна и та же δ+n+g, и вторая линия целиком накрывает первую. В легенде
+     и у правого края два цвета, на картинке один — студент решает, что первый
+     шок ничего не нарисовал. Сравнение выше этого не видит: оно смотрит только
+     одноцветные пары. */
+  const shockItems = items.filter(it => it.kind === "shock"), same = [];
+  for (let i = 0; i < shockItems.length; i++)
+    for (let j = i + 1; j < shockItems.length; j++){
+      const a = shockItems[i], b = shockItems[j];
+      if (a.c === b.c && a.sh !== b.sh && sigOf(a.P, a.c) === sigOf(b.P, b.c))
+        same.push({c: a.c, under: a.sh, over: b.sh});
+    }
+  CUR.same = same;
+
   axes(ctx, L, B, R, T, home);
   tag(ctx, R + 22, B + 18, "k", col("--ink"), "center", 15, true);
   tag(ctx, L - 22, T - 8, "y", col("--ink"), "center", 15, true);
@@ -1744,9 +1769,16 @@ function renderMain(ctx, w, h, capture){
      к старому, y_old и y_new садились друг на друга, а верхняя из них —
      ещё и на подпись самой оси. */
   ylab.sort((p1, p2) => p1.y - p2.y);
+  /* Шаг — высота подложки tagSub (19,5 px); при 15 подписи наезжали на 4–5 px
+     даже в разобранной задаче 4. Обратный проход не пускает нижнюю под ось k,
+     где её накрыли бы подписи отметок. */
   for (let i = 0; i < ylab.length; i++){
-    const floor = i ? ylab[i-1].y + 15 : T + 10;
+    const floor = i ? ylab[i-1].y + 20 : T + 10;
     if (ylab[i].y < floor) ylab[i].y = floor;
+  }
+  for (let i = ylab.length - 1; i >= 0; i--){
+    const ceil = i === ylab.length - 1 ? B - 10 : ylab[i+1].y - 20;
+    if (ylab[i].y > ceil) ylab[i].y = ceil;
   }
   ylab.forEach(l => tagSub(ctx, L - 24, l.y, "y", l.low, l.c, true));
 
@@ -1770,6 +1802,14 @@ function paintOn(id, vals, capture){
   if (note){
     note.hidden = !PANE[id].tight;
     if (PANE[id].tight) note.textContent = TIGHT_NOTE;
+  }
+  const twin = document.getElementById(id === "main" ? "same1" : "same2");
+  if (twin){
+    const pairs = PANE[id].same || [];
+    twin.hidden = !pairs.length;
+    twin.innerHTML = pairs.map(q => "Шоки «" + escArr(shockName(q.under)) + "» и «" +
+      escArr(shockName(q.over)) + "» дают одну и ту же линию " + CURVE_LABEL[q.c] +
+      ": вторая нарисована точно поверх первой, поэтому первую не видно.").join(" ");
   }
 }
 
@@ -1802,11 +1842,23 @@ function drawMain(){
     cap1.textContent = fk.cases[0].text; cap1.dataset.n = "1";
     cap2.textContent = fk.cases[1].text;  cap2.dataset.n = "2";
     lead.hidden = false;
+    /* Направление берётся из самого шока: в задаче 5 α падает, и фраза
+       «рост α поднимает выпуск» описывала бы не её. Сторону от k = 1 решает
+       сравнение s с δ+n+g, поэтому называются ВСЕ свободные из них, а не
+       первый по порядку: «решает s» при свободной ещё и δ обещало, что
+       назови s — и диаграмма станет одна. */
+    const ash = shocks.find(q => q.key === "a" && q.on);
+    const up = !ash || (ash.form === "set" ? ash.value > base.a.v
+                      : ash.form === "add" ? ash.value > 0 : ash.value > 1);
+    const syms = fk.keys.map(k => META[k].sym);
+    const list = syms.length > 1
+      ? syms.slice(0, -1).join(", ") + " и " + syms[syms.length - 1] : syms[0];
     lead.innerHTML = "<b>Изменение α распадается на два случая.</b> Кривые " +
-      "k<sup>α</sup> при разных α пересекаются ровно в k = 1: правее рост α " +
-      "поднимает выпуск, левее — опускает. По какую сторону стоит экономика, " +
-      "решает " + META[fk.key].sym + ", а условие " + META[fk.key].sym +
-      " не называет. Поэтому диаграммы две, и обе одинаково возможны.";
+      "k<sup>α</sup> при разных α пересекаются ровно в k = 1: правее " +
+      (up ? "рост α поднимает выпуск, левее — опускает"
+          : "падение α опускает выпуск, левее — поднимает") +
+      ". По какую сторону стоит экономика, решает сравнение s с δ+n+g, " +
+      "а условие не называет " + list + ". Поэтому диаграммы две, и обе возможны.";
     paintOn("main", fk.cases[0].vals, true);
     paintOn("main2", fk.cases[1].vals, true);
   }
@@ -1839,7 +1891,15 @@ function pathData(){
      пунктир «new» оказывался за пределами картинки, а подпись улетала
      за канвас. Вместо обрезки растёт шаг: λ·dt остаётся тем же, точность
      схемы Хойна не страдает, а число точек ограничено. */
-  const span = Math.max(8, 6 / Math.max(lam, 1e-4));
+  /* 6/λ — это 99,75% пути для z = k^(1−α): она сходится ровно экспоненциально.
+     Но у самой k остаток возводится в степень 1/(1−α), и при α = 0,99 путь
+     обрывался на 15–25% ниже пунктира «new». Отсюда две добавки: ln(1/(1−α))
+     гасит это усиление, а ln|z₀/z* − 1| — дальний старт. Считается в логарифмах:
+     kJ и kN при α около единицы расходятся на десятки порядков. */
+  const zr = (1 - PF.a) * (Math.log(kJ) - Math.log(kN));
+  const gap = Math.abs(Math.expm1(zr));
+  const far = Math.min(40, Math.max(0, Math.log(gap || 1)));   // предохранитель: цикл ниже
+  const span = Math.max(8, (6 + Math.log(1 / (1 - PF.a)) + far) / Math.max(lam, 1e-4));
   const dt = Math.max(PATH_DT, span / 1600);
   const at = (k, P) => { const y = f(k, P);
     return {y, k, c: (1 - P.s) * y, i: P.s * y}; };
@@ -1897,14 +1957,18 @@ function drawPath(cv, key, d){
     lv.push({r: jump, low: "скачок", c: col("--res")});
   /* Подписи уровней растаскиваются, иначе при близких уровнях они садятся
      друг на друга; пунктир при этом остаётся на своём месте. */
+  /* Шаг — высота подложки tagSub (13 × 1,5 = 19,5 px), а не на глаз: при 14
+     подложка следующей подписи закрашивала нижний индекс предыдущей, и при α
+     около единицы «y_old» и «y_скачок» сливались в кашу из букв. */
+  const LEVEL_GAP = 20;
   lv.forEach(l => { l.y = Y(l.r); });
   lv.sort((p1, p2) => p1.y - p2.y);
   for (let i = 0; i < lv.length; i++){
-    const floor = i ? lv[i-1].y + 14 : T - 4;
+    const floor = i ? lv[i-1].y + LEVEL_GAP : T - 4;
     if (lv[i].y < floor) lv[i].y = floor;
   }
   for (let i = lv.length - 1; i >= 0; i--){
-    const ceil = i === lv.length - 1 ? B : lv[i+1].y - 14;
+    const ceil = i === lv.length - 1 ? B : lv[i+1].y - LEVEL_GAP;
     if (lv[i].y > ceil) lv[i].y = ceil;
   }
   lv.forEach(l => tagSub(ctx, L - 24, l.y, key, l.low, l.c));
@@ -2073,7 +2137,7 @@ function renderFx(){
       ? "Шоки есть, но ни один ничего не меняет: они скрыты или стоят на " +
         "нейтральном значении."
       : "Пока нет ни одного шока — добавьте его на панели или откройте готовую задачу.";
-    body.innerHTML = '<tr><td colspan="9" style="text-align:left;color:var(--muted);padding:10px 6px">' +
+    body.innerHTML = '<tr class="idle"><td colspan="9" style="text-align:left;color:var(--muted);padding:10px 6px">' +
       idle + "</td></tr>";
     return;
   }
@@ -2248,20 +2312,29 @@ function shockHead(sh){
       num(neg ? -sh.value : sh.value, d) + "</span>";
 }
 
+/* Пояснение в карточке шока. Отдельной функцией, потому что его обновляет
+   и syncValues: фраза про нейтраль зависит от значения, а свежий шок всегда
+   нейтрален. Собранная один раз при пересборке, она оставалась висеть рядом
+   с шапкой «δ: 0,100 → 0,200» и спорила с ней — тот же класс ошибки, что
+   когда-то с самой шапкой. */
+function touchText(sh){
+  return (AFFECTS[sh.key].length
+      ? "двигает " + AFFECTS[sh.key].map(c => CURVE_LABEL[c]).join(" и ")
+      : "двигает саму точку k, кривые стоят") +
+    (sh.form === "set" && !isStock(sh.key)
+      ? ". Форма «новое» называет и начало, и конец, поэтому исходное " + META[sh.key].sym +
+        " держится заданным"
+      : "") +
+    /* Шок на нейтрали ничего не красит и не попадает в таблицу — про это
+       надо сказать в самой карточке, иначе непонятно, почему картинка
+       не шелохнулась. */
+    (sh.on && !bites(sh) ? ". Сейчас значение такое, что шок ничего не меняет" : "");
+}
+
 function renderShocks(){
   document.getElementById("shocks").innerHTML = shocks.map((sh, i) => {
     const live = colVar(sh.ci), m = META[sh.key];
-    const touches = (AFFECTS[sh.key].length
-      ? "двигает " + AFFECTS[sh.key].map(c => CURVE_LABEL[c]).join(" и ")
-      : "двигает саму точку k, кривые стоят") +
-      (sh.form === "set" && !isStock(sh.key)
-        ? ". Форма «новое» называет и начало, и конец, поэтому исходное " + m.sym +
-          " держится заданным"
-        : "") +
-      /* Шок на нейтрали ничего не красит и не попадает в таблицу — про это
-         надо сказать в самой карточке, иначе непонятно, почему картинка
-         не шелохнулась. Свежий шок всегда такой. */
-      (sh.on && !bites(sh) ? ". Сейчас значение такое, что шок ничего не меняет" : "");
+    const touches = touchText(sh);
     return "<li>" +
       '<div class="card' + (sh.on ? "" : " off") + '" data-card="' + i + '" style="--live:' + live + '">' +
         '<div class="chead"><span class="idx">' + (i + 1) + '</span><i class="chip"></i>' +
@@ -2278,7 +2351,7 @@ function renderShocks(){
                 (fk === sh.form) + '"><span class="g">' + FORM[fk].glyph + "</span>" +
                 FORM[fk].tab + "</button>").join("") + "</div>"
             : "") +
-          '<p class="touch">' + touches + "</p>" +
+          '<p class="touch" data-touch="' + i + '">' + touches + "</p>" +
           paramRow(sh.key, sh.value, "k" + i + "-", live, undefined,
                    isStock(sh.key) ? undefined : base[sh.key].v, sh.form) +
         "</div>" +
@@ -2747,6 +2820,10 @@ function syncValues(){
   document.querySelectorAll("[data-head]").forEach(el => {
     const sh = shocks[+el.dataset.head];
     if (sh) el.innerHTML = shockHead(sh);
+  });
+  document.querySelectorAll("[data-touch]").forEach(el => {
+    const sh = shocks[+el.dataset.touch];
+    if (sh) el.innerHTML = touchText(sh);
   });
 }
 let heavyTimer = 0;
