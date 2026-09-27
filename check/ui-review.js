@@ -297,6 +297,57 @@ const overlaps = pads => {
   ok('Р23д: а после своего значения пометка уходит',
      !/Значение из ссылки/.test(await ev(()=>document.querySelector('[data-touch="0"]').textContent)));
 
+  // ---- Р8: точность знака и края перебора на новых границах ----
+  /* α свободна, «α × 1,3»: у α около 0,000001 и у самой k = 1 настоящее
+     изменение выпуска — 10⁻¹², а порог «=» был 1e-11. Внутри ветки вставало
+     ложное «=» вперемешку со стрелками — «?» там, где сторона решает знак. */
+  await go('#b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3333333333:0&k=a:mul:1.3:1');
+  const prec = await ev(()=>{ const fk = forkCase(); if (!fk) return 'развилки нет';
+    return fk.cases.map(c => c.text + ': ' + caseSweep(c.lim).map(r => r.sr.concat(r.lr).join(',')).join(' ')); });
+  ok('Р8: единственный шок по α при α около 0,000001 — в ветках нет «?»',
+     Array.isArray(prec) && prec.every(t => !/dunno/.test(t)), prec);
+  ok('Р8: изменение 10⁻¹² — стрелка, а не «=»',
+     await ev(()=>{ const q = {s:0.1, d:0.1 * Math.exp(-5e-6), n:0, g:0, a:1e-6};
+       return compare(q, {...q, a:1.3e-6}, 1).sr[0]; }) === 'up');
+  /* Край δ: при s = 0,04, α = 0,15 и шоках «s × 1,5, g + 0,01, δ × 0,8»
+     долгосрочные инвестиции падают при δ до ~0,0005, а равномерная сетка
+     (шаг 0,0007) в эту полосу не попадала. */
+  await go('#b=s:0.04:1,d:0.4:0,n:0:1,g:0:1,a:0.15:1&k=s:mul:1.5:1;g:add:0.01:1;d:mul:0.8:1');
+  const edgeI = await ev(()=>{ const r = sweepCached(); return r[r.length-1].lr[3]; });
+  ok('Р8: полоса у нижнего края δ видна — долгосрочные i «?», а не «↑»', edgeI === 'dunno', edgeI);
+  /* Сторона-полоска у края: «s × 0,05» не пускает s ниже 0,00002, и сторона
+     «k < 1» при δ = 0,02 — это s от 0,00002 до 0,02; сетка развилки проходила
+     мимо неё целиком, и диаграмма была одна. */
+  await go('#b=s:0.9:0,d:0.02:1,n:0:1,g:0:1,a:0.88:0&k=a:mul:3:1;s:mul:0.05:1');
+  ok('Р8: сторона-полоска у края найдена — диаграмм две',
+     await ev(()=>!!forkCase() && !document.getElementById('fork2').hidden),
+     await ev(()=>({fork: !!forkCase(), fork2: !document.getElementById('fork2').hidden})));
+
+  // ---- Р8, вариант 2: граница перебора видна ----
+  /* δ = 0,9, n 0,1 → 0,12, α 0,40 → 0,3995, s не задана: долгосрочно k
+     падает при любой s от 0,000001 до 0,999999, а при s ниже ~5·10⁻¹¹ растёт.
+     Ответ решает граница, и страница обязана это сказать. */
+  await go('#b=s:0.3:0,d:0.9:1,n:0.1:1,g:0:1,a:0.4:1&k=n:set:0.12:1;a:set:0.3995:1');
+  const gb0 = await ev(()=>{ const r = document.getElementById('fxrange');
+    return {range: r && !r.hidden ? r.textContent : null,
+            plaque: /Граница перебора/.test(document.getElementById('notes').textContent)}; });
+  ok('Р8: строка о границах перебора видна и до ответа',
+     gb0.range === 'Неизвестный параметр перебирается: s — от 0,000001 до 0,999999.', gb0);
+  ok('Р8: а плашка «Граница перебора» — только вместе с ответом', !gb0.plaque);
+  await reveal();
+  const gb1 = await ev(()=>({notes: document.getElementById('notes').textContent,
+    cell: [...document.querySelectorAll('#fx tr')].pop().querySelectorAll('td.v')[5].textContent}));
+  ok('Р8: за нижней границей s знак другой — плашка «Граница перебора» с примером',
+     /Граница перебора/.test(gb1.notes) && /s = 10⁻¹¹/.test(gb1.notes), gb1.notes.slice(0, 200));
+  ok('Р8: и задетая стрелка помечена °', gb1.cell === '↓°', gb1.cell);
+  const gbP = [];
+  for (let i = 0; i < await ev(()=>PROBLEMS.length); i++){
+    await ev(i=>document.querySelector('[data-p="'+i+'"]').click(), i); await p.waitForTimeout(500); await reveal();
+    if (await ev(()=>(typeof edgeFlags === 'function' && edgeFlags().length > 0) ||
+                     /Граница перебора/.test(document.getElementById('notes').textContent))) gbP.push(i + 1);
+  }
+  ok('Р8: в задачах семинара граница перебора ничего не решает', gbP.length === 0, gbP);
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');

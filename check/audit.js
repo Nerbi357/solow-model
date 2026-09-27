@@ -81,6 +81,10 @@ const EXE = process.env.CHROME_PATH || undefined;   // по умолчанию �
        считается отдельной строкой. На сетке страницы провалы в 3·10⁻⁵
        ловятся, в 10⁻⁵ — уже нет. */
     const MICRO = 3e-5;
+    /* Ниже этого своя модель знак не различает: она считает прямо,
+       ln(новое) − ln(старое) против порога 1e-11. Такой спор — предел
+       точности эталона, а не провал знака, и считается отдельно. */
+    const FLOOR = 1e-10;
 
     /* Строки при одном наборе параметров: каждый шок отдельно и, если шоков
        больше одного, все вместе. Пишутся разности логарифмов, а не знаки, —
@@ -236,9 +240,15 @@ const EXE = process.env.CHROME_PATH || undefined;   // по умолчанию �
       if (!signs.length) return page==='dunno' ? 'ok' : 'empty';
       if (page==='dunno') return signs.length>1 ? 'ok' : 'less-sure';
       const other = signs.filter(s=>s!==page);
-      if (!c[page]) return 'too-sure';
       if (!other.length) return 'ok';
-      return other.every(s=>c[s].mag < MICRO) ? 'micro' : 'too-sure';
+      const tiny = other.every(s=>c[s].mag < MICRO);
+      /* Своя модель считает прямо: ln(новое) − ln(старое) против порога 1e-11.
+         Страница собирает разность по частям и видит изменения и в 10⁻¹²,
+         а у α около 0,999 разность больших логарифмов у эталона шумит. Спор
+         «=» страницы с одними сверхмелкими стрелками эталона — тот же предел
+         точности, что и сверхмелкий провал. */
+      if (c[page]) return tiny ? 'micro' : 'too-sure';
+      return (page === 'same' && tiny) ? 'micro' : 'too-sure';
     };
     const CELLN = (i, per, j) => 'стр.'+(i+1)+' '+(per==='sr'?'кратко':'долго')+' '+VS[j];
     const fmtQ = q => KEYS.map(k=>k+'='+(+q[k].toPrecision(6))).join(' ');
@@ -268,7 +278,7 @@ const EXE = process.env.CHROME_PATH || undefined;   // по умолчанию �
     ['K','L'].forEach(k=>{ SH.push({key:k,form:'mul',value:0.8}); SH.push({key:k,form:'mul',value:1.25}); });
 
     const bad = [], seen = {mismatch:0, inv:0, mute:0, lock:0, case:0, checks:0, cfgs:0,
-                            clamped:0, cut:0, forks:0, micro:0, hunted:0};
+                            clamped:0, cut:0, forks:0, micro:0, floor:0, hunted:0};
     const note = (kind, msg, cfg) => { seen[kind]++; if (bad.length<40) bad.push(kind.toUpperCase()+': '+msg+'  ['+cfg+']'); };
 
     const run = (bv, free, shs, tag) => {
@@ -389,7 +399,9 @@ const EXE = process.env.CHROME_PATH || undefined;   // по умолчанию �
         const ci = i*8 + pi*4 + j, c = cellOf(A, bk, ci);
         let jd = judge(v, c), extra = '';
         if (jd==='ok') return;
-        if (jd==='micro'){ seen.micro++; return; }
+        if (jd==='micro'){
+          if (Object.keys(c).every(x=>x===v || c[x].mag < FLOOR)) seen.floor++; else seen.micro++;
+          return; }
         if (jd==='less-sure'){
           const w = hunt(ctx.bv, ctx.free, ctx.shs, bk, ci, Object.keys(c)[0]);
           if (w){ seen.hunted++; return; }
@@ -494,6 +506,7 @@ const EXE = process.env.CHROME_PATH || undefined;   // по умолчанию �
   console.log('---');
   console.log('шоков подрезано границами:', res.seen.clamped, ' конфигураций с сужением:', res.seen.cut);
   console.log('сверхмелких провалов знака (предел сетки, не ошибка):', res.seen.micro);
+  console.log('клеток на пределе точности эталона (изменение < 1e-10):', res.seen.floor);
   console.log('«?» страницы, подтверждённых прицельным поиском:', res.seen.hunted);
   console.log('');
   res.bad.forEach(x => console.log('  ' + x));

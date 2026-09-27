@@ -220,6 +220,7 @@
 
   /* ---------- notes under the table ---------- */
   .notes{margin:20px 0 0;display:flex;flex-direction:column;gap:10px}
+  .fx td.v .deg{font-size:.6em;vertical-align:.9em;margin-left:1px}
   .note{
     border-left:3px solid var(--dunno);background:rgba(168,131,43,.06);
     border-radius:0 var(--r) var(--r) 0;padding:11px 15px;max-width:96ch;
@@ -631,6 +632,7 @@
         <span><b class="down">↓</b> уменьшилось</span>
         <span><b>=</b> не изменилось</span>
         <span><b class="dunno">?</b> нельзя определить</span>
+        <span id="fxrange" hidden></span>
         <span id="fxunits">y — подушевой доход, k — капиталовооружённость,
               c — подушевое потребление, i — подушевые инвестиции</span>
       </p>
@@ -849,16 +851,16 @@ const MOK = p =>
   p.d >= 0 && p.d < 1 && p.n >= 0 && p.n < 1 && p.g >= 0 && p.g < 1 &&
   dep(p) > 0;
 
-/* логарифмы четырёх переменных при запасе e^lnk и параметрах p */
-const bundle = (lnk, p) => ({
-  y: p.a * lnk,
-  k: lnk,
-  c: Math.log(1 - p.s) + p.a * lnk,
-  i: Math.log(p.s)     + p.a * lnk
-});
-
-const TOL = 1e-11;
-const sgn = d => (!isFinite(d) ? "dunno" : Math.abs(d) < TOL ? "same" : (d > 0 ? "up" : "down"));
+/* Знак суммы слагаемых. «Не изменилось» — только если слагаемые гасят
+   друг друга в пределах ошибки округления (EPS_R от их размера плюс
+   noise — ошибка, пришедшая с входа), а не когда сумма просто мала:
+   настоящее изменение бывает и 10⁻¹², и таблица обязана его видеть. */
+const EPS_R = 64 * Number.EPSILON;
+const sgnOf = (sum, mag, noise) =>
+  !isFinite(sum) ? "dunno" : Math.abs(sum) <= EPS_R * mag + noise ? "same" : (sum > 0 ? "up" : "down");
+/* ln(x₁/x₀) с полной точностью и ровно 0 при равных: log1p от относительной
+   разницы, а не разность двух логарифмов */
+const lnRatio = (x1, x0) => x1 === x0 ? 0 : Math.log1p((x1 - x0) / x0);
 
 /* ===================== форматирование ===================== */
 const num = (x, dg = 2) => (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ","));
@@ -1020,34 +1022,91 @@ function shockName(sh){
 }
 
 /* ===================== перебор ===================== */
-/* Сравнение одного состояния с исходным, целиком в логарифмах. */
+/* Сравнение одного состояния с исходным, целиком в логарифмах. Разность
+   собирается по частям — из изменений самих параметров, — а не вычитанием
+   двух готовых логарифмов: каждое слагаемое тогда точно до последнего
+   знака. Раньше бралась разность ln(новое) − ln(старое) и сравнивалась
+   с порогом 1e-11. При α около 0,000001 и шоке «α × 1,3» у самой границы
+   k = 1 настоящее изменение выпуска — 10⁻¹², и таблица ставила «=» вперемешку
+   со стрелками, то есть «?» там, где знак определён; а при α около 0,999
+   сами логарифмы — тысячи, и ошибка их разности подходила к тому же порогу.
+     ln k₁ − ln k₀ = (Δln s − Δln(δ+n+g))/(1−α₁) + r₀·Δα/((1−α₀)(1−α₁)),
+     r₀ = ln s₀ − ln(δ₀+n₀+g₀);   y = α·ln k,  c = ln(1−s) + y,  i = ln s + y.
+   Единственная неточность на входе — сам r₀: разность двух логарифмов,
+   её ошибка nr идёт в допуск тех слагаемых, где r₀ стоит множителем. */
 function compare(P0, P1, m){
-  const l0 = lnK(P0), l1 = lnK(P1), lS = l0 + Math.log(m);
-  const B = bundle(l0, P0), S = bundle(lS, P1), L = bundle(l1, P1);
-  return {sr: VARS.map(v => sgn(S[v] - B[v])),
-          lr: VARS.map(v => sgn(L[v] - B[v]))};
+  const a0 = P0.a, a1 = P1.a, da = a1 - a0, b0 = 1 - a0, b1 = 1 - a1;
+  const ls0 = Math.log(P0.s), lD0 = Math.log(dep(P0)), r0 = ls0 - lD0;
+  const nr = EPS_R * (Math.abs(ls0) + Math.abs(lD0));
+  const l0 = r0 / b0;
+  const dls = lnRatio(P1.s, P0.s), dlD = lnRatio(dep(P1), dep(P0));
+  const dl1s = lnRatio(1 - P1.s, 1 - P0.s), lm = Math.log(m);
+  const adls = Math.abs(dls), adl1s = Math.abs(dl1s);
+  /* кратко: k сдвинул только запас, y — запас и α: a₁·ln m + Δα·ln k₀ */
+  const yA = a1 * lm, yB = da * l0;
+  const yS = yA + yB, myS = Math.abs(yA) + Math.abs(yB), nyS = Math.abs(da) * nr / b0;
+  /* долго: ln k — три слагаемых, y = α₁·Δln k + Δα·ln k₀ */
+  const t1 = dls / b1, t2 = -dlD / b1, t3 = r0 * da / (b0 * b1);
+  const kL = t1 + t2 + t3, mkL = Math.abs(t1) + Math.abs(t2) + Math.abs(t3);
+  const nkL = Math.abs(da) * nr / (b0 * b1);
+  const yL = a1 * kL + yB, myL = a1 * mkL + Math.abs(yB), nyL = a1 * nkL + nyS;
+  return {
+    sr: [sgnOf(yS, myS, nyS), sgnOf(lm, Math.abs(lm), 0),
+         sgnOf(dl1s + yS, adl1s + myS, nyS), sgnOf(dls + yS, adls + myS, nyS)],
+    lr: [sgnOf(yL, myL, nyL), sgnOf(kL, mkL, nkL),
+         sgnOf(dl1s + yL, adl1s + myL, nyL), sgnOf(dls + yL, adls + myL, nyL)]
+  };
 }
 
 /* Строки таблицы при конкретном наборе параметров: каждый шок по отдельности
    и, если шоков больше одного, все вместе. */
-function rowsAt(pv){
+function rowsAt(pv, ok = OK){
   const act = active();
-  if (!act.length || !OK(pv)) return null;
+  if (!act.length || !ok(pv)) return null;
   const out = [];
   for (const sh of act){
     const P1 = applyTo(pv, sh);
-    if (!OK(P1)) return null;
+    if (!ok(P1)) return null;
     out.push(compare(pv, P1, isStock(sh.key) ? stockMulOf([sh]) : 1));
   }
   if (act.length > 1){
     let P1 = {...pv};
-    for (const sh of act){ P1 = applyTo(P1, sh); if (!OK(P1)) return null; }
+    for (const sh of act){ P1 = applyTo(P1, sh); if (!ok(P1)) return null; }
     out.push(compare(pv, P1, stockMulOf(act)));
   }
   return out;
 }
 
 const gridN = n => n <= 1 ? 1401 : n === 2 ? 121 : n === 3 ? 29 : n === 4 ? 15 : 11;
+
+/* Отрезок, по которому свободный параметр на деле перебирается: границы META,
+   а если по нему есть шок — ещё и значение после шока в тех же границах. */
+function effRange(k, lo0 = META[k].min, hi0 = META[k].max){
+  let lo = lo0, hi = hi0;
+  active().forEach(sh => {
+    if (sh.key !== k) return;
+    if (sh.form === "add"){ lo = Math.max(lo, lo0 - sh.value); hi = Math.min(hi, hi0 - sh.value); }
+    else if (sh.form === "mul" && sh.value > 0){ lo = Math.max(lo, lo0 / sh.value); hi = Math.min(hi, hi0 / sh.value); }
+  });
+  return [lo, hi];
+}
+/* тот же отрезок, но до краёв самой модели: 0 и 1 */
+const effRangeM = k => effRange(k, 0, 1);
+/* Значения у краёв отрезка. У самого края знак бывает другим на полоске
+   тоньше любого шага сетки: ln δ при δ → 0 и ln(1 − s) при s → 1 уходят
+   в бесконечность. Лестница двойная — по расстоянию от края в долях отрезка
+   и по расстоянию до края модели (0 или 1) в разах. */
+const EDGE_T = [1e-9, 1e-7, 1e-5, 1e-4, 1e-3, 1e-2, 0.03, 0.1];
+const EDGE_U = [0.5, 1, 3, 10, 30, 100, 1e3, 1e4, 1e5];
+function edgeLadder(lo, hi){
+  const w = hi - lo;
+  if (!(w > 0)) return [lo];
+  const out = [lo, hi];
+  EDGE_T.forEach(t => { out.push(lo + w * t, hi - w * t); });
+  if (lo > 0) EDGE_U.forEach(u => out.push(lo * (1 + u)));
+  if (hi < 1) EDGE_U.forEach(u => out.push(1 - (1 - hi) * (1 + u)));
+  return out.filter(v => v >= lo && v <= hi);
+}
 const cartesian = lists => lists.reduce((acc, l) => acc.flatMap(a => l.map(x => a.concat([x]))), [[]]);
 
 /* limit — {side}: оставляет только точки своей стороны от k = 1. Им считаются
@@ -1135,6 +1194,28 @@ function sweep(limit){
     }));
   }
 
+  /* Края отрезков выписаны явно — так же, как граница k = 1 ниже. Сетка
+     равномерна, и весь отрезок δ от 0,000001 до 0,0007 для неё один узел,
+     а там, где ln δ уходит в минус бесконечность, знак бывает другим: при
+     s = 0,04, α = 0,15 и шоках «s × 1,5, g + 0,01, δ × 0,8» долгосрочные
+     инвестиции падают при δ до ~0,0005, а таблица отвечала «↑». Остальные
+     свободные берутся на своих краях и в середине: полоса бывает углом —
+     s у верхнего края, n у нижнего, g у края, который задал ей шок «g − 0,05». */
+  const eff = {}; free.forEach(k => { eff[k] = effRange(k); });
+  free.forEach(k => {
+    const ladder = edgeLadder(eff[k][0], eff[k][1]);
+    const others = free.filter(o => o !== k);
+    /* при четырёх и пяти свободных опор три, а не четыре: иначе этот проход
+       один стоил больше всего остального перебора */
+    const anch = others.map(o => { const [lo, hi] = eff[o];
+      return free.length > 3 ? [lo, (lo + hi) / 2, hi] : [lo, lo + (hi - lo) * 0.02, (lo + hi) / 2, hi]; });
+    cartesian(anch).forEach(combo => {
+      const pv0 = dispVals();
+      others.forEach((o, oi) => { pv0[o] = combo[oi]; });
+      ladder.forEach(v => { const pv = {...pv0}; pv[k] = v; take(pv); });
+    });
+  });
+
   /* Граница k = 1 выписана явно. Возле неё шок по α почти ничего не меняет,
      и знак задают остальные шоки; дальше от неё перевешивает α. По k эта
      полоса широкая, а по параметрам тонкая: ln k₀ = (ln s − ln(δ+n+g))/(1−α),
@@ -1197,6 +1278,62 @@ function sweepCached(){
   }
   SWEEPSTAT = sweepCache.stat || SWEEPSTAT;
   return sweepCache.val;
+}
+
+/* ===================== за границей перебора ===================== */
+/* Перебор останавливается на границах META, а модель идёт до 0 и 1. Если за
+   границей знак другой, ответ в клетке решила граница, а не модель, — и об
+   этом надо сказать: клетку помечает °, под таблицей — плашка «Граница
+   перебора». Ответ при этом не меняется: «?» держался бы на значениях,
+   которые нельзя ввести руками. Так уже было в задаче 5: граница s стояла
+   на 0,01, таблица отвечала «k падает», а при s ниже 0,00088 k растёт.
+   Проверяется несколько точек за каждой границей, всё ближе к краю модели,
+   при остальных свободных на их краях и в середине. У n и g ниже нуля
+   не заглядываем: неотрицательный рост — условие всех задач. У α за 0,999
+   считается только смена стрелки, а не «=»: там уже не хватает точности. */
+const BEYOND = [0.5, 0.1, 1e-2, 1e-3, 1e-5];
+const beyondA = pv => pv.a > META.a.max + BOX_EPS || finalP(pv).a > META.a.max + BOX_EPS;
+function probeBeyond(rows, limit){
+  const act = active(), free = freeKeys(), out = [];
+  if (!act.length || !free.length || !rows || !rows.length) return out;
+  const effB = {}, effM = {};
+  free.forEach(k => { effB[k] = effRange(k); effM[k] = effRangeM(k); });
+  const seen = new Set();
+  free.forEach(k => {
+    const [bl, bh] = effB[k], [ml, mh] = effM[k], probes = [];
+    if (bl > ml + BOX_EPS) BEYOND.forEach(f => probes.push({dir: "lo", v: ml + (bl - ml) * f, edge: bl}));
+    if (bh < mh - BOX_EPS) BEYOND.forEach(f => probes.push({dir: "hi", v: mh - (mh - bh) * f, edge: bh}));
+    if (!probes.length) return;
+    const others = free.filter(o => o !== k);
+    cartesian(others.map(o => { const [lo, hi] = effB[o]; return [lo, (lo + hi) / 2, hi]; }))
+      .forEach(combo => {
+        const pv0 = dispVals();
+        others.forEach((o, oi) => { pv0[o] = combo[oi]; });
+        probes.forEach(pr => {
+          const pv = {...pv0};
+          pv[k] = pr.v;
+          if (limit && sideOf(pv) !== limit.side) return;
+          const r = rowsAt(pv, MOK);
+          if (!r) return;
+          const fuzzy = beyondA(pv);
+          r.forEach((row, i) => ["sr", "lr"].forEach(per => row[per].forEach((sg, j) => {
+            const now = rows[i] && rows[i][per][j];
+            if (!now || now === "dunno" || sg === now || sg === "dunno") return;
+            if (fuzzy && sg === "same") return;
+            const id = [i, per, j, k, pr.dir].join("|");
+            if (seen.has(id)) return;
+            seen.add(id);
+            out.push({i, per, j, key: k, dir: pr.dir, at: pr.v, edge: pr.edge, sign: sg, was: now});
+          })));
+        });
+      });
+  });
+  return out;
+}
+function edgeFlags(){
+  sweepCached();
+  if (sweepCache.edge === undefined) sweepCache.edge = probeBeyond(sweepCache.val, null);
+  return sweepCache.edge;
 }
 
 /* ===================== canvas ===================== */
@@ -1481,21 +1618,14 @@ function forkCase(){
   /* лучший представитель каждой стороны — отдельно по каждому направлению
      сдвига стационара: вправо, влево и «стационар не двинулся» */
   const best = {lo: {}, hi: {}};
-  let total = 1; axes.forEach(a => { total *= a.length; });
-  for (let idx = 0; idx < total; idx++){
-    const q = {...pv};
-    let r = idx, ill = 0;
-    for (let t = 0; t < free.length; t++){
-      const a = axes[t], j = r % a.length; r = (r - j) / a.length;
-      const k = free[t], m = META[k];
-      q[k] = a[j];
-      ill += Math.abs(q[k] - pv[k]) / (m.max - m.min);
-    }
-    if (!OK(q) || !OK(finalP(q))) continue;
+  const consider = q => {
+    let ill = 0;
+    free.forEach(k => { ill += Math.abs(q[k] - pv[k]) / (META[k].max - META[k].min); });
+    if (!OK(q) || !OK(finalP(q))) return;
     const st = sideOf(q);
-    if (st === null) continue;                 // ровно на границе — ничья точка
+    if (st === null) return;                   // ровно на границе — ничья точка
     const lk0 = lnK(q);                       // в логарифмах: k бывает e⁻⁸⁶⁹
-    if (!isFinite(lk0)) continue;
+    if (!isFinite(lk0)) return;
     /* Счёт складывается из трёх слагаемых: насколько k отстоит от единицы
        (у самого края картинка вырождается), насколько сливаются f(k)
        и s·f(k), и насколько калибровка ушла от иллюстративной. Раньше
@@ -1508,6 +1638,36 @@ function forkCase(){
     const dir = Math.abs(mv) < 1e-9 ? "flat" : mv > 0 ? "up" : "down";
     const side = st ? "hi" : "lo", cur = best[side][dir];
     if (!cur || score < cur.score) best[side][dir] = {q, score, seen: Math.abs(mv) >= MOVE_MIN};
+  };
+  let total = 1; axes.forEach(a => { total *= a.length; });
+  for (let idx = 0; idx < total; idx++){
+    const q = {...pv};
+    let r = idx;
+    for (let t = 0; t < free.length; t++){
+      const a = axes[t], j = r % a.length; r = (r - j) / a.length;
+      q[free[t]] = a[j];
+    }
+    consider(q);
+  }
+  /* Сторона бывает полоской у края, мимо которой сетка проходит целиком:
+     при шоке «s × 0,05» s не бывает меньше 0,00002, и сторона «k < 1» при
+     δ = 0,02 — это s от 0,00002 до 0,02, а ближайшие узлы 0,000001 (вне
+     модели после шока) и 0,04. Развилки не было, хотя таблица честно
+     считала обе стороны. Если сетка стороны не нашла, её ищут у краёв —
+     той же лестницей, что и перебор. */
+  if (!Object.keys(best.lo).length || !Object.keys(best.hi).length){
+    const eff = {}; free.forEach(k => { eff[k] = effRange(k); });
+    free.forEach(k => {
+      const others = free.filter(o => o !== k);
+      const anch = others.map(o => { const [lo, hi] = eff[o];
+        return [lo, lo + (hi - lo) * 0.02, (lo + hi) / 2, hi, pv[o]]; });
+      const ladder = edgeLadder(eff[k][0], eff[k][1]);
+      cartesian(anch).forEach(combo => {
+        const q0 = {...pv};
+        others.forEach((o, oi) => { q0[o] = combo[oi]; });
+        ladder.forEach(v => { const q = {...q0}; q[k] = v; consider(q); });
+      });
+    });
   }
   /* Пара выбирается совместно: за разошедшиеся стационары даётся скидка
      FORK_SPLIT, но она лишь скидка — если развести можно только ценой
@@ -2304,6 +2464,23 @@ const rowNames = () => {
   return act.map(shockName).concat(act.length > 1 ? ["Итого, все шоки вместе"] : []);
 };
 
+/* «s и δ — от 0,000001 до 0,999999, n — от 0 до 0,999999»: соседние
+   параметры с одинаковыми границами склеиваются */
+function rangeText(keys){
+  const groups = [];
+  keys.forEach(k => {
+    const lo = numV(META[k].min), hi = numV(META[k].max), last = groups[groups.length - 1];
+    if (last && last.lo === lo && last.hi === hi) last.syms.push(META[k].sym);
+    else groups.push({syms: [META[k].sym], lo, hi});
+  });
+  return (keys.length > 1 ? "Неизвестные параметры перебираются: " : "Неизвестный параметр перебирается: ") +
+    groups.map(g => g.syms.join(" и ") + " — от " + g.lo + " до " + g.hi).join(", ") + ".";
+}
+/* число за границей: 10⁻¹¹ и 1 − 10⁻¹¹, а не «0,000000000» */
+const sciNum = x => { const e = Math.log10(x), p = Math.round(e);
+  return Math.abs(e - p) < 1e-6 ? "10" + supNum(p) : numL(Math.log(x)); };
+const fmtEdge = x => x < 1e-6 ? sciNum(x) : x > 1 - 1e-6 ? "1 − " + sciNum(1 - x) : numV(x);
+
 function renderFx(){
   const rows = sweepCached(), act = active(), names = rowNames(), body = document.getElementById("fx");
   /* При g > 0 модель считает всё на единицу эффективного труда, а не на
@@ -2323,6 +2500,11 @@ function renderFx(){
         : g1 > 0 ? "g больше нуля" : "до шоков g был больше нуля")
     : "y — подушевой доход, k — капиталовооружённость, " +
       "c — подушевое потребление, i — подушевые инвестиции";
+  /* Где кончается перебор, видно всегда, пока есть неизвестные: «?» и стрелки
+     в таблице — про значения внутри этих границ. */
+  const rangeEl = document.getElementById("fxrange"), freeR = freeKeys();
+  rangeEl.hidden = !freeR.length || !rows.length;
+  if (!rangeEl.hidden) rangeEl.textContent = rangeText(freeR);
   if (!rows.length){
     /* Шоки могут стоять в панели и при этом ничего не менять: их скрыли
        глазом или оставили на нейтральном значении. Говорить в этом случае
@@ -2335,19 +2517,23 @@ function renderFx(){
       idle + "</td></tr>";
     return;
   }
-  const cell = (code, first, vi) => {
+  /* ° — за границей перебора знак другой (см. «Граница перебора») */
+  const flags = revealed ? edgeFlags() : [];
+  const cell = (code, first, vi, i, per) => {
     const c = FX[code] || FX.dunno;
+    const deg = flags.some(f => f.i === i && f.per === per && f.j === vi);
     return '<td class="v ' + (revealed ? c.cls : "hid") + (first ? " sr" : "") + '" title="' +
-      (revealed ? c.word : "ответ скрыт") + '" data-v="' + VARS[vi] + '">' +
-      (revealed ? c.gl : "·") + "</td>";
+      (revealed ? c.word + (deg ? " — но за границей перебора знак другой" : "") : "ответ скрыт") +
+      '" data-v="' + VARS[vi] + '">' +
+      (revealed ? c.gl + (deg ? '<sup class="deg">°</sup>' : "") : "·") + "</td>";
   };
   body.innerHTML = rows.map((r, i) => {
     const total = i >= act.length;
     return '<tr class="' + (total ? "total" : "") + '"' +
       (total ? "" : ' style="--live:' + colVar(act[i].ci) + '"') + ">" +
       '<th class="who">' + (total ? "" : '<i class="sw"></i>') + escArr(names[i]) + "</th>" +
-      r.sr.map((c, j) => cell(c, j === 0, j)).join("") +
-      r.lr.map((c, j) => cell(c, j === 0, j)).join("") + "</tr>";
+      r.sr.map((c, j) => cell(c, j === 0, j, i, "sr")).join("") +
+      r.lr.map((c, j) => cell(c, j === 0, j, i, "lr")).join("") + "</tr>";
   }).join("");
 }
 
@@ -2399,6 +2585,25 @@ function renderNotes(){
       numV(c.from, d) + " до " + numV(c.to, d) + "</code> шок выводит " + sym +
       " за границы модели, поэтому перебор шёл только по нему.</p></div>");
   });
+  /* Граница перебора говорит о стрелках, поэтому открывается вместе
+     с ответом, а не раньше. */
+  if (revealed){
+    const fl = edgeFlags(), act = active(), groups = {};
+    fl.forEach(f => { (groups[f.key + "|" + f.dir] = groups[f.key + "|" + f.dir] || []).push(f); });
+    const VERB = {up: "растёт", down: "падает", same: "не меняется"}, GL = {up: "↑", down: "↓", same: "="};
+    const rowOf = i => rows.length < 2 ? "" : i >= act.length ? "в итоговой строке "
+                     : "в строке «" + shockName(act[i]) + "» ";
+    Object.values(groups).forEach(g => {
+      const f0 = g[0], sym = META[f0.key].sym, lo = f0.dir === "lo", bound = numV(f0.edge);
+      const cells = g.map(f => rowOf(f.i) + (f.per === "sr" ? "краткосрочно " : "долгосрочно ") +
+        VARS[f.j] + " " + VERB[f.sign] + " (в таблице «" + GL[f.was] + "»)");
+      out.push('<div class="note"><b>Граница перебора</b><p>За ' + (lo ? "нижней" : "верхней") +
+        " границей " + sym + " ответ другой: при " + sym + (lo ? " ниже " : " выше ") + bound +
+        " — например, при " + sym + " = " + fmtEdge(f0.at) + " — " + escArr(cells.join(", ")) +
+        ". Перебор останавливается на " + bound + ", так что эти стрелки решила граница, " +
+        "а не модель; в таблице они помечены «°».</p></div>");
+    });
+  }
   /* Порогов здесь больше нет. Они считались точно, но при нескольких
      свободных параметрах порог по одному зависит от того, какими взяты
      остальные — то есть число было верным только для одной случайной
