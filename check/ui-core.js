@@ -34,7 +34,8 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
     const b = document.getElementById('reveal');
     if (b && !b.disabled && b.getAttribute('aria-pressed') !== 'true') b.click();
   }); await p.waitForTimeout(260); };
-  const tbl = async () => { await show(); return ev(() => [...document.querySelectorAll('#fx tr')]
+  /* основная таблица, без вложенных строк случаев */
+  const tbl = async () => { await show(); return ev(() => [...document.querySelectorAll('#fx tr:not(.case)')]
     .map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent).join(''))); };
 
   await p.goto(BASE, { waitUntil: 'networkidle' });

@@ -31,7 +31,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
     const b = document.getElementById('reveal');
     if (b && !b.disabled && b.getAttribute('aria-pressed') !== 'true') b.click();
   }); await p.waitForTimeout(260); };
-  const tbl = async () => { await show(); return ev(() => [...document.querySelectorAll('#fx tr')]
+  const tbl = async () => { await show(); return ev(() => [...document.querySelectorAll('#fx tr:not(.case)')]
     .filter(tr => tr.querySelectorAll('td').length > 1)
     .map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.trim()).join(''))); };
   const notes = async () => { await show(); return ev(() => document.getElementById('notes').textContent); };

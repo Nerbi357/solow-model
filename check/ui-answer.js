@@ -289,10 +289,13 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
       const rows = sweepCached(), fk = forkCase(), cases = {};
       if (fk) fk.cases.forEach(c=>{ const cr = caseSweep(c.lim); cases[c.lim.side ? 'hi' : 'lo'] = str(cr[cr.length-1]); });
       const moved = new Set(); active().forEach(sh=>AFFECTS[sh.key].forEach(c=>moved.add(c)));
-      const tr = [...document.querySelectorAll('#fx tr')];
-      const vis = [...tr[tr.length-1].querySelectorAll('td.v')].map(td=>td.textContent.trim());
-      return {key:q.why.map(w=>w[3]), table:str(rows[rows.length-1]),
-              vis:vis.slice(0,4).join('') + '|' + vis.slice(4).join(''), cases, moved:[...moved].sort()};
+      const glyphs = tr => { const v = [...tr.querySelectorAll('td.v')].map(td=>td.textContent.trim());
+        return v.slice(0,4).join('') + '|' + v.slice(4).join(''); };
+      const tr = [...document.querySelectorAll('#fx tr:not(.case)')];
+      /* строки случаев под «итого»: первая — k < 1, вторая — k > 1 */
+      const ct = [...document.querySelectorAll('#fx tr.case.total')].map(glyphs);
+      return {key:q.why.map(w=>w[3]), table:str(rows[rows.length-1]), vis:glyphs(tr[tr.length-1]),
+              visCases: ct.length === 2 ? {lo: ct[0], hi: ct[1]} : null, cases, moved:[...moved].sort()};
     }, i);
     const t = 'задача ' + (i+1);
     const k1 = [...r.key[0]].sort();
@@ -309,6 +312,9 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
       for (let c = 0; c < kk.length; c++){
         if (kk[c] === '·'){ silent.push(t + (sd === 'lo' ? ', k < 1, ' : ', k > 1, ') + (c < 4 ? 'кратко ' : 'долго ') + 'ykci'[c < 4 ? c : c - 5]); continue; }
         if (kk[c] !== pg[c]){ keyBad.push({[t]:'случай ' + (sd === 'lo' ? 'k < 1' : 'k > 1'), ключ:kk, перебор:pg}); break; }
+        if (!r.visCases || kk[c] !== r.visCases[sd][c]){
+          keyBad.push({[t]:'строка случая ' + (sd === 'lo' ? 'k < 1' : 'k > 1') + ' в таблице', ключ:kk,
+                       видно: r.visCases && r.visCases[sd]}); break; }
       }
     });
   }

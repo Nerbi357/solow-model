@@ -195,6 +195,7 @@
   }
   .pathq b{font-size:15px;font-weight:700;color:var(--ink-2)}
   .pathq .q{font-size:30px;font-weight:700;line-height:1}
+  .pathq.half .q{font-size:19px;white-space:nowrap}
   .pathq small{font-size:11.5px;color:var(--muted);max-width:19ch;line-height:1.3}
   #pathrows .forkcap{margin-top:18px}
   #pathrows > .forkcap:first-child{margin-top:0}
@@ -226,6 +227,14 @@
   /* ---------- notes under the table ---------- */
   .notes{margin:20px 0 0;display:flex;flex-direction:column;gap:10px}
   .fx td.v .deg{font-size:.6em;vertical-align:.9em;margin-left:1px}
+  /* строки случаев вложены в свою: отступ и номер диаграммы, как над ней */
+  .fx tr.case th.who{padding-left:22px;font-weight:400;font-size:13px;color:var(--ink-2)}
+  .fx tr.case th.who .cn{
+    display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;
+    border-radius:50%;background:var(--ink-2);color:var(--paper);font-size:11px;font-weight:700;
+    margin-right:7px;vertical-align:1px;
+  }
+  .fx tr.case td.v{font-size:.92em}
   .note{
     border-left:3px solid var(--dunno);background:rgba(168,131,43,.06);
     border-radius:0 var(--r) var(--r) 0;padding:11px 15px;max-width:96ch;
@@ -507,6 +516,10 @@
       padding:12px 13px 13px;margin:0 0 10px;background:var(--card-2);
     }
     .fx tbody tr.total{border-color:var(--ink-2);background:var(--card)}
+    /* вложенная карточка случая — с отступом, под своей строкой */
+    .fx tbody tr.case{margin-left:18px;background:var(--paper);border-color:var(--rule)}
+    .fx tbody tr.case.total{border-color:var(--rule)}
+    .fx tbody tr.case th.who{padding-left:0}
     /* Заглушка «шоков нет» — одна ячейка на всю строку. В сетке карточки
        colspan не действует: ячейка садилась в одну колонку из четырёх,
        текст шёл по слову на строку, а снизу прорастали чужие ярлыки
@@ -1343,6 +1356,16 @@ function edgeFlags(){
   sweepCached();
   if (sweepCache.edge === undefined) sweepCache.edge = probeBeyond(sweepCache.val, null);
   return sweepCache.edge;
+}
+/* то же для строки случая — за границей смотрят только точки своей стороны */
+let caseEdgeCache = {};
+function caseEdgeFlags(lim){
+  const key = sweepKey() + "|side" + lim.side;
+  if (!(key in caseEdgeCache)){
+    if (Object.keys(caseEdgeCache).length > 8) caseEdgeCache = {};
+    caseEdgeCache[key] = probeBeyond(caseSweep(lim), lim);
+  }
+  return caseEdgeCache[key];
 }
 
 /* ===================== canvas ===================== */
@@ -2369,32 +2392,44 @@ function drawPaths(){
   const fk = forkCase();
   const cases = fk ? fk.cases : [{vals: null, lim: null, text: null}];
 
-  /* что в каком случае вообще определено */
+  /* что в каком случае определено: сразу (sr) и потом (lr) по отдельности */
   const known = cases.map(c => {
     const r = caseSweep(c.lim);
-    if (!r.length) return VARS.map(() => false);
+    if (!r.length) return VARS.map(() => ({sr: "dunno", lr: "dunno"}));
     const last = r[r.length - 1];
-    return VARS.map((_, j) => last.sr[j] !== "dunno" && last.lr[j] !== "dunno");
+    return VARS.map((_, j) => ({sr: last.sr[j], lr: last.lr[j]}));
   });
+  const whole = kn => kn.sr !== "dunno" && kn.lr !== "dunno";
 
   const data = cases.map(c => { VOVR = c.vals; try { return pathData(); } finally { VOVR = null; } });
   if (data.every(d => !d)){ host.hidden = true; return; }
   host.hidden = false;
 
+  /* Где не определён один период из двух, вместо общего «?» — то, что
+     известно: «сразу ↑ · потом ?». Раньше клетка прятала определённый
+     период: в задаче 5 при k < 1 краткосрочно y, c и i растут, а на странице
+     стояли четыре «?». */
+  const gl = x => x === "dunno" ? "?" : FX[x].gl;
   rowsHost.innerHTML = cases.map((c, ci) =>
     (c.text ? '<p class="forkcap" data-n="' + (ci + 1) + '">' + esc(c.text) + "</p>" : "") +
     '<div class="pathgrid">' +
-      VARS.map((v, j) => (known[ci][j] && data[ci])
-        ? '<canvas class="pathc" id="path-' + ci + "-" + v + '" data-h="150"></canvas>'
-        : '<div class="pathq" id="path-' + ci + "-" + v + '"><b>' + v +
-          '</b><span class="q">?</span><small>направление не определено</small></div>'
-      ).join("") +
+      VARS.map((v, j) => {
+        const kn = known[ci][j];
+        if (whole(kn) && data[ci])
+          return '<canvas class="pathc" id="path-' + ci + "-" + v + '" data-h="150"></canvas>';
+        const half = kn.sr !== "dunno" || kn.lr !== "dunno";
+        return '<div class="pathq' + (half ? " half" : "") + '" id="path-' + ci + "-" + v + '"><b>' + v +
+          '</b><span class="q">' + (half ? "сразу " + gl(kn.sr) + " · потом " + gl(kn.lr) : "?") +
+          "</span><small>" + (!half ? "направление не определено"
+            : kn.sr === "dunno" ? "сразу направление не определено"
+            : "дальше направление не определено") + "</small></div>";
+      }).join("") +
     "</div>").join("");
 
   cases.forEach((c, ci) => {
     if (!data[ci]) return;
     VARS.forEach((v, j) => {
-      if (!known[ci][j]) return;
+      if (!whole(known[ci][j])) return;
       const cv = document.getElementById("path-" + ci + "-" + v);
       VOVR = c.vals;
       try { drawPath(cv, v, data[ci]); } finally { VOVR = null; }
@@ -2473,6 +2508,16 @@ const rowNames = () => {
   return act.map(shockName).concat(act.length > 1 ? ["Итого, все шоки вместе"] : []);
 };
 
+/* Строки случаев под строками таблицы: где ответ по случаям разный. */
+function tableCases(){
+  const fk = forkCase();
+  const byCase = fk ? fk.cases.map((c, ci) => ({c, ci, rows: caseSweep(c.lim),
+                                                 flags: revealed ? caseEdgeFlags(c.lim) : []})) : [];
+  const differ = i => byCase.length === 2 && !!byCase[0].rows[i] && !!byCase[1].rows[i] &&
+    JSON.stringify(byCase[0].rows[i]) !== JSON.stringify(byCase[1].rows[i]);
+  return {fk, byCase, differ};
+}
+
 /* «s и δ — от 0,000001 до 0,999999, n — от 0 до 0,999999»: соседние
    параметры с одинаковыми границами склеиваются */
 function rangeText(keys){
@@ -2531,8 +2576,7 @@ function renderFx(){
     return;
   }
   /* ° — за границей перебора знак другой (см. «Граница перебора») */
-  const flags = revealed ? edgeFlags() : [];
-  const cell = (code, first, vi, i, per) => {
+  const cell = (code, first, vi, i, per, flags) => {
     const c = FX[code] || FX.dunno;
     const deg = flags.some(f => f.i === i && f.per === per && f.j === vi);
     return '<td class="v ' + (revealed ? c.cls : "hid") + (first ? " sr" : "") + '" title="' +
@@ -2540,13 +2584,26 @@ function renderFx(){
       '" data-v="' + VARS[vi] + '">' +
       (revealed ? c.gl + (deg ? '<sup class="deg">°</sup>' : "") : "·") + "</td>";
   };
+  const cells = (r, i, flags) =>
+    r.sr.map((c, j) => cell(c, j === 0, j, i, "sr", flags)).join("") +
+    r.lr.map((c, j) => cell(c, j === 0, j, i, "lr", flags)).join("");
+  const flags = revealed ? edgeFlags() : [];
+  /* На развилке у строк, где ответ по случаям разный (шок по α и «итого»),
+     под строкой — две вложенные: «k < 1» и «k > 1» со своими стрелками.
+     Родительская строка остаётся общим ответом, а вложенные отвечают, что
+     будет, если сторону назвать. Раньше это было видно только в траекториях,
+     и стрелок вроде «k > 1: долгосрочно c ↑» на странице не было нигде. */
+  const {byCase, differ} = tableCases();
   body.innerHTML = rows.map((r, i) => {
     const total = i >= act.length;
-    return '<tr class="' + (total ? "total" : "") + '"' +
+    const own = '<tr class="' + (total ? "total" : "") + '"' +
       (total ? "" : ' style="--live:' + colVar(act[i].ci) + '"') + ">" +
       '<th class="who">' + (total ? "" : '<i class="sw"></i>') + escArr(names[i]) + "</th>" +
-      r.sr.map((c, j) => cell(c, j === 0, j, i, "sr")).join("") +
-      r.lr.map((c, j) => cell(c, j === 0, j, i, "lr")).join("") + "</tr>";
+      cells(r, i, flags) + "</tr>";
+    if (!differ(i)) return own;
+    return own + byCase.map(b => '<tr class="case' + (total ? " total" : "") + '">' +
+      '<th class="who"><span class="cn">' + (b.ci + 1) + "</span>" + esc(b.c.text) + "</th>" +
+      cells(b.rows[i], i, b.flags) + "</tr>").join("");
   }).join("");
 }
 
@@ -2638,14 +2695,17 @@ function renderNotes(){
   /* Граница перебора говорит о стрелках, поэтому открывается вместе
      с ответом, а не раньше. */
   if (revealed){
-    const fl = edgeFlags(), act = active(), groups = {};
+    const act = active(), groups = {}, {byCase, differ} = tableCases();
+    const fl = edgeFlags().concat(...byCase.map(b => b.flags.filter(f => differ(f.i))
+                                                  .map(f => ({...f, cs: b.c.text}))));
     fl.forEach(f => { (groups[f.key + "|" + f.dir] = groups[f.key + "|" + f.dir] || []).push(f); });
     const VERB = {up: "растёт", down: "падает", same: "не меняется"}, GL = {up: "↑", down: "↓", same: "="};
-    const rowOf = i => rows.length < 2 ? "" : i >= act.length ? "в итоговой строке "
-                     : "в строке «" + shockName(act[i]) + "» ";
+    const rowName = i => i >= act.length ? "итоговой строке" : "строке «" + shockName(act[i]) + "»";
+    const rowOf = (i, cs) => cs ? "в случае " + cs + " в " + rowName(i) + " "
+                           : rows.length < 2 ? "" : "в " + rowName(i) + " ";
     Object.values(groups).forEach(g => {
       const f0 = g[0], sym = META[f0.key].sym, lo = f0.dir === "lo", bound = numV(f0.edge);
-      const cells = g.map(f => rowOf(f.i) + (f.per === "sr" ? "краткосрочно " : "долгосрочно ") +
+      const cells = g.map(f => rowOf(f.i, f.cs) + (f.per === "sr" ? "краткосрочно " : "долгосрочно ") +
         VARS[f.j] + " " + VERB[f.sign] + " (в таблице «" + GL[f.was] + "»)");
       out.push('<div class="note"><b>Граница перебора</b><p>За ' + (lo ? "нижней" : "верхней") +
         " границей " + sym + " ответ другой: при " + sym + (lo ? " ниже " : " выше ") + bound +

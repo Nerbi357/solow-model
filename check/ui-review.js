@@ -258,7 +258,7 @@ const overlaps = pads => {
      получает «?» только при s после шока выше 0,9965. Раньше такие значения
      ставил только перебор: руками шок подрезался до s = 0,99, и увидеть
      падение c было нельзя. Теперь граница одна и та же у всех. */
-  const t7 = async () => ev(()=>[...document.querySelectorAll('#fx tr')].pop().querySelectorAll('td.v')[6].textContent.trim());
+  const t7 = async () => ev(()=>[...document.querySelectorAll('#fx tr:not(.case)')].pop().querySelectorAll('td.v')[6].textContent.trim());
   await go('#b=s:0.2:0,d:0.02:1,n:0:1,g:0:1,a:0.2:1&k=s:add:0.05:1;a:set:0.6:1'); await reveal();
   const cFree = await t7();
   await go('#b=s:0.9499:1,d:0.02:1,n:0:1,g:0:1,a:0.2:1&k=s:add:0.05:1;a:set:0.6:1'); await reveal();
@@ -336,7 +336,7 @@ const overlaps = pads => {
   ok('Р8: а плашка «Граница перебора» — только вместе с ответом', !gb0.plaque);
   await reveal();
   const gb1 = await ev(()=>({notes: document.getElementById('notes').textContent,
-    cell: [...document.querySelectorAll('#fx tr')].pop().querySelectorAll('td.v')[5].textContent}));
+    cell: [...document.querySelectorAll('#fx tr:not(.case)')].pop().querySelectorAll('td.v')[5].textContent}));
   ok('Р8: за нижней границей s знак другой — плашка «Граница перебора» с примером',
      /Граница перебора/.test(gb1.notes) && /s = 10⁻¹¹/.test(gb1.notes), gb1.notes.slice(0, 200));
   ok('Р8: и задетая стрелка помечена °', gb1.cell === '↓°', gb1.cell);
@@ -368,6 +368,29 @@ const overlaps = pads => {
   ok('Р2: подпись единиц на чистой странице — «подушевые; если g > 0 — на единицу эффективного труда»',
      /подушевые; если g > 0 — на единицу эффективного труда/.test(await ev(()=>document.getElementById('fxunits').textContent)),
      await ev(()=>document.getElementById('fxunits').textContent));
+
+  // ---- Р3: строки случаев в таблице ----
+  /* Задача 4: у строки α и у «итого» ответ по случаям разный — под ними
+     вложенные строки «k < 1» и «k > 1»; у строки s одинаковый — вложенных нет. */
+  await go('#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
+  const cr0 = await ev(()=>[...document.querySelectorAll('#fx tr')].map(tr => (tr.classList.contains('case') ? '  ' : '') +
+    tr.querySelector('th').textContent.trim() + ' ' + [...tr.querySelectorAll('td.v')].map(t=>t.textContent.trim()).join('')));
+  ok('Р3: под строкой α и под «итого» — строки случаев, под строкой s — нет',
+     cr0.length === 7 && /^  1k < 1/.test(cr0[2]) && /^  2k > 1/.test(cr0[3]) && /^  1k < 1/.test(cr0[5]) && /^  2k > 1/.test(cr0[6]), cr0);
+  ok('Р3: до ответа в строках случаев точки', cr0.filter(r=>/^  /.test(r)).every(r=>/········$/.test(r)), cr0);
+  await reveal();
+  const cr1 = await ev(()=>[...document.querySelectorAll('#fx tr.case')].map(tr=>[...tr.querySelectorAll('td.v')].map(t=>t.textContent.trim()).join('')));
+  ok('Р3: после ответа — стрелки случаев совпадают с перебором ветки',
+     JSON.stringify(cr1) === JSON.stringify(await ev(()=>{ const fk = forkCase(), G = {up:'↑',down:'↓',same:'=',dunno:'?'};
+       const out = []; [1, 2].forEach(i => fk.cases.forEach(c => { const r = caseSweep(c.lim)[i];
+         out.push(r.sr.concat(r.lr).map(x=>G[x]).join('')); })); return out; })), cr1);
+
+  // ---- Р3: траектории — «сразу · потом», а не общий «?» ----
+  /* Задача 5, случай k < 1: сразу y, c, i растут, потом не определено. */
+  await go('#p=4&b=s:0.2:0,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1'); await reveal();
+  const pq = await ev(()=>[...document.querySelectorAll('#pathrows .pathq')].map(e=>e.textContent.replace(/\s+/g,' ').trim()));
+  ok('Р3: в траектории задачи 5 при k < 1 — «сразу ↑ · потом ?» у y, c и i',
+     ['y','c','i'].every(v => pq.some(t => t.startsWith(v) && /сразу ↑ · потом \?/.test(t))), pq);
 
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
