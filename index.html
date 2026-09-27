@@ -138,6 +138,15 @@
     border-radius:var(--r);padding:9px 13px;
   }
   #fork2{margin-top:16px}
+  /* Диаграмма показывает одну калибровку, а исходов бывает несколько:
+     подпись над ней — всегда, список исходов под ней — вместе с ответом. */
+  .oc{margin:0 0 6px;font-size:13px;color:var(--dunno);font-weight:700}
+  .outs{
+    margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--ink-2);
+    background:var(--card-2);border:1px solid var(--rule);border-radius:var(--r);padding:9px 13px;
+  }
+  .outs ul{margin:4px 0 0;padding-left:18px}
+  .outs li i{color:var(--muted)}
   .coords{margin:14px 0 24px}
   .ccase{margin:0 0 8px;font-size:13px;font-weight:700;color:var(--ink-2)}
   .phead{
@@ -611,14 +620,18 @@
         и появятся его координаты; отметьте второй — увидите разницу между ними. Картинка
         безразмерная, поэтому всё считается в долях от исходного стационара: он равен (1;&nbsp;1).</div>
       <p class="forkcap" id="cap1" hidden></p>
+      <p class="oc" id="oc1" hidden></p>
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты. С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки."></canvas>
       <p class="tight" id="tight1" hidden></p><p class="tight" id="same1" hidden></p>
+      <div class="outs" id="ol1" hidden></div>
       <div id="fork2" hidden>
         <p class="forkcap" id="cap2"></p>
+        <p class="oc" id="oc2" hidden></p>
         <canvas id="main2" data-h="620" tabindex="0"
                 aria-label="Та же диаграмма для второго случая. С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки."></canvas>
         <p class="tight" id="tight2" hidden></p><p class="tight" id="same2" hidden></p>
+        <div class="outs" id="ol2" hidden></div>
       </div>
 
       <div class="coords" id="coords" hidden><div id="coords-body"></div></div>
@@ -1159,6 +1172,13 @@ function sweep(limit){
      объектов ради четырёх опорных стоило трети времени перебора ветки. */
   const inBranch = limit && free.length > 1 ? new Int32Array(total) : null;
   let nIn = 0;
+  /* Исходы: какие сочетания долгосрочных стрелок итоговой строки вообще
+     встречаются, и у каждого — пример из середины его области, а не с края:
+     точка у границы исхода («δ = 0,254» ровно на пороге смены знака у c)
+     читается как спорная. Середина — выборка точек исхода, ближайшая
+     к их центру. Нужны, чтобы под диаграммой сказать, что она показывает
+     лишь один из исходов. */
+  const outs = {}, SAMPLE = 300;
   const take = pv => {
     if (limit && sideOf(pv) !== limit.side) return;   // чужая ветка развилки
     tried++; if (coarse) triedC++;
@@ -1170,6 +1190,13 @@ function sweep(limit){
       acc[i].sr[j].add(row.sr[j]);
       acc[i].lr[j].add(row.lr[j]);
     }));
+    const sig = r[nrows - 1].lr.join(",");
+    let o = outs[sig];
+    if (!o) o = outs[sig] = {sig, lr: r[nrows - 1].lr, n: 0, sum: {}, pts: []};
+    o.n++;
+    free.forEach(k => { o.sum[k] = (o.sum[k] || 0) + pv[k]; });
+    if (o.pts.length < SAMPLE) o.pts.push({...pv});
+    else if (o.n % 7 === 0) o.pts[(o.n / 7) % SAMPLE] = {...pv};   // выборка по всему перебору
   };
 
   /* грубая полная сетка — ловит совместные эффекты нескольких параметров */
@@ -1270,7 +1297,15 @@ function sweep(limit){
 
   const pick = st => (seen && st.size === 1) ? [...st][0] : "dunno";
   SWEEPSTAT = {seen, tried, seenC, triedC, nfree: free.length};
-  return acc.map(a => ({sr: a.sr.map(pick), lr: a.lr.map(pick)}));
+  const res = acc.map(a => ({sr: a.sr.map(pick), lr: a.lr.map(pick)}));
+  res.outcomes = Object.values(outs).map(o => {
+    const dist = q => free.reduce((d, k) =>
+      d + Math.abs(q[k] - o.sum[k] / o.n) / (META[k].max - META[k].min), 0);
+    let at = o.pts[0];
+    o.pts.forEach(q => { if (dist(q) < dist(at)) at = q; });
+    return {sig: o.sig, lr: o.lr, n: o.n, at};
+  });                                        // едет вместе с ответом через кэш
+  return res;
 }
 let SWEEPSTAT = {seen: 0, tried: 0, seenC: 0, triedC: 0, nfree: 0};
 
@@ -2671,6 +2706,39 @@ function renderNgNote(){
     " нулю, нажмите «задано» у " + who + " и поставьте 0.";
 }
 
+/* ===================== один из возможных исходов ===================== */
+/* Диаграмма нарисована при одной калибровке. Если перебор находит внутри
+   того же случая другие сочетания долгосрочных стрелок, картинка показывает
+   лишь один исход из нескольких — и обязана это сказать. В задаче 4 при
+   k < 1 бывает «k и y растут», «k растёт, y падает» и «оба падают», а
+   нарисован один. Список — с примером неизвестных у каждого исхода. */
+function renderOutcomes(){
+  const fk = forkCase(), free = freeKeys();
+  const panes = fk ? fk.cases.map(c => ({rows: caseSweep(c.lim), vals: c.vals}))
+                   : [{rows: sweepCached(), vals: dispVals()}];
+  [0, 1].forEach(n => {
+    const pn = panes[n], oc = document.getElementById("oc" + (n + 1)),
+          ol = document.getElementById("ol" + (n + 1));
+    const outs = ((pn && pn.rows.outcomes) || []).slice();
+    const many = outs.length > 1;
+    oc.hidden = !many;
+    ol.hidden = !many || !revealed;
+    if (!many){ ol.innerHTML = ""; return; }
+    oc.textContent = "Один из возможных исходов — при других значениях " +
+      free.map(k => META[k].sym).join(", ") + " картинка другая";
+    if (!revealed) return;
+    const dr = rowsAt(pn.vals), dsig = dr ? dr[dr.length - 1].lr.join(",") : "";
+    outs.sort((a, b) => a.at[free[0]] - b.at[free[0]]);
+    /* пример — не граница, поэтому круглится: 0,200, 0,0008 */
+    const ex = v => v >= 0.01 ? num(v, 3) : numV(+v.toPrecision(2));
+    ol.innerHTML = "<b>Все исходы" + (fk ? " в случае " + esc(fk.cases[n].text) : "") +
+      " — долгосрочно:</b><ul>" + outs.map(o => "<li>" +
+        VARS.map((v, j) => v + " " + FX[o.lr[j]].gl).join(", ") + " — например, при " +
+        free.map(k => META[k].sym + " = " + ex(o.at[k])).join(", ") +
+        (o.sig === dsig ? " <i>(нарисован)</i>" : "") + "</li>").join("") + "</ul>";
+  });
+}
+
 function renderNotes(){
   const rows = sweepCached(), host = document.getElementById("notes");
   const out = [];
@@ -3389,7 +3457,7 @@ function syncModNote(){
   const el = document.getElementById("modnote");
   if (el) el.hidden = problemIntact();
 }
-function renderHeavy(){ renderFx(); renderNgNote(); renderNotes(); drawPaths(); syncReveal(); syncModNote(); }
+function renderHeavy(){ renderFx(); renderNgNote(); renderOutcomes(); renderNotes(); drawPaths(); syncReveal(); syncModNote(); }
 function refreshLive(defer){
   clampShocks();
   syncValues();

@@ -392,6 +392,17 @@ const overlaps = pads => {
   ok('Р3: в траектории задачи 5 при k < 1 — «сразу ↑ · потом ?» у y, c и i',
      ['y','c','i'].every(v => pq.some(t => t.startsWith(v) && /сразу ↑ · потом \?/.test(t))), pq);
 
+  // ---- Р4: один из возможных исходов ----
+  await go('#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
+  const oc0 = await ev(()=>{ const c = document.getElementById('oc1'), l = document.getElementById('ol1');
+    return {cap: c && !c.hidden ? c.textContent : null, list: !l || l.hidden}; });
+  ok('Р4: над диаграммой «k < 1» — «один из возможных исходов»', /[Оо]дин из возможных исходов/.test(oc0.cap || ''), oc0);
+  ok('Р4: а список исходов — только вместе с ответом', oc0.cap !== null && oc0.list === true, oc0);
+  await reveal();
+  const ol = await ev(()=>[...document.querySelectorAll('#ol1 li')].map(li=>li.textContent.replace(/\s+/g,' ').trim()));
+  ok('Р4: исходов в случае k < 1 задачи 4 — четыре, у каждого пример δ, нарисованный помечен',
+     ol.length === 4 && ol.every(t=>/δ = /.test(t)) && ol.filter(t=>/нарисован/.test(t)).length === 1, ol);
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
