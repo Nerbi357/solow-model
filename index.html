@@ -17,15 +17,19 @@
     --rule-2:#EEF0F3;
 
     /* Цвет шока. Исходное состояние всегда чёрное. Шоков не больше трёх.
-       Пары проверены на протанопию и дейтеранопию: минимальное ΔE по всем
-       парам — 34 и 36. Старая палитра давала 11,8 между --sh2 и --res,
-       то есть две самые толстые линии диаграммы были для дейтераноптика
-       одним цветом. Светлота идёт лестницей: итог тяжелее всех. */
-    --sh1:#1F6FD0;
-    --sh2:#A44A00;
-    --sh3:#0E6B4F;
-    --res:#5C1A66;
-    --gold:#7D611C;
+       Палитра — яркая, для обычного зрения: студенты без особенностей
+       зрения, и приглушённые тона ради дальтонизма только мешали отличать
+       шоки друг от друга. Итог — самый заметный. Golden rule — жёлтым
+       пунктиром. Текстом по белому яркий оранжевый и жёлтый не читаются
+       (3,6:1 и 1,8:1), поэтому подписи этих цветов набираются тёмным тоном
+       того же оттенка — --sh2-ink и --gold-ink, не ниже 4,5:1. */
+    --sh1:#1565C0;
+    --sh2:#E8590C;
+    --sh2-ink:#C24A0A;
+    --sh3:#2E7D32;
+    --res:#8E24AA;
+    --gold:#F2B705;
+    --gold-ink:#8A6400;
 
     --up:#15573E;
     --down:#A32E22;
@@ -374,7 +378,7 @@
   /* тот же подъём, что и на канвасе: 0,2 кегля */
   .arr{vertical-align:.2em}
   .ctitle .arr{color:var(--muted);margin:0 3px}
-  .ctitle .to{color:var(--live);font-weight:700;font-variant-numeric:tabular-nums}
+  .ctitle .to{color:var(--live-ink, var(--live));font-weight:700;font-variant-numeric:tabular-nums}
   .ctitle .sym{font-style:italic;font-weight:700}
   .acts{display:flex;gap:3px;flex:0 0 auto}
   .acts button{
@@ -457,7 +461,7 @@
     border:none;border-bottom:2px solid transparent;color:var(--muted);margin-bottom:-1px;
   }
   .ftabs button:hover{color:var(--ink)}
-  .ftabs button[aria-pressed="true"]{color:var(--live);border-bottom-color:var(--live);font-weight:700}
+  .ftabs button[aria-pressed="true"]{color:var(--live-ink, var(--live));border-bottom-color:var(--live);font-weight:700}
   .ftabs button:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
   .ftabs .g{font-weight:700;margin-right:5px}
 
@@ -474,9 +478,15 @@
   }
   .btn:hover{background:#000}
   .btn.ghost{background:var(--paper);color:var(--ink);border-color:var(--rule)}
-  .btn.ghost:hover{background:var(--card)}
+  /* наведение видно по рамке, а не только по едва заметной подложке */
+  .btn.ghost:hover{background:var(--card);border-color:var(--muted)}
   .btn:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
-  .btn[disabled]{opacity:.4;cursor:default}
+  /* Неактивная кнопка — серый текст на светлой подложке с рамкой, не ниже
+     4,5:1. Раньше она просто становилась полупрозрачной: белый текст на
+     светло-сером, 2,6:1, и «Показать ответ» на чистой странице не читалась. */
+  .btn[disabled],.btn[disabled]:hover{
+    background:var(--card);color:var(--muted);border-color:var(--rule);cursor:default;opacity:1;
+  }
   .btn-row{display:flex;gap:7px;flex-wrap:wrap}
   .btn-row .btn{flex:1 1 auto;text-align:center}
 
@@ -496,7 +506,7 @@
   }
   .probs button small b{font-weight:700}
   .probs button small .sep{color:var(--rule);margin:0 7px}
-  .probs button:hover{background:var(--card)}
+  .probs button:hover{background:var(--card);border-color:var(--muted)}
   .probs button[aria-pressed="true"]{background:var(--card);border-color:var(--muted);font-weight:700}
   .probs button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 
@@ -1006,6 +1016,8 @@ const resetAll = () => {
 };
 
 const colVar = ci => "var(--sh" + ((ci % 3) + 1) + ")";
+/* тон для текста в цвет шока — у оранжевого второго темнее, см. --sh2-ink */
+const colInk = ci => (ci % 3) === 1 ? "var(--sh2-ink)" : colVar(ci);
 const colHex = ci => col("--sh" + ((ci % 3) + 1));
 const freeCi = () => { const u = new Set(shocks.map(s => s.ci)); let i = 0; while (u.has(i)) i++; return i; };
 
@@ -1447,6 +1459,8 @@ function fitCanvas(cv){
 const C = getComputedStyle(document.documentElement);
 const col = n => C.getPropertyValue(n).trim();
 const FONT = () => col("--sans");
+/* тон для текста: яркие оранжевый и жёлтый на белом не читаются */
+const inkOf = c => c === col("--sh2") ? col("--sh2-ink") : c === col("--gold") ? col("--gold-ink") : c;
 
 function axes(ctx, L, B, R, T, home){
   ctx.strokeStyle = col("--ink"); ctx.fillStyle = col("--ink"); ctx.lineWidth = 1.4;
@@ -1499,7 +1513,7 @@ function tag(ctx, x, y, text, color, align, size, bold){
   const x0 = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
   ctx.fillStyle = "rgba(255,255,255,.9)";
   ctx.fillRect(x0 - pad, y - sz*.66, w + pad*2, sz*1.32);
-  ctx.fillStyle = color;
+  ctx.fillStyle = inkOf(color);
   if (text.indexOf("→") < 0){ ctx.fillText(text, x0, y); ctx.restore(); return; }
   const lift = arrowLift(ctx, sz);
   let cx = x0;
@@ -1574,7 +1588,7 @@ function tagParts(ctx, x, y, parts, bold){
   ctx.fillStyle = "rgba(255,255,255,.9)";
   ctx.fillRect(px - 3, y - sz * .66, total + 6, sz * 1.32);
   ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  parts.forEach((p, i) => { ctx.fillStyle = p.c; ctx.fillText(p.t, px, y); px += w[i]; });
+  parts.forEach((p, i) => { ctx.fillStyle = inkOf(p.c); ctx.fillText(p.t, px, y); px += w[i]; });
   ctx.restore();
 }
 
@@ -1586,7 +1600,7 @@ function tagSub(ctx, x, y, main, low, color, bold){
   const total = w1 + w2 + 1.5, bx = x - total / 2;
   ctx.fillStyle = "rgba(255,255,255,.9)";
   ctx.fillRect(bx - 3, y - s1 * .7, total + 6, s1 * 1.5);
-  ctx.fillStyle = color; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillStyle = inkOf(color); ctx.textAlign = "left"; ctx.textBaseline = "middle";
   ctx.font = f1;                  ctx.fillText(main, bx, y);
   ctx.font = s2 + "px " + FONT(); ctx.fillText(low, bx + w1 + 1.5, y + 4);
   ctx.restore();
@@ -1890,7 +1904,7 @@ function legendItems(sts){
   if (sts.some(x => x.final && x.axis)) it.push({c: col("--res"), t: "новое равновесие", w: 3});
   if (sts.some(x => x.short && x.axis))
     it.push({c: col("--res"), t: "скачок — куда попали сразу", w: 2, dash: true});
-  if (showGold) it.push({c: col("--gold"), t: "golden rule", w: 1.6, dot: true});
+  if (showGold) it.push({c: col("--gold"), t: "golden rule", w: 2.4, dot: true});
   if (sts.some(x => /^k/.test(x.mark) && x.axis))
     it.push({note: true, t: "kᵢ — где оказалась бы экономика с одним шоком i: у K и L — сразу, " +
                             "у остальных — в новом стационаре"});
@@ -2074,7 +2088,7 @@ function renderMain(ctx, w, h, capture){
   ctx.beginPath(); ctx.rect(L, T - 14, R - L + 16, B - T + 14); ctx.clip();
 
   if (showGold && goldFits && onX(kg)){
-    dashed(ctx, X(kg), B, X(kg), Y(yg), col("--gold"), 1.2, [2, 4]);
+    dashed(ctx, X(kg), B, X(kg), Y(yg), col("--gold"), 2, [2, 4]);
     ctx.fillStyle = col("--gold");
     ctx.beginPath(); ctx.arc(X(kg), Y(yg), 4, 0, 7); ctx.fill();
   }
@@ -2626,9 +2640,11 @@ function coordsBody(caseText){
   if (!chosen.length){ body.innerHTML = ""; box.hidden = true; return; }
   box.hidden = false;
   const first = relOf(chosen[0]);
+  /* доли бывают и 10³⁰ (см. «единицы картинки») — такие пишутся степенью */
+  const rn = v => (v >= 1e-3 && v < 1e6) || v === 0 ? num(v, 3) : numL(Math.log(v));
   const d = (v, r) => {
     const x = v - r;
-    return Math.abs(x) < 5e-4 ? "0" : (x > 0 ? "+" : "−") + num(Math.abs(x), 3);
+    return Math.abs(x) < 5e-4 ? "0" : (x > 0 ? "+" : "−") + rn(Math.abs(x));
   };
   const what = {out:"выпуск", inv:"инвестиции", dep:"выбытие"};
   const rows = chosen.map((q, i) => {
@@ -2636,13 +2652,16 @@ function coordsBody(caseText){
     return '<tr style="--live:' + q.color + '">' +
       '<td><span class="dot"></span>' + escArr(q.label) +
       ' <span style="color:var(--muted)">· ' + what[q.kind] + "</span></td>" +
-      "<td>" + num(rel.k, 3) + "</td><td>" + num(rel.y, 3) + "</td>" +
+      "<td>" + rn(rel.k) + "</td><td>" + rn(rel.y) + "</td>" +
       (i === 0 ? "<td>—</td><td>—</td>"
                : "<td>" + d(rel.k, first.k) + "</td><td>" + d(rel.y, first.y) + "</td>") +
       "</tr>";
   }).join("");
   body.innerHTML = (caseText ? '<p class="ccase">Случай ' + caseText + "</p>" : "") +
-    '<table class="ctab"><thead><tr><th>точка</th><th>k</th><th>y</th>' +
+    /* Числа — доли от исходного стационара, и на диаграмме «k < 1» old
+       показывал «k = 1,000» — читалось как граница k = 1. Поэтому столбцы
+       названы тем, что в них на самом деле: k / k_old и y / y_old. */
+    '<table class="ctab"><thead><tr><th>точка</th><th>k / k<sub>old</sub></th><th>y / y<sub>old</sub></th>' +
     "<th>Δk к первой</th><th>Δy к первой</th></tr></thead><tbody>" + rows + "</tbody></table>";
 }
 
@@ -3052,7 +3071,8 @@ function renderShocks(){
     const live = colVar(sh.ci), m = META[sh.key];
     const touches = touchText(sh);
     return "<li>" +
-      '<div class="card' + (sh.on ? "" : " off") + '" data-card="' + i + '" style="--live:' + live + '">' +
+      '<div class="card' + (sh.on ? "" : " off") + '" data-card="' + i + '" style="--live:' + live +
+        ';--live-ink:' + colInk(sh.ci) + '">' +
         '<div class="chead"><span class="idx">' + (i + 1) + '</span><i class="chip"></i>' +
           '<span class="ctitle" data-head="' + i + '">' + shockHead(sh) + "</span>" +
           '<span class="acts">' +

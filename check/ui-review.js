@@ -486,6 +486,35 @@ const overlaps = pads => {
   const yl = await ev(()=>{ window.__ytags = []; const tg = window.tagSub; window.tagSub = function(ctx, x, y, a, b){ window.__ytags.push(b); return tg.apply(this, arguments); };
     try { drawMain(); } finally { window.tagSub = tg; } return window.__ytags; });
   ok('Р23б: шок по α — на оси y подписан y_скачок', yl.includes('скачок'), yl);
+  // ---- Р15: палитра для обычного зрения ----
+  const pal = await ev(()=>['--sh1','--sh2','--sh3','--res','--gold'].map(v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim().toUpperCase()));
+  ok('Р15: цвета шоков, итога и golden rule — новые', JSON.stringify(pal) === JSON.stringify(['#1565C0','#E8590C','#2E7D32','#8E24AA','#F2B705']), pal);
+  /* подписи на белом читаются: текст оранжевого и жёлтого — тёмным тоном */
+  const inks = await ev(()=>typeof inkOf === 'function' ? [inkOf(col('--sh2')), inkOf(col('--gold'))].map(x=>x.toUpperCase()) : null);
+  ok('Р15: подписи шока 2 и golden rule — тёмным тоном того же цвета', JSON.stringify(inks) === JSON.stringify(['#C24A0A','#8A6400']), inks);
+
+  // ---- Р16: неактивные кнопки читаются ----
+  await go('');
+  const dis = await ev(()=>{ const b = document.getElementById('reveal'), cs = getComputedStyle(b);
+    const rgb = s => s.match(/\d+(\.\d+)?/g).slice(0,3).map(Number);
+    const L = c => { const f = v => { v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+      const [r,g,bb] = c.map(f); return 0.2126*r + 0.7152*g + 0.0722*bb; };
+    const a = L(rgb(cs.color)), z = L(rgb(cs.backgroundColor));
+    return {disabled: b.disabled, opacity: cs.opacity, ratio: +((Math.max(a,z)+0.05)/(Math.min(a,z)+0.05)).toFixed(2)}; });
+  ok('Р16: «Показать ответ» без шоков — контраст не ниже 4,5:1', dis.disabled && dis.opacity === '1' && dis.ratio >= 4.5, dis);
+
+  // ---- Р17: координаты — «k / k_old» и «y / y_old» ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.3:1');
+  await ev(()=>{ togglePoint('base-out', 'main'); });
+  const ch = await ev(()=>document.getElementById('coords-body').innerHTML);
+  ok('Р17: столбцы координат — «k / k_old» и «y / y_old»', /k \/ k<sub>old<\/sub>/.test(ch) && /y \/ y<sub>old<\/sub>/.test(ch), ch.slice(0, 200));
+
+  // ---- Р23г: наведение на карточку задачи видно по рамке ----
+  await go('');
+  await p.hover('[data-p="0"]'); await p.waitForTimeout(150);
+  const hb = await ev(()=>getComputedStyle(document.querySelector('[data-p="0"]')).borderTopColor);
+  ok('Р23г: при наведении рамка карточки задачи темнеет', hb === 'rgb(86, 92, 102)', hb);
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
