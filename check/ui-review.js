@@ -403,6 +403,35 @@ const overlaps = pads => {
   ok('Р4: исходов в случае k < 1 задачи 4 — четыре, у каждого пример δ, нарисованный помечен',
      ol.length === 4 && ol.every(t=>/δ = /.test(t)) && ol.filter(t=>/нарисован/.test(t)).length === 1, ol);
 
+  // ---- Р5: шок «→ новое» до исходного значения ----
+  await go('');
+  await ev(()=>{ document.getElementById('addsel').value='a'; document.getElementById('add').click(); });
+  await p.waitForTimeout(300);
+  await ev(()=>{ document.querySelector('[data-fscope="k0-"][data-form="set"]').click(); });
+  await p.waitForTimeout(300);
+  const t5 = await ev(()=>document.querySelector('[data-touch="0"]').textContent);
+  ok('Р5: «0,333 — пример, а не условие: впишите исходное α в блоке 2»',
+     /0,333 — пример, а не условие: впишите исходное α в блоке 2/.test(t5), t5);
+  await ev(()=>{ const e = document.getElementById('nb-a'); e.value = '0,3'; e.dispatchEvent(new Event('change', {bubbles:true})); });
+  await p.waitForTimeout(300);
+  ok('Р5: вписали исходное — пометка ушла', !/пример, а не условие/.test(await ev(()=>document.querySelector('[data-touch="0"]').textContent)));
+
+  // ---- Р19: значение шока помнится для каждой вкладки ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.35:1');
+  await ev(()=>{ document.querySelector('[data-fscope="k0-"][data-form="add"]').click(); });
+  await p.waitForTimeout(250);
+  await ev(()=>{ document.querySelector('[data-fscope="k0-"][data-form="set"]').click(); });
+  await p.waitForTimeout(250);
+  ok('Р19: «новое» 0,35 → «на сколько» → «новое» — снова 0,35', await ev(()=>shocks[0].form === 'set' && Math.abs(shocks[0].value - 0.35) < 1e-12),
+     await ev(()=>[shocks[0].form, shocks[0].value]));
+
+  // ---- Р21: «задано ↔ свободно» без видимой реакции объясняет себя ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=K:mul:0.8:1');
+  await ev(()=>{ document.querySelector('[data-pin="d"]').click(); }); await p.waitForTimeout(400);
+  const h21 = await ev(()=>{ const e = document.querySelector('[data-pinnote="d"]'); return e && !e.hidden ? e.textContent : null; });
+  ok('Р21: δ стало свободным, а ответ прежний — «Ответ от δ не зависит — поэтому ничего не изменилось»',
+     h21 === 'Ответ от δ не зависит — поэтому ничего не изменилось', h21);
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');

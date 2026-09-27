@@ -115,6 +115,7 @@
     border-radius:0 var(--r) var(--r) 0;padding:10px 14px;
   }
   .forklead b{font-weight:700;color:var(--ink)}
+  .pinnote{margin:4px 0 0;font-size:12.5px;color:var(--muted);line-height:1.4}
   .ngnote{
     margin:18px 0 0;font-size:14px;line-height:1.55;color:var(--ink-2);
     background:rgba(125,97,28,.10);border-left:3px solid var(--dunno);
@@ -977,9 +978,15 @@ const DEFAULT_BASE = {
   a:{v:1/3,  fixed:false}
 };
 const withDef = b => { const o = {...b}; o.def = o.v; return o; };
+/* Служебное, что в ссылку не пишется и с состоянием не сравнивается:
+   какие исходные значения человек вписал сам (пока нет — число, запертое
+   шоком «→ новое», остаётся примером) и какое число стояло у шока в каждой
+   вкладке формы. */
+const typedBase = new Set();
+const formMemo = new WeakMap();
 const resetAll = () => {
   base = {}; PKEYS.forEach(k => base[k] = withDef(DEFAULT_BASE[k]));
-  shocks = []; probIdx = -1; picked = []; revealed = false;
+  shocks = []; probIdx = -1; picked = []; revealed = false; typedBase.clear();
 };
 
 const colVar = ci => "var(--sh" + ((ci % 3) + 1) + ")";
@@ -2869,6 +2876,7 @@ function paramRow(key, value, idp, live, fixed, fromVal, form){
       '" min="' + slo + '" max="' + hi + '" step="' + m.step + '" value="' + value + '"' +
       ' aria-label="' + said + ' — ползунок"' +
       (fixed === false ? " disabled" : "") + ">" +
+    (fixed === undefined ? "" : '<p class="pinnote" data-pinnote="' + key + '" hidden></p>') +
     "</div>";
 }
 
@@ -2902,6 +2910,13 @@ function touchText(sh){
     (sh.form === "set" && !isStock(sh.key)
       ? ". Форма «новое» называет и начало, и конец, поэтому исходное " + META[sh.key].sym +
         " держится заданным"
+      : "") +
+    /* Запер исходное значение сам шок, а число в нём — всё ещё пример,
+       которым рисуется картинка. Если его не поправить на число из условия,
+       ответ посчитан не для той задачи. */
+    (sh.form === "set" && !isStock(sh.key) && base[sh.key].auto && !typedBase.has(sh.key)
+      ? ". " + numV(base[sh.key].v, META[sh.key].dig) + " — пример, а не условие: впишите исходное " +
+        META[sh.key].sym + " в блоке 2"
       : "") +
     /* Шок на нейтрали ничего не красит и не попадает в таблицу — про это
        надо сказать в самой карточке, иначе непонятно, почему картинка
@@ -3197,6 +3212,7 @@ function loadProblem(i){
   picked = [];
   pickPane = "main";
   revealed = false;
+  typedBase.clear();
   zoomReset();
 }
 
@@ -3287,6 +3303,7 @@ function readHash(){
     nb[k] = {v: clampKey(k, num), fixed: fx !== "0", def: clampKey(k, num)};
   });
   base = nb;
+  typedBase.clear();
   shocks = [];
   const used = new Set();
   (q.k || "").split(";").filter(Boolean).forEach(chunk => {
@@ -3495,7 +3512,7 @@ function applyValue(scope, key, raw, fromBox){
   const boxEl = document.getElementById("n" + scope + key);
   if (!isFinite(v)){ if (boxEl) markBad(boxEl, true); return false; }
   if (boxEl) markBad(boxEl, false);
-  if (scope === "b-"){ base[key].v = clampKey(key, v); return true; }
+  if (scope === "b-"){ base[key].v = clampKey(key, v); typedBase.add(key); return true; }
   const i = parseInt(scope.slice(1), 10);
   if (!shocks[i]) return false;
   shocks[i].value = clampKey(key, v, shocks[i].form);
@@ -3516,6 +3533,8 @@ panel.addEventListener("change", e => {
 panel.addEventListener("input", e => {
   const el = e.target;
   if (el.dataset.num !== undefined && el.classList.contains("bad")) markBad(el, false);
+  /* подсказка «ответ от δ не зависит» относилась к тому состоянию */
+  document.querySelectorAll(".pinnote").forEach(n => { n.hidden = true; });
 });
 panel.addEventListener("keydown", e => {
   const el = e.target;
@@ -3541,11 +3560,21 @@ document.getElementById("base-params").addEventListener("click", e => {
   const b = e.target.closest("[data-pin]");
   if (!b || b.disabled) return;
   const k = b.dataset.pin, st = base[k];
+  /* Если после щелчка ответ и число диаграмм прежние, щелчок выглядит
+     несработавшим: меняется одна кнопка. Тогда под ней — почему. */
+  const snap = () => JSON.stringify(sweepCached()) + "|" + !!forkCase();
+  const was = active().length ? snap() : null;
   st.fixed = !st.fixed;
+  typedBase.delete(k);
   /* Обратно в «свободно» — значение возвращается к иллюстративному:
      число, которое студент накрутил, было его догадкой, а не условием. */
   if (!st.fixed) st.v = st.def;
   refreshAll();
+  if (was !== null && snap() === was){
+    const note = document.querySelector('[data-pinnote="' + k + '"]');
+    note.textContent = "Ответ от " + META[k].sym + " не зависит — поэтому ничего не изменилось";
+    note.hidden = false;
+  }
 });
 
 document.getElementById("shocks").addEventListener("click", e => {
@@ -3554,12 +3583,18 @@ document.getElementById("shocks").addEventListener("click", e => {
   if (b.dataset.form !== undefined){
     const i = parseInt(b.dataset.fscope.slice(1), 10);
     if (!shocks[i]) return;
-    shocks[i].form = b.dataset.form;
-    delete shocks[i].cut;
-    /* Новая форма — новый смысл числа, поэтому ставим нейтральное значение:
-       шок снова ничего не меняет, пока его не подвинут. */
-    shocks[i].value = b.dataset.form === "set" ? base[shocks[i].key].v
-                    : b.dataset.form === "add" ? 0 : 1;
+    /* Число у каждой вкладки своё и помнится: вернулись на «новое» —
+       там снова своё 0,150. Впервые открытая вкладка стоит на нейтрали:
+       новая форма — новый смысл числа, и шок ничего не меняет, пока его
+       не подвинут. */
+    const sh = shocks[i];
+    if (!formMemo.has(sh)) formMemo.set(sh, {});
+    const memo = formMemo.get(sh);
+    memo[sh.form] = sh.value;
+    sh.form = b.dataset.form;
+    delete sh.cut;
+    sh.value = sh.form in memo ? memo[sh.form]
+             : sh.form === "set" ? base[sh.key].v : sh.form === "add" ? 0 : 1;
   } else if (b.dataset.eye !== undefined){
     shocks[+b.dataset.eye].on = !shocks[+b.dataset.eye].on;
   } else if (b.dataset.del !== undefined){
