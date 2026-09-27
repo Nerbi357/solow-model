@@ -593,12 +593,12 @@
         безразмерная, поэтому всё считается в долях от исходного стационара: он равен (1;&nbsp;1).</div>
       <p class="forkcap" id="cap1" hidden></p>
       <canvas id="main" data-h="620" tabindex="0"
-              aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты."></canvas>
+              aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты. С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки."></canvas>
       <p class="tight" id="tight1" hidden></p><p class="tight" id="same1" hidden></p>
       <div id="fork2" hidden>
         <p class="forkcap" id="cap2"></p>
         <canvas id="main2" data-h="620" tabindex="0"
-                aria-label="Та же диаграмма для второго случая."></canvas>
+                aria-label="Та же диаграмма для второго случая. С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки."></canvas>
         <p class="tight" id="tight2" hidden></p><p class="tight" id="same2" hidden></p>
       </div>
 
@@ -999,12 +999,13 @@ function sweep(limit){
     sr: VARS.map(() => new Set()), lr: VARS.map(() => new Set())
   }));
   let seen = 0, tried = 0, coarse = false, seenC = 0, triedC = 0;
+  const anchors = [];
   const take = pv => {
     if (limit && sideOf(pv) !== limit.side) return;   // чужая ветка развилки
     tried++; if (coarse) triedC++;
     const r = rowsAt(pv);
     if (!r || r.length !== nrows) return;
-    seen++; if (coarse) seenC++;
+    seen++; if (coarse){ seenC++; if (limit) anchors.push(pv); }
     r.forEach((row, i) => VARS.forEach((_, j) => {
       acc[i].sr[j].add(row.sr[j]);
       acc[i].lr[j].add(row.lr[j]);
@@ -1044,6 +1045,25 @@ function sweep(limit){
       }
     });
   });
+
+  /* Ветка развилки может лежать целиком мимо точек выше. При свободных δ, n, g
+     ветка «k > 1» — это угол δ+n+g < s, а точки 0,15 и 0,85 диапазона лежат
+     вне его: ветку видели два-три узла грубой сетки, полоса смены знака внутри
+     неё не попадала ни в один, и ряд получал уверенную стрелку там, где ответ —
+     «?». Чем больше неизвестных, тем увереннее выходил ответ. Поэтому для ветки
+     тот же тонкий проход идёт ещё и через узлы грубой сетки, лежащие в ней. */
+  if (limit && anchors.length && free.length > 1){
+    const step = Math.max(1, Math.floor(anchors.length / 4));
+    const picks = anchors.filter((_, i) => i % step === 0).slice(0, 4);
+    const fa = Math.min(fine, 500);            // на телефоне перебор идёт вчетверо дольше
+    free.forEach(k => picks.forEach(a => {
+      for (let j = 0; j < fa; j++){
+        const pv = {...a};
+        pv[k] = META[k].min + (META[k].max - META[k].min) * j / (fa - 1);
+        take(pv);
+      }
+    }));
+  }
 
   const pick = st => (seen && st.size === 1) ? [...st][0] : "dunno";
   SWEEPSTAT = {seen, tried, seenC, triedC, nfree: free.length};
@@ -1842,7 +1862,7 @@ function drawMain(){
     cv2.dataset.h = 420;
     /* Подписи случаев видит и тот, кто читает страницу экранным диктором */
     cv.setAttribute("aria-label", ALT + " Случай " + fk.cases[0].text + ".");
-    cv2.setAttribute("aria-label", "Та же диаграмма, случай " + fk.cases[1].text + ".");
+    cv2.setAttribute("aria-label", "Та же диаграмма, случай " + fk.cases[1].text + ". С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки.");
     cap1.hidden = false; box2.hidden = false;
     cap1.textContent = fk.cases[0].text; cap1.dataset.n = "1";
     cap2.textContent = fk.cases[1].text;  cap2.dataset.n = "2";
@@ -2295,6 +2315,7 @@ function paramRow(key, value, idp, live, fixed, fromVal, form){
     "</div>" +
     '<input type="range" id="' + id + '" data-rng="' + key + '" data-scope="' + idp +
       '" min="' + slo + '" max="' + hi + '" step="' + m.step + '" value="' + value + '"' +
+      ' aria-label="' + m.sym + ' — ползунок"' +
       (fixed === false ? " disabled" : "") + ">" +
     "</div>";
 }
