@@ -829,8 +829,13 @@ const esc = s => String(s).replace(/[&<>"]/g,
   c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 /* esc + подъём стрелки: везде, где «→» стоит между числами. */
 const escArr = s => esc(s).replace(/→/g, '<span class="arr">→</span>');
+/* Вся строка обязана быть одним числом. parseFloat читает начало строки
+   и молча отбрасывает хвост: «0,0,1» превращалось в 0, «5бла» — в 5,
+   ячейка не краснела, и мусор становился заданным значением. */
 const parseRu = s => {
-  const v = parseFloat(String(s).trim().replace(",", ".").replace(/\s/g, ""));
+  const t = String(s).replace(/\s/g, "").replace(",", ".");
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(t)) return NaN;
+  const v = Number(t);
   return isFinite(v) ? v : NaN;
 };
 const NEUTRAL = {set: k => base[k] ? base[k].v : META[k].min, add: () => 0, mul: () => 1};
@@ -2878,7 +2883,7 @@ panel.addEventListener("input", e => {
 });
 panel.addEventListener("change", e => {
   const el = e.target;
-  if (el.dataset.num === undefined) return;
+  if (el.dataset.num === undefined || el.dataset.esc) return;
   if (applyValue(el.dataset.scope, el.dataset.num, el.value, true)) refreshLive();
 });
 panel.addEventListener("focusout", e => {
@@ -2887,7 +2892,17 @@ panel.addEventListener("focusout", e => {
   el.classList.remove("bad"); syncValues();
 }, true);
 panel.addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.dataset.num !== undefined){ e.preventDefault(); e.target.blur(); }
+  const el = e.target;
+  if (el.dataset.num === undefined) return;
+  if (e.key === "Enter"){ e.preventDefault(); el.blur(); }
+  /* Escape — отмена: набранное не применяется, в ячейку возвращается прежнее
+     значение. Раньше текст оставался в поле и молча применялся, как только
+     студент щёлкал мимо: опечатка становилась заданным числом. */
+  else if (e.key === "Escape"){
+    e.preventDefault();
+    el.dataset.esc = "1"; el.blur(); delete el.dataset.esc;
+    el.classList.remove("bad"); syncValues();
+  }
 });
 
 document.getElementById("base-params").addEventListener("click", e => {
@@ -2988,8 +3003,8 @@ function togglePoint(id, pane){
 function bindPane(id){
   const cv = document.getElementById(id), P = PANE[id];
   const geo = () => geomOf(cv.clientWidth, parseInt(cv.dataset.hNow || cv.dataset.h, 10));
-  const nearest = (x, y) => {
-    let best = null, bd = 18;
+  const nearest = (x, y, r = 18) => {
+    let best = null, bd = r;
     P.hits.forEach(h => { const d = Math.hypot(h.x - x, h.y - y); if (d < bd){ bd = d; best = h; } });
     return best;
   };
@@ -3011,16 +3026,20 @@ function bindPane(id){
     drawMain();
   }, {passive: false});
 
-  let drag = null;
+  let drag = null, tap = null;
   cv.addEventListener("pointerdown", e => {
     /* Пальцем по графику — прокрутка страницы, а не панорама: канвас занимает
        три четверти экрана телефона, и панорама означала бы, что мимо него
-       вообще не проскроллить. Щелчок по точке при этом работает, мышь тоже. */
-    if (e.pointerType === "touch") return;
+       вообще не проскроллить. Поэтому касание не захватывается — прокрутку
+       ведёт браузер, — а касание без сдвига считается щелчком по точке.
+       Раньше касание просто отбрасывалось здесь, pointerup без drag ничего
+       не делал, и точки на телефоне не открывались вовсе. */
+    if (e.pointerType === "touch"){ tap = {sx: e.clientX, sy: e.clientY}; return; }
     drag = {sx: e.clientX, sy: e.clientY, moved: 0, base: P.view ? {...P.view} : {...P.auto}};
     try { cv.setPointerCapture(e.pointerId); } catch (err) { /* не критично */ }
   });
   cv.addEventListener("pointermove", e => {
+    if (tap && Math.hypot(e.clientX - tap.sx, e.clientY - tap.sy) >= 8) tap = null;
     if (!drag){
       cv.style.cursor = nearest(e.offsetX, e.offsetY) ? "pointer" : (P.view ? "grab" : "crosshair");
       return;
@@ -3038,6 +3057,14 @@ function bindPane(id){
     drawMain();
   });
   cv.addEventListener("pointerup", e => {
+    if (tap){
+      const t = tap; tap = null;
+      if (Math.hypot(e.clientX - t.sx, e.clientY - t.sy) < 8){
+        const h = nearest(e.offsetX, e.offsetY, 28);           // палец толще курсора
+        if (h) togglePoint(h.id, id);
+      }
+      return;
+    }
     if (!drag) return;
     const click = drag.moved < 4;
     drag = null;
@@ -3045,7 +3072,7 @@ function bindPane(id){
     cv.style.cursor = "crosshair";
     if (click){ const h = nearest(e.offsetX, e.offsetY); if (h) togglePoint(h.id, id); }
   });
-  cv.addEventListener("pointercancel", () => { drag = null; });
+  cv.addEventListener("pointercancel", () => { drag = null; tap = null; });
   cv.addEventListener("dblclick", () => { P.view = null; drawMain(); });
 
   cv.addEventListener("keydown", e => {
