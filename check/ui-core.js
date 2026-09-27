@@ -262,7 +262,9 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   await p.locator('#clearpts').click(); await p.waitForTimeout(200);
   ok('кнопка снимает все отметки', await ev(()=>picked.length===0));
   await p.locator('#main').focus();
+  /* стрелка ведёт подсветку, отмечает Enter (решение 20) */
   await p.keyboard.press('ArrowRight'); await p.waitForTimeout(220);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(220);
   ok('точки доступны с клавиатуры', await ev(()=>picked.length===1));
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   ok('Escape снимает отметки', await ev(()=>picked.length===0));

@@ -515,6 +515,26 @@ const overlaps = pads => {
   const hb = await ev(()=>getComputedStyle(document.querySelector('[data-p="0"]')).borderTopColor);
   ok('Р23г: при наведении рамка карточки задачи темнеет', hb === 'rgb(86, 92, 102)', hb);
 
+  // ---- Р20: подсветка точки, отметка по Enter ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.3:1');
+  await p.focus('#main');
+  await p.keyboard.press('ArrowRight');
+  await p.waitForTimeout(150);
+  const kb1 = await ev(()=>({picked: picked.length, focus: PANE.main.focusId || null}));
+  ok('Р20: стрелка ведёт подсветку и ничего не отмечает', kb1.picked === 0 && !!kb1.focus, kb1);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  ok('Р20: Enter отмечает подсвеченную точку', await ev(()=>picked.length) === 1);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  ok('Р20: второй Enter снимает отметку', await ev(()=>picked.length) === 0);
+
+  /* мышь: наведение подсвечивает точку ещё до щелчка */
+  await ev(()=>{ picked = []; drawMain(); });
+  const hp = await ev(()=>{ const h = PANE.main.hits[0], r = document.getElementById('main').getBoundingClientRect();
+    return {x: r.left + h.x, y: r.top + h.y, id: h.id}; });
+  await p.mouse.move(hp.x, hp.y); await p.waitForTimeout(200);
+  ok('Р20: наведение мышью подсвечивает точку', await ev(()=>PANE.main.hoverId || null) === hp.id,
+     await ev(()=>PANE.main.hoverId || null));
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
