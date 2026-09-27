@@ -133,6 +133,9 @@
   /* Когда s мала, инвестиции и выбытие ложатся на саму ось: отношение
      f(k) к s·f(k) равно 1/s, и никакой выбор рамки его не меняет. Молчать
      об этом нельзя — студент читает картинку как ответ. */
+  .kinote{margin:6px 0 0;font-size:12px;color:var(--muted);line-height:1.45}
+  .tight.far{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+  .tight.far .btn{padding:5px 10px;font-size:12.5px}
   .tight{
     margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--muted);
     background:var(--card-2);border:1px solid var(--rule);
@@ -631,6 +634,8 @@
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты. С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки."></canvas>
       <p class="tight" id="tight1" hidden></p><p class="tight" id="same1" hidden></p>
+      <p class="tight far" id="farnote1" hidden><span></span> <button class="btn ghost" data-far="main"></button></p>
+      <p class="kinote" id="kinote1" hidden></p>
       <div class="outs" id="ol1" hidden></div>
       <div id="fork2" hidden>
         <p class="forkcap" id="cap2"></p>
@@ -638,6 +643,8 @@
         <canvas id="main2" data-h="620" tabindex="0"
                 aria-label="Та же диаграмма для второго случая. С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки."></canvas>
         <p class="tight" id="tight2" hidden></p><p class="tight" id="same2" hidden></p>
+        <p class="tight far" id="farnote2" hidden><span></span> <button class="btn ghost" data-far="main2"></button></p>
+        <p class="kinote" id="kinote2" hidden></p>
         <div class="outs" id="ol2" hidden></div>
       </div>
 
@@ -1800,7 +1807,11 @@ function statesOf(){
        не скакнул запас — нет «скачка», не уехал стационар — нет «new»,
        и в задаче 1 экономика просто возвращается в old. */
     const jumped = Math.abs(lS) > 1e-9;
-    const moved  = Math.abs(lN) > 1e-9;
+    /* Новое равновесие есть, когда изменились кривые, — даже если точка
+       встречи осталась на той же k: s 0,20 → 0,25 и g 0,02 → 0,04 оставляют
+       s/(δ+n+g) прежним, k стоит, а c и i уже другие. Тогда на оси склейка
+       «old, new», а в легенде — «новое равновесие». */
+    const moved  = Math.abs(lN) > 1e-9 || CURVES.some(c => sigOf(PF, c) !== sigOf(pv, c));
     push({id:"short", label:"скачок", mark:"скачок", P:PF, lx:lS,
           color:col("--res"), weight:1.2, short:true, axis: jumped});
     push({id:"final", label:"новое равновесие", mark:"new", P:PF, lx:lN,
@@ -1868,13 +1879,21 @@ function geom(){
    графиком и таблицей она занимала место, которое нужно ответу. */
 function legendItems(sts){
   const it = [{c: col("--ink"), t: "исходное состояние", w: 1.5}];
-  active().forEach(sh => {
-    if (AFFECTS[sh.key].length) it.push({c: colHex(sh.ci), t: shockName(sh), w: 3});
+  /* Все шоки — с номером, тем же, что у отметки kᵢ на оси и в шапке
+     карточки. K × и L × линий не двигают, но отметку на оси получают —
+     раньше в легенде их не было, и чья это k₂, было не понять. */
+  active().forEach((sh, i) => {
+    const t = (i + 1) + " · " + shockName(sh);
+    if (AFFECTS[sh.key].length) it.push({c: colHex(sh.ci), t, w: 3});
+    else it.push({c: colHex(sh.ci), t: t + " — куда бросило бы сразу", w: 2, mark: true});
   });
   if (sts.some(x => x.final && x.axis)) it.push({c: col("--res"), t: "новое равновесие", w: 3});
   if (sts.some(x => x.short && x.axis))
     it.push({c: col("--res"), t: "скачок — куда попали сразу", w: 2, dash: true});
   if (showGold) it.push({c: col("--gold"), t: "golden rule", w: 1.6, dot: true});
+  if (sts.some(x => /^k/.test(x.mark) && x.axis))
+    it.push({note: true, t: "kᵢ — где оказалась бы экономика с одним шоком i: у K и L — сразу, " +
+                            "у остальных — в новом стационаре"});
   return it;
 }
 
@@ -1889,19 +1908,48 @@ function drawLegend(ctx, L, T, sts, frameW){
   ctx.save();
   ctx.font = SZ + "px " + FONT();
   let tw = 0;
-  it.forEach(i => { tw = Math.max(tw, ctx.measureText(i.t).width); });
-  const bw = PAD * 2 + SW + GAP + tw, bh = PAD * 2 + it.length * LH - (LH - SZ);
+  it.forEach(i => { if (!i.note) tw = Math.max(tw, ctx.measureText(i.t).width); });
+  /* Пояснение про kᵢ длинное: оно переносится по ширине остальных строк
+     и набрано мельче, иначе одна фраза растянула бы легенду на полкартинки. */
+  const NS = SZ - 1.5, NL = NS + 3, noteW = Math.max(tw + SW + GAP, 170);
+  const lines = [];
+  /* На телефоне легенда и так занимает треть картинки: пояснение про kᵢ
+     там уходит под диаграмму текстом (см. paintOn). */
+  CUR.kiNote = narrow ? (it.find(i => i.note) || {}).t || null : null;
+  it.forEach(i => {
+    if (!i.note || narrow) return;
+    ctx.font = NS + "px " + FONT();
+    let cur = "";
+    i.t.split(" ").forEach(wd => {
+      const t2 = cur ? cur + " " + wd : wd;
+      if (ctx.measureText(t2).width > noteW && cur){ lines.push(cur); cur = wd; } else cur = t2;
+    });
+    if (cur) lines.push(cur);
+    ctx.font = SZ + "px " + FONT();
+  });
+  const main = it.filter(i => !i.note);
+  const bw = PAD * 2 + Math.max(SW + GAP + tw, lines.length ? noteW : 0),
+        bh = PAD * 2 + main.length * LH - (LH - SZ) + (lines.length ? 6 + lines.length * NL : 0);
   const x = L + 14, y = T + 10;
   ctx.fillStyle = "rgba(255,255,255,.93)";
   ctx.strokeStyle = col("--rule"); ctx.lineWidth = 1;
   ctx.beginPath(); ctx.rect(x, y, bw, bh); ctx.fill(); ctx.stroke();
   ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  it.forEach((i, n) => {
+  main.forEach((i, n) => {
     const cy = y + PAD + n * LH + SZ / 2;
     ctx.strokeStyle = i.c; ctx.lineWidth = i.w;
-    ctx.setLineDash(i.dash ? [4, 3] : i.dot ? [2, 4] : []);
-    ctx.beginPath(); ctx.moveTo(x + PAD, cy); ctx.lineTo(x + PAD + SW, cy); ctx.stroke();
-    ctx.setLineDash([]);
+    if (i.mark){
+      /* шок по запасу линий не двигает — в легенде у него отметка, как на оси */
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(x + PAD + SW / 2, cy - SZ / 2); ctx.lineTo(x + PAD + SW / 2, cy + SZ / 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = i.c;
+      ctx.beginPath(); ctx.arc(x + PAD + SW / 2, cy, 3, 0, 7); ctx.fill();
+    } else {
+      ctx.setLineDash(i.dash ? [4, 3] : i.dot ? [2, 4] : []);
+      ctx.beginPath(); ctx.moveTo(x + PAD, cy); ctx.lineTo(x + PAD + SW, cy); ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.fillStyle = col("--ink-2");
     const lift = arrowLift(ctx, SZ);
     let cx = x + PAD + SW + GAP;
@@ -1909,6 +1957,12 @@ function drawLegend(ctx, L, T, sts, frameW){
       ctx.fillText(pt, cx, pt === "→" ? cy - lift : cy);
       cx += ctx.measureText(pt).width; });
   });
+  if (lines.length){
+    ctx.font = NS + "px " + FONT();
+    ctx.fillStyle = col("--muted");
+    const y0 = y + PAD + main.length * LH - (LH - SZ) + 6 + NS / 2;
+    lines.forEach((ln, k) => ctx.fillText(ln, x + PAD, y0 + k * NL));
+  }
   ctx.restore();
 }
 
@@ -2036,6 +2090,9 @@ function renderMain(ctx, w, h, capture){
     /* Тот же флаг, что и у подписи: состояние, совпавшее с исходным, своей
        линии не получает — иначе оно закрашивает чужую поверх. */
     if (!st.axis || !onX(st.k)) return;
+    /* новое равновесие на той же k, что и old: чёрный перпендикуляр old
+       не перекрашиваем — склейку «old, new» скажет подпись */
+    if (st.final && Math.abs(st.lx) < 1e-9) return;
     const top = yAt(U, "out", st), yTop = Math.max(Y(top), T - 12);
     if (st.solid){
       ctx.save();
@@ -2170,12 +2227,26 @@ function renderMain(ctx, w, h, capture){
   const b0 = sts.find(s => s.id === "base"), fin = sts.find(s => s.final);
   const jmp = sts.find(s => s.short);
   const ylab = [];
-  [[b0, "old"], [fin, "new"], [fin && fin.axis ? null : jmp, "скачок"]].forEach(([st, low]) => {
-    if (!st || !st.axis) return;
-    const yv = yAt(U, "out", st);
-    if (!onY(yv) || !onX(st.k)) return;
-    ylab.push({y: Y(yv), low, c: st.color});
-  });
+  const near = (a, b) => isFinite(a) && isFinite(b) && Math.abs(a / b - 1) < 1e-9;
+  /* совпавшие уровни склеиваются в одну подпись, как отметки на оси k */
+  const pushY = (st, yv, low) => {
+    if (!st || !isFinite(yv) || !onY(yv) || !onX(st.k)) return;
+    const hit = ylab.find(l => near(l.v, yv));
+    if (hit){ hit.low += ", " + low; return; }
+    ylab.push({v: yv, y: Y(yv), low, c: st.color});
+  };
+  const yOld = b0 ? yAt(U, "out", b0) : NaN;
+  const yNew = fin && fin.axis ? yAt(U, "out", fin) : NaN;
+  pushY(b0, yOld, "old");
+  if (fin && fin.axis) pushY(fin, yNew, "new");
+  /* Уровень сразу после шоков — как на траекториях: подписан, когда y
+     прыгнул и не совпал ни со старым, ни с новым. Прыгает y не только
+     от шока по запасу: шок по α меняет f(k) при той же k. */
+  const yJ = jmp ? yAt(U, "out", jmp) : NaN;
+  if (jmp && isFinite(yJ) && !near(yJ, yOld) && !near(yJ, yNew)){
+    if (onY(yJ) && onX(jmp.k)) dashed(ctx, L, Y(yJ), X(jmp.k), Y(yJ), jmp.color, 1, [3, 4]);
+    pushY(jmp, yJ, "скачок");
+  }
   /* Подписи уровней растаскиваются по высоте: когда новый стационар близок
      к старому, y_old и y_new садились друг на друга, а верхняя из них —
      ещё и на подпись самой оси. */
@@ -2193,6 +2264,20 @@ function renderMain(ctx, w, h, capture){
   }
   ylab.forEach(l => tagSub(ctx, L - 24, l.y, "y", l.low, l.c, true));
 
+  /* Стационары разнесены больше чем в 20 раз: на общей рамке один из них
+     прижат к самой оси, и картинка вырождается. Об этом — заметка под
+     диаграммой, а кнопка приближает прижатый. */
+  const far = sts.find(s => s.final && s.axis);
+  CUR.far = null;
+  if (far && Math.abs(far.lx) > Math.log(20)){
+    const small = far.lx < 0 ? far : b0;           // кого не видно
+    const k1 = small.k * 2.2;
+    let y1 = 0;
+    items.forEach(it => { y1 = Math.max(y1, curveN(U, it.c, it.P)(k1)); });
+    CUR.far = {left: far.lx < 0, lx: Math.abs(far.lx),
+               view: {k0: 0, k1, y0: 0, y1: (y1 > 0 && isFinite(y1) ? y1 : 1) * 1.1}};
+  }
+
   drawLegend(ctx, L, T, sts, R - L);
   if (capture) CUR.hits = hits;
 }
@@ -2209,6 +2294,20 @@ function paintOn(id, vals, capture){
   VOVR = vals;
   try { withPane(PANE[id], () => renderMain(ctx, w, h, capture)); }
   finally { VOVR = null; }
+  const kiEl = document.getElementById(id === "main" ? "kinote1" : "kinote2");
+  if (kiEl){ kiEl.hidden = !PANE[id].kiNote; if (PANE[id].kiNote) kiEl.textContent = PANE[id].kiNote; }
+  /* заметка о далёких стационарах — пока диаграмма не приближена */
+  const farEl = document.getElementById(id === "main" ? "farnote1" : "farnote2"), fr = PANE[id].far;
+  if (farEl){
+    farEl.hidden = !fr || !!PANE[id].view;
+    if (fr && !PANE[id].view){
+      const n = fr.lx < Math.log(1e6) ? Math.round(Math.exp(fr.lx)).toLocaleString("ru-RU") : numL(fr.lx, 2);
+      farEl.querySelector("span").textContent = "Новое равновесие в " + n + " раз " +
+        (fr.left ? "левее" : "правее") + " old: на общей рамке " + (fr.left ? "оно" : "old") +
+        " прижато к оси.";
+      farEl.querySelector("button").textContent = fr.left ? "Показать new крупно" : "Показать old крупно";
+    }
+  }
   const note = document.getElementById(id === "main" ? "tight1" : "tight2");
   if (note){
     note.hidden = !PANE[id].tight;
@@ -3323,6 +3422,9 @@ function readHash(){
   });
   base = nb;
   typedBase.clear();
+  /* Приближение в ссылку не пишется: ссылка, открытая в той же вкладке,
+     приносит другое состояние, и старое окно показывало бы пустое место. */
+  zoomReset();
   shocks = [];
   const used = new Set();
   (q.k || "").split(";").filter(Boolean).forEach(chunk => {
@@ -3778,6 +3880,11 @@ function bindPane(id){
   });
 }
 PANES.forEach(bindPane);
+
+document.querySelectorAll("[data-far]").forEach(b => b.addEventListener("click", () => {
+  const P = PANE[b.dataset.far];
+  if (P.far){ P.view = {...P.far.view}; drawMain(); }
+}));
 
 document.getElementById("clearpts").addEventListener("click", () => {
   picked = []; drawMain(); renderCoords(); syncHash();

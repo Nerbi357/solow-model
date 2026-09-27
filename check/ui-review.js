@@ -448,6 +448,44 @@ const overlaps = pads => {
   const ro2 = await ev(()=>[...document.querySelectorAll('#ro-head th')].map(t=>t.textContent.trim()));
   ok('Р6: на развилке — две колонки, по калибровкам диаграмм', ro2.some(t=>/k < 1/.test(t)) && ro2.some(t=>/k > 1/.test(t)), ro2);
 
+  // ---- Р14: легенда называет все шоки, и K × тоже ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.3:1;K:mul:0.8:1');
+  const lg = await ev(()=>legendItems(statesOf()).map(i=>i.t));
+  ok('Р14: в легенде оба шока с номерами, K × — «куда бросило бы сразу»',
+     lg.some(t=>/^1 · s/.test(t)) && lg.some(t=>/^2 · K ×0,80 — куда бросило бы сразу/.test(t)), lg);
+  ok('Р14: и строка про kᵢ', lg.some(t=>/kᵢ — где оказалась бы экономика с одним шоком i/.test(t)), lg);
+
+  // ---- Р18: кривые сдвинулись, стационар нет — «old, new» ----
+  await go('#b=s:0.2:1,d:0.06:1,n:0:1,g:0.02:1,a:0.3:1&k=s:set:0.25:1;g:set:0.04:1');
+  const on = await ev(()=>({marks: statesOf().filter(s=>s.axis).map(s=>s.mark), legend: legendItems(statesOf()).map(i=>i.t)}));
+  ok('Р18: s 0,20 → 0,25 и g 0,02 → 0,04 — на оси и old, и new', on.marks.includes('old') && on.marks.includes('new'), on);
+  ok('Р18: и в легенде «новое равновесие»', on.legend.includes('новое равновесие'), on.legend);
+
+  // ---- Р22: стационары разнесены больше чем в 20 раз ----
+  /* s 0,20 → 0,02 при α = 0,5: k падает в (0,02/0,2)² = 100 раз */
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.5:1&k=s:set:0.02:1');
+  const fr = await ev(()=>{ const e = document.getElementById('farnote1'); return e && !e.hidden ? e.textContent : null; });
+  ok('Р22: new в 100 раз левее old — заметка и кнопка «Показать new крупно»',
+     /Новое равновесие в 100 раз левее old/.test(fr || '') && /Показать new крупно/.test(fr || ''), fr);
+  await ev(()=>{ const b = document.querySelector('[data-far="main"]'); if (b) b.click(); });
+  await p.waitForTimeout(300);
+  const fz = await ev(()=>{ const v = PANE.main.view, n = statesOf().find(s=>s.final);
+    return {view: !!v, newInside: !!v && n.k > v.k0 && n.k < v.k1 && v.k1 < 0.2}; });
+  ok('Р22: кнопка приближает new — он в окне, а окно уже 0,2 от old', fz.view && fz.newInside, fz);
+
+  // ---- ссылка в той же вкладке сбрасывает приближение ----
+  /* Переход по ссылке, где меняется только хеш, страницу не перезагружает.
+     Окно приближения от прошлого состояния оставалось, и новая картинка
+     могла оказаться за его краем. */
+  await ev(()=>{ PANE.main.view = {k0: 0, k1: 0.1, y0: 0, y1: 0.1}; drawMain(); });
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=a:set:0.5:1');
+  ok('ссылка в той же вкладке сбрасывает приближение', await ev(()=>PANE.main.view === null), await ev(()=>PANE.main.view));
+
+  // ---- Р23б: уровень скачка подписан на оси y ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=a:set:0.5:1');
+  const yl = await ev(()=>{ window.__ytags = []; const tg = window.tagSub; window.tagSub = function(ctx, x, y, a, b){ window.__ytags.push(b); return tg.apply(this, arguments); };
+    try { drawMain(); } finally { window.tagSub = tg; } return window.__ytags; });
+  ok('Р23б: шок по α — на оси y подписан y_скачок', yl.includes('скачок'), yl);
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
