@@ -49,25 +49,35 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
 
   // ---- 2. диапазоны и ввод числом ----
   const rng = await ev(() => ['s','d','n','g','a'].map(k => ({k, min:+document.getElementById('b-'+k).min, max:+document.getElementById('b-'+k).max})));
-  ok('δ, α: 0,01–0,99', rng.filter(r=>['d','a'].includes(r.k)).every(r=>r.min===0.01&&r.max===0.99), rng);
+  /* Одна область значений для всего (решение 8): границы — почти края модели,
+     а у α сверху — предел точности счёта (при 1/(1−α) больше тысячи ошибка
+     округления перерастает допуск «не изменилось»). Ползунок ходит по сетке
+     своего шага, крайние значения вводятся числом в ячейке. */
+  ok('границы: s, δ — 0,000001…0,999999; n, g — 0…0,999999; α — 0,000001…0,999',
+     await ev(()=>JSON.stringify(PKEYS.map(k=>[META[k].min, META[k].max])) ===
+       JSON.stringify([[1e-6,0.999999],[1e-6,0.999999],[0,0.999999],[0,0.999999],[1e-6,0.999]])),
+     await ev(()=>PKEYS.map(k=>[META[k].min, META[k].max])));
+  ok('δ, α: ползунок с кратного шагу, до верхней границы',
+     rng.filter(r=>['d','a'].includes(r.k)).every(r=>r.min===(r.k==='a'?0.005:0.001) && r.max===(r.k==='a'?0.999:0.999999)), rng);
   const box = async (id,v) => { await ev(([id,v])=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('change',{bubbles:true}));},[id,v]); await p.waitForTimeout(260); };
-  // У s граница ниже остальных, и это не описка: 0,01 — круглое число, а не
-  // требование модели, и в задаче 5 оно в одиночку решало знак ответа.
-  // Модельная граница и граница ползунка тут — две разные вещи: ползунок
-  // обязан стоять на сетке своего шага, а до 0,0005 значение доводится числом.
-  ok('s: модельная граница 0,0005', await ev(()=>
-     Math.abs(META.s.min - 0.0005) < 1e-12 && META.s.max === 0.99),
-     await ev(()=>[META.s.min, META.s.max]));
+  // Граница — соглашение, и она не имеет права решать ответ: 0,01 у s
+  // в задаче 5 в одиночку решало знак. Граница модели и граница ползунка —
+  // две разные вещи: ползунок стоит на сетке своего шага, а до 0,000001
+  // значение доводится числом в ячейке.
   ok('s: ползунок начинается с кратного шагу 0,001',
-     rng.filter(r=>r.k==='s').every(r=>r.min===0.001 && r.max===0.99), rng);
-  await box('nb-s','0,0005'); ok('ячейка достаёт до модельной границы',
-     Math.abs(await ev(()=>base.s.v) - 0.0005) < 1e-12, await ev(()=>base.s.v));
-  await box('nb-s','0,0001'); ok('ниже модельной границы ячейка клампит',
-     Math.abs(await ev(()=>base.s.v) - 0.0005) < 1e-12, await ev(()=>base.s.v));
-  ok('n, g достают до нуля', rng.filter(r=>['n','g'].includes(r.k)).every(r=>r.min===0&&r.max===0.99), rng);
+     rng.filter(r=>r.k==='s').every(r=>r.min===0.001 && r.max===0.999999), rng);
+  await box('nb-s','0,000001'); ok('ячейка достаёт до нижней границы',
+     Math.abs(await ev(()=>base.s.v) - 1e-6) < 1e-15, await ev(()=>base.s.v));
+  ok('и показывает её всеми знаками, а не «0,000»',
+     await ev(()=>document.getElementById('nb-s').value) === '0,000001', await ev(()=>document.getElementById('nb-s').value));
+  await box('nb-s','0,0000001'); ok('ниже нижней границы ячейка клампит',
+     Math.abs(await ev(()=>base.s.v) - 1e-6) < 1e-15, await ev(()=>base.s.v));
+  ok('n, g достают до нуля', rng.filter(r=>['n','g'].includes(r.k)).every(r=>r.min===0&&r.max===0.999999), rng);
   await box('nb-s','0,42'); ok('ячейка принимает запятую', Math.abs(await ev(()=>base.s.v)-0.42)<1e-9);
-  await box('nb-s','9');    ok('ячейка клампит', (await ev(()=>base.s.v))===0.99);
-  await box('nb-s','ерунда'); ok('мусор не применяется', (await ev(()=>base.s.v))===0.99);
+  await box('nb-s','9');    ok('ячейка клампит', (await ev(()=>base.s.v))===0.999999);
+  ok('и показывает верхнюю границу всеми знаками',
+     await ev(()=>document.getElementById('nb-s').value) === '0,999999', await ev(()=>document.getElementById('nb-s').value));
+  await box('nb-s','ерунда'); ok('мусор не применяется', (await ev(()=>base.s.v))===0.999999);
   ok('мусор подсвечен', await ev(()=>document.getElementById('nb-s').classList.contains('bad')));
   await box('nb-s','0,20');
 
@@ -274,7 +284,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   const junk = await p2.evaluate(()=>({s:base.s.v, d:base.d.v, a:base.a.v, dfix:base.d.fixed,
     n:shocks.length, keys:shocks.map(x=>x.key), probIdx}));
   ok('мусор в ссылке клампится, дубликаты и лишнее отбрасываются',
-     junk.s===0.99 && junk.d===0.01 && junk.a===0.99 && junk.dfix===false &&
+     junk.s===0.999999 && junk.d===0.000001 && junk.a===0.999 && junk.dfix===false &&
      junk.n===3 && junk.keys.join()==='s,d,n' && junk.probIdx===-1, junk);
   ok('мусорная ссылка ничего не роняет', e2.length===0, e2);
   await p2.close();

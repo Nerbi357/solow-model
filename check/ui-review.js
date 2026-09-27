@@ -253,6 +253,50 @@ const overlaps = pads => {
      {shown: ext.shown, paths: ext.paths, gap: ext.gap});
   ok('Р8: «Показатели» пишут число, а не ноль', /10⁻³⁷⁸/.test(ext.ro) && !/0,000/.test(ext.ro), ext.ro);
 
+  // ---- Р1, Р8: одна область значений — любой «?» повторяется руками ----
+  /* s свободна, «s + 0,05» и «α → 0,6», δ = 0,02, α = 0,2: долгосрочное c
+     получает «?» только при s после шока выше 0,9965. Раньше такие значения
+     ставил только перебор: руками шок подрезался до s = 0,99, и увидеть
+     падение c было нельзя. Теперь граница одна и та же у всех. */
+  const t7 = async () => ev(()=>[...document.querySelectorAll('#fx tr')].pop().querySelectorAll('td.v')[6].textContent.trim());
+  await go('#b=s:0.2:0,d:0.02:1,n:0:1,g:0:1,a:0.2:1&k=s:add:0.05:1;a:set:0.6:1'); await reveal();
+  const cFree = await t7();
+  await go('#b=s:0.9499:1,d:0.02:1,n:0:1,g:0:1,a:0.2:1&k=s:add:0.05:1;a:set:0.6:1'); await reveal();
+  const cHand = await t7(), vHand = await ev(()=>shocks[0].value);
+  ok('Р1: «?» у c из перебора повторяется руками: s = 0,9499 и «+0,05» дают c ↓',
+     cFree === '?' && cHand === '↓' && Math.abs(vHand - 0.05) < 1e-12, {cFree, cHand, vHand});
+  /* точные концы в «Перебор сужен»: s + 0,1 осмысленна при s до 0,899999 */
+  await go('#b=s:0.2:0,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:add:0.1:1'); await reveal();
+  const cutNote = await ev(()=>document.getElementById('notes').textContent);
+  ok('Р23а: концы отрезка в «Перебор сужен» точные, а не узлы сетки',
+     /s от 0,000001 до 0,899999/.test(cutNote), cutNote.slice(0, 160));
+  /* числа — столько знаков, сколько нужно: 0,0005 не пишется как 0,001 */
+  await go('#b=s:0.0005:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.0007:1');
+  const fmt = await ev(()=>({cell: document.getElementById('nb-s').value,
+    head: document.querySelector('[data-head="0"]').textContent.replace(/\s+/g, ' ').trim()}));
+  ok('Р8: s = 0,0005 в ячейке и в шапке шока — «0,0005», а не «0,001»',
+     fmt.cell === '0,0005' && fmt.head === 's: 0,0005 → 0,0007', fmt);
+
+  // ---- Р7: границы шока — от нарисованного значения ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.5:1&k=a:add:0.3:1');
+  const r7a = await ev(()=>FORM.add.rng('a'));
+  ok('Р7: при заданной α = 0,5 шок «+» — не больше +0,499', Math.abs(r7a[1] - 0.499) < 1e-9, r7a);
+  /* У свободной — от примера. «α + 0,5» при примере 0,5 рисовал диаграмму
+     при α = 1: без нового стационара и без траекторий. */
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.5:0&k=a:add:0.5:1'); await reveal();
+  const r7b = await ev(()=>({v: shocks[0].value, marks: statesOf().filter(s=>s.axis).map(s=>s.mark),
+    paths: document.querySelectorAll('#pathrows canvas').length,
+    touch: document.querySelector('[data-touch="0"]').textContent}));
+  ok('Р7: у свободной α — от примера: «+0,5» при примере 0,5 подрезан до +0,499',
+     Math.abs(r7b.v - 0.499) < 1e-9, r7b.v);
+  ok('Р7: и картинка рисует новое равновесие и траектории', r7b.marks.includes('new') && r7b.paths > 0, r7b);
+  ok('Р23д: карточка шока говорит, что значение из ссылки подрезано',
+     /Значение из ссылки \(\+0,500\) выводило α за границы/.test(r7b.touch), r7b.touch);
+  await ev(()=>{ const e = document.getElementById('nk0-a'); e.value = '0,2'; e.dispatchEvent(new Event('change', {bubbles:true})); });
+  await p.waitForTimeout(300);
+  ok('Р23д: а после своего значения пометка уходит',
+     !/Значение из ссылки/.test(await ev(()=>document.querySelector('[data-touch="0"]').textContent)));
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');

@@ -728,27 +728,32 @@ const VARS = ["y", "k", "c", "i"];
 const MAXSHOCKS = 3;
 
 const META = {
-  s:{sym:"s", name:"норма сбережений", min:0.0005, max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
-  d:{sym:"δ", name:"норма амортизации", min:0.01, max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
-  n:{sym:"n", name:"рост населения",   min:0,    max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
-  g:{sym:"g", name:"технический прогресс", min:0,    max:0.99, step:0.001, dig:3, forms:["set","add","mul"]},
-  a:{sym:"α", name:"доля капитала",    min:0.01, max:0.99, step:0.005, dig:3, forms:["set","add","mul"]},
+  s:{sym:"s", name:"норма сбережений", min:0.000001, max:0.999999, step:0.001, dig:3, forms:["set","add","mul"]},
+  d:{sym:"δ", name:"норма амортизации", min:0.000001, max:0.999999, step:0.001, dig:3, forms:["set","add","mul"]},
+  n:{sym:"n", name:"рост населения",   min:0,        max:0.999999, step:0.001, dig:3, forms:["set","add","mul"]},
+  g:{sym:"g", name:"технический прогресс", min:0,        max:0.999999, step:0.001, dig:3, forms:["set","add","mul"]},
+  a:{sym:"α", name:"доля капитала",    min:0.000001, max:0.999,    step:0.005, dig:3, forms:["set","add","mul"]},
   K:{sym:"K", name:"запас капитала",   min:0.05, max:3, step:0.01, dig:2, forms:["mul"], stock:true},
   L:{sym:"L", name:"число работников", min:0.05, max:3, step:0.01, dig:2, forms:["mul"], stock:true}
 };
 
 /* Три формы, потому что в задачах встречаются все три:
    «s: 0,10 → 0,20», «δ + 5 п.п.», «K ×0,80». */
-/* Границы приращения и множителя зависят от исходного значения: если оно
-   задано, дальше выхода за допустимые пределы просто не даём. Если свободно,
-   сузить нечего — про такой случай предупреждает пояснение под таблицей. */
-const pinned = k => base[k] && base[k].fixed;
+/* Границы приращения и множителя считаются от того значения, которое
+   нарисовано: у заданного параметра — от него самого, у свободного — от
+   примера, которым рисуется картинка. Тогда шок, ломающий модель, выставить
+   нельзя вовсе: при α = 0,5 приращение не больше +0,499. Раньше у свободного
+   параметра границы были «±0,5 наугад», и «α + 0,5» при примере 0,5 рисовал
+   диаграмму при α = 1 — без нового стационара и без траекторий. Таблица
+   при этом по-прежнему перебирает все допустимые значения, а где шок
+   отрезает часть диапазона, говорит «Перебор сужен». */
+const drawnV = k => (base[k].fixed || base[k].def === undefined) ? base[k].v : base[k].def;
 const FORM = {
   set:{glyph:"→", tab:"новое",      word:"новое значение",
        rng:k => [META[k].min, META[k].max], dig:k => META[k].dig},
   add:{glyph:"+", tab:"на сколько", word:"приращение в пунктах",
-       rng:k => (META[k].stock || !pinned(k)) ? [-0.5, 0.5]
-              : [META[k].min - base[k].v, META[k].max - base[k].v],
+       rng:k => META[k].stock ? [-0.5, 0.5]
+              : [META[k].min - drawnV(k), META[k].max - drawnV(k)],
        dig:()  => 3},
   /* У параметра, стоящего на нуле (а это n и g — их нижняя граница нулевая),
      границы множителя вырождались в 0/0 и 0,99/0, то есть в NaN, и это
@@ -756,9 +761,9 @@ const FORM = {
      ничего не меняет, но ломаться при этом нечему. */
   mul:{glyph:"×", tab:"во сколько", word:"множитель",
        rng:k => {
-         if (META[k].stock || !pinned(k) || !(base[k].v > 0)) return [0.05, 3];
-         return [Math.max(0.05, META[k].min / base[k].v),
-                 Math.min(3, META[k].max / base[k].v)];
+         if (META[k].stock || !(drawnV(k) > 0)) return [0.05, 3];
+         return [Math.max(0.05, META[k].min / drawnV(k)),
+                 Math.min(3, META[k].max / drawnV(k))];
        },
        dig:()  => 2}
 };
@@ -829,7 +834,17 @@ const curveN = (U, c, P) => x => capExp(lnCurve(U, c, P, Math.log(x)));
 const sigOf = (p, c) => (c === "dep" ? [dep(p)] : DET[c].map(k => p[k]))
   .map(v => +v.toPrecision(12)).join("|");
 
-const OK = p =>
+/* Одна область значений для всего: исходное значение, значение после шока
+   и перебор держатся одних и тех же границ META. Тогда любой «?» в таблице
+   можно повторить руками — точку, где знак другой, можно выставить в панели.
+   Раньше перебор пускал значения после шока до краёв модели (s почти до 1,
+   δ до нуля), а ползунок и ячейка держали 0,01…0,99, и часть «?» держалась
+   на точках, которых студент выставить не мог. Край модели — MOK: за границы
+   META перебор только заглядывает (см. «Граница перебора»). */
+const BOX_EPS = 1e-12;
+const inBox = p => PKEYS.every(k => p[k] >= META[k].min - BOX_EPS && p[k] <= META[k].max + BOX_EPS);
+const OK = p => inBox(p) && dep(p) > 0;
+const MOK = p =>
   p.s > 0 && p.s < 1 && p.a > 0 && p.a < 1 &&
   p.d >= 0 && p.d < 1 && p.n >= 0 && p.n < 1 && p.g >= 0 && p.g < 1 &&
   dep(p) > 0;
@@ -848,6 +863,19 @@ const sgn = d => (!isFinite(d) ? "dunno" : Math.abs(d) < TOL ? "same" : (d > 0 ?
 /* ===================== форматирование ===================== */
 const num = (x, dg = 2) => (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ","));
 const pct = (x, dg = 1) => (!isFinite(x) ? "—" : (x * 100).toFixed(dg).replace(".", ",") + "%");
+/* Значение параметра — столько знаков, сколько нужно: 0,200 — три, 0,0005 —
+   четыре, 0,000001 — шесть. Раньше всё писалось тремя, и s = 0,0005
+   выглядела как 0,001 — число, которого нет. Меньше dg знаков не бывает,
+   а число, которое конечной записью не выражается (1/3), пишется dg знаками;
+   совсем мелкое — так, чтобы остались две значащие цифры. */
+const numV = (x, dg = 3) => {
+  if (!isFinite(x)) return "—";
+  for (let d = dg; d <= 9; d++)
+    if (Math.abs(+x.toFixed(d) - x) <= 5e-13 * Math.max(1, Math.abs(x))) return num(x, d);
+  if (Math.abs(x) >= 0.01 || x === 0) return num(x, dg);
+  const d = Math.min(9, Math.max(dg, Math.ceil(-Math.log10(Math.abs(x))) + 1));
+  return num(x, d).replace(new RegExp("(,\\d{" + dg + "}\\d*?)0+$"), "$1");
+};
 /* Число по его логарифму. Пока оно читается обычной записью — обычная
    запись; иначе мантисса и степень десяти. Стационар e⁻⁸⁶⁹ для компьютера
    ноль, а для подписи — вполне число: 1,2·10⁻³⁷⁸. */
@@ -986,9 +1014,9 @@ const paramsOf = sh => applyTo(dispVals(), sh);
 
 function shockName(sh){
   const m = META[sh.key], fm = FORM[sh.form], d = fm.dig(sh.key);
-  if (sh.form === "set") return m.sym + ": " + num(base[sh.key].v, d) + " → " + num(sh.value, d);
-  if (sh.form === "add") return m.sym + " " + (sh.value >= 0 ? "+ " : "− ") + num(Math.abs(sh.value), d);
-  return m.sym + " ×" + num(sh.value, d);
+  if (sh.form === "set") return m.sym + ": " + numV(base[sh.key].v, d) + " → " + numV(sh.value, d);
+  if (sh.form === "add") return m.sym + " " + (sh.value >= 0 ? "+ " : "− ") + numV(Math.abs(sh.value), d);
+  return m.sym + " ×" + numV(sh.value, d);
 }
 
 /* ===================== перебор ===================== */
@@ -2325,30 +2353,27 @@ function renderFx(){
 
 /* Под таблицей — почему именно «нельзя определить» и где проходит граница. */
 /* Шок умеет выводить параметр за пределы модели: «n + 0,5» при свободном n
-   осмысленна только при n < 0,5. Перебор такие точки молча пропускает —
+   осмысленна только при n до 0,499999. Перебор такие точки молча пропускает —
    значит, про сужение надо сказать вслух, иначе таблица отвечает про часть
-   диапазона, а выглядит как ответ про весь. */
-const MLIM = {s:[0, 1, false], a:[0, 1, false], d:[0, 1, true], n:[0, 1, true], g:[0, 1, true]};
+   диапазона, а выглядит как ответ про весь. Концы отрезка — точные: значение
+   после шока обязано лежать в тех же границах META, а «+» и «×» монотонны,
+   поэтому отрезок получается делением границ, а не узлами сетки. Раньше
+   это были узлы, и вместо 0,0005 стояло «0,001». */
 function rangeCuts(){
   const cuts = [];
   active().forEach(sh => {
-    const k = sh.key, L = MLIM[k];
-    if (!L) return;                                   // K и L двигают точку, не параметр
-    const inside = v => (L[2] ? v >= L[0] : v > L[0]) && v < L[1];
-    const t = v => sh.form === "set" ? sh.value : sh.form === "add" ? v + sh.value : v * sh.value;
-    const lo0 = base[k].fixed ? base[k].v : META[k].min;
-    const hi0 = base[k].fixed ? base[k].v : META[k].max;
-    if (inside(t(lo0)) && inside(t(hi0))) return;     // преобразование монотонно
-    let a = NaN, b = NaN;
-    for (let j = 0; j <= 600; j++){
-      const v = lo0 + (hi0 - lo0) * j / 600;
-      if (!inside(t(v))) continue;
-      if (!isFinite(a)) a = v;
-      b = v;
-    }
-    const span = (b - a) / (META[k].max - META[k].min);
-    cuts.push({key: k, from: a, to: b, none: !isFinite(a), fixed: base[k].fixed,
-               big: !(span > 0.95)});
+    const k = sh.key, m = META[k];
+    if (m.stock || sh.form === "set") return;       // K и L двигают точку; «новое» не зависит от исходного
+    const lo0 = base[k].fixed ? base[k].v : m.min;
+    const hi0 = base[k].fixed ? base[k].v : m.max;
+    let a = lo0, b = hi0;
+    if (sh.form === "add"){ a = Math.max(a, m.min - sh.value); b = Math.min(b, m.max - sh.value); }
+    else if (sh.value > 0){ a = Math.max(a, m.min / sh.value); b = Math.min(b, m.max / sh.value); }
+    else if (m.min > 0){ b = a - 1; }                // множитель 0 уводит ниже положительной границы
+    if (a <= lo0 + BOX_EPS && b >= hi0 - BOX_EPS) return;
+    const none = !(b >= a - BOX_EPS);
+    const span = none ? 0 : (b - a) / (m.max - m.min);
+    cuts.push({key: k, from: a, to: b, none, fixed: base[k].fixed, big: !(span > 0.95)});
   });
   return cuts;
 }
@@ -2371,7 +2396,7 @@ function renderNotes(){
   cuts.filter(c => c.big).forEach(c => {
     const sym = META[c.key].sym, d = META[c.key].dig;
     out.push('<div class="note"><b>Перебор сужен</b><p>Вне отрезка <code>' + sym + " от " +
-      num(c.from, d) + " до " + num(c.to, d) + "</code> шок выводит " + sym +
+      numV(c.from, d) + " до " + numV(c.to, d) + "</code> шок выводит " + sym +
       " за границы модели, поэтому перебор шёл только по нему.</p></div>");
   });
   /* Порогов здесь больше нет. Они считались точно, но при нескольких
@@ -2450,10 +2475,10 @@ function paramRow(key, value, idp, live, fixed, fromVal, form){
       (fromVal === undefined
         ? (form ? '<span class="frm">' + m.sym + " " + gl + '</span><span class="nm"></span>' : "")
         : '<span class="frm" data-from="' + key + '" data-glyph="' + gl + '">' +
-          num(fromVal, META[key].dig) + " " + gl + '</span><span class="nm"></span>') +
+          numV(fromVal, META[key].dig) + " " + gl + '</span><span class="nm"></span>') +
       '<input class="numbox' + (fixed === false ? " free" : "") + '" id="n' + id +
         '" data-num="' + key + '" data-scope="' + idp + '" inputmode="decimal" value="' +
-        num(value, dig) + '"' + (fixed === false ? " disabled" : "") +
+        numV(value, dig) + '"' + (fixed === false ? " disabled" : "") +
         ' aria-label="' + said + ' — числом">' +
       pin +
     "</div>" +
@@ -2475,11 +2500,11 @@ function shockHead(sh){
   const m = META[sh.key], d = FORM[sh.form].dig(sh.key);
   const neg = sh.form === "add" && sh.value < 0;
   return sh.form === "set"
-    ? '<span class="sym">' + m.sym + "</span>: " + num(base[sh.key].v, d) +
-      ' <span class="arr">→</span> <span class="to">' + num(sh.value, d) + "</span>"
+    ? '<span class="sym">' + m.sym + "</span>: " + numV(base[sh.key].v, d) +
+      ' <span class="arr">→</span> <span class="to">' + numV(sh.value, d) + "</span>"
     : '<span class="sym">' + m.sym + '</span> <span class="arr">' +
       (neg ? "−" : FORM[sh.form].glyph) + '</span> <span class="to">' +
-      num(neg ? -sh.value : sh.value, d) + "</span>";
+      numV(neg ? -sh.value : sh.value, d) + "</span>";
 }
 
 /* Пояснение в карточке шока. Отдельной функцией, потому что его обновляет
@@ -2498,7 +2523,12 @@ function touchText(sh){
     /* Шок на нейтрали ничего не красит и не попадает в таблицу — про это
        надо сказать в самой карточке, иначе непонятно, почему картинка
        не шелохнулась. */
-    (sh.on && !bites(sh) ? ". Сейчас значение такое, что шок ничего не меняет" : "");
+    (sh.on && !bites(sh) ? ". Сейчас значение такое, что шок ничего не меняет" : "") +
+    (sh.cut !== undefined
+      ? ". Значение из ссылки (" + (sh.form === "add" ? (sh.cut < 0 ? "−" : "+") + numV(Math.abs(sh.cut), 3)
+                                  : sh.form === "mul" ? "×" + numV(sh.cut, 2) : numV(sh.cut, 3)) +
+        ") выводило " + META[sh.key].sym + " за границы — оно подрезано"
+      : "");
 }
 
 function renderShocks(){
@@ -2809,13 +2839,13 @@ function problemChanges(q){
     const m = META[sh.key], d = FORM[sh.form].dig(sh.key);
     if (sh.form === "set"){
       const from = (q.base[sh.key] || [DEFAULT_BASE[sh.key].v])[0];
-      return '<b>' + m.sym + "</b> " + num(from, d) +
-             ' <span class="arr">→</span> ' + num(sh.value, d);
+      return '<b>' + m.sym + "</b> " + numV(from, d) +
+             ' <span class="arr">→</span> ' + numV(sh.value, d);
     }
     if (sh.form === "add")
       return '<b>' + m.sym + "</b> " + (sh.value >= 0 ? "+" : "−") + " " +
              num(Math.abs(sh.value) * 100, 1) + " п.п.";
-    return '<b>' + m.sym + "</b> ×" + num(sh.value, d);
+    return '<b>' + m.sym + "</b> ×" + numV(sh.value, d);
   }).join('<span class="sep">·</span>');
 }
 
@@ -2884,7 +2914,11 @@ function readHash(){
     const val = parseFloat(v);
     if (!isFinite(val)) return;
     used.add(key);
-    shocks.push({key, form, value: clampKey(key, val, form), on: on !== "0", ci: shocks.length});
+    const sh = {key, form, value: clampKey(key, val, form), on: on !== "0", ci: shocks.length};
+    /* Подрезали значение из ссылки — карточка обязана это сказать: иначе
+       открытая ссылка молча показывает не тот шок, которым с ней делились. */
+    if (Math.abs(sh.value - val) > 1e-12) sh.cut = val;
+    shocks.push(sh);
   });
   const p = parseInt(q.p, 10);
   probIdx = (isFinite(p) && p >= 0 && p < PROBLEMS.length) ? p : -1;
@@ -3012,13 +3046,13 @@ function syncValues(){
       r.min = gridLo(lo, META[key].step, hi); r.max = hi;   // сетка, а не отрезок — см. gridLo
     }
     if (r && document.activeElement !== r) r.value = val;
-    if (n && document.activeElement !== n){ n.value = num(val, dig); markBad(n, false); }
+    if (n && document.activeElement !== n){ n.value = numV(val, dig); markBad(n, false); }
   };
   PKEYS.forEach(k => put("b-", k, base[k].v));
   shocks.forEach((sh, i) => put("k" + i + "-", sh.key, sh.value, sh.form));
   document.querySelectorAll("[data-from]").forEach(el => {
     const k = el.dataset.from;
-    el.textContent = num(base[k].v, META[k].dig) + " " + (el.dataset.glyph || "→");
+    el.textContent = numV(base[k].v, META[k].dig) + " " + (el.dataset.glyph || "→");
   });
   document.querySelectorAll("[data-head]").forEach(el => {
     const sh = shocks[+el.dataset.head];
@@ -3082,6 +3116,7 @@ function applyValue(scope, key, raw, fromBox){
   const i = parseInt(scope.slice(1), 10);
   if (!shocks[i]) return false;
   shocks[i].value = clampKey(key, v, shocks[i].form);
+  delete shocks[i].cut;                    // значение теперь своё, а не из ссылки
   return true;
 }
 
@@ -3137,6 +3172,7 @@ document.getElementById("shocks").addEventListener("click", e => {
     const i = parseInt(b.dataset.fscope.slice(1), 10);
     if (!shocks[i]) return;
     shocks[i].form = b.dataset.form;
+    delete shocks[i].cut;
     /* Новая форма — новый смысл числа, поэтому ставим нейтральное значение:
        шок снова ничего не меняет, пока его не подвинут. */
     shocks[i].value = b.dataset.form === "set" ? base[shocks[i].key].v

@@ -116,7 +116,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   const nv = await ev(()=>shocks[0].value);
   ok('шок «n + (−0,03)» при заданной n = 0 подрезан до нуля', Math.abs(nv) < 1e-12, nv);
   ok('границы ползунка шока совпадают с допустимыми',
-     await ev(()=>{ const r=document.getElementById('k0-n'); return +r.min===0 && Math.abs(+r.max-0.99)<1e-9; }),
+     await ev(()=>{ const r=document.getElementById('k0-n'); return +r.min===0 && Math.abs(+r.max-0.999999)<1e-9; }),
      await ev(()=>{ const r=document.getElementById('k0-n'); return [r.min, r.max]; }));
 
   /* ============ 4. свободный параметр: сужение названо вслух ============ */
@@ -127,8 +127,9 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   const nt = await notes();
   ok('при свободной n шок «+0,5» разрешён', Math.abs(await ev(()=>shocks[0].value) - 0.5) < 1e-9);
   ok('страница говорит, что перебор сужен', nt.indexOf('Перебор сужен') >= 0, nt.slice(0, 220));
-  ok('и называет отрезок: n + 0,5 осмысленна лишь при n < 0,5',
-     /n от 0,000 до 0,50\d?/.test(nt), nt.slice(0, 220));
+  /* конец отрезка точный: n после шока не выше 0,999999, значит n до 0,499999 */
+  ok('и называет отрезок точно: n + 0,5 осмысленна лишь при n до 0,499999',
+     /n от 0,000 до 0,499999 /.test(nt), nt.slice(0, 220));
 
   /* ============ 5. «модель не определена» — если довести до этого ============ */
   await reset();
@@ -170,9 +171,10 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   ok('шок «δ − 9 п.п.» при δ = 0,10 допустим', Math.abs(await ev(()=>shocks[0].value) + 0.09) < 1e-9);
   await ev(()=>{ base.d.v = 0.04; refreshLive(); }); await wait(320);
   const dv = await ev(()=>shocks[0].value);
-  ok('сдвинули δ до 0,04 — шок подрезан следом', Math.abs(dv + 0.03) < 1e-9, dv);
+  /* нижняя граница δ — 0,000001, значит от 0,04 вниз не больше чем на 0,039999 */
+  ok('сдвинули δ до 0,04 — шок подрезан следом', Math.abs(dv + 0.039999) < 1e-9, dv);
   ok('и шапка карточки показывает новое число',
-     (await ev(()=>document.querySelector('[data-head="0"]').textContent)).replace(/\s+/g,' ').indexOf('δ − 0,030') >= 0,
+     (await ev(()=>document.querySelector('[data-head="0"]').textContent)).replace(/\s+/g,' ').indexOf('δ − 0,039999') >= 0,
      await ev(()=>document.querySelector('[data-head="0"]').textContent));
   ok('таблица при этом осмысленна', (await tbl())[0].indexOf('?') < 0, await tbl());
 
