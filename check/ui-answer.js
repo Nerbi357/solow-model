@@ -146,8 +146,8 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
 
   /* --- 7. разбор: свой ответ под каждым шагом, и он ни на кого не ссылается --- */
   const why = await ev(()=>PROBLEMS.map(q=>({t:q.title, w:q.why})));
-  ok('в разборе три шага, и у каждого свой ответ',
-     why.every(q=>q.w.length === 3 && q.w.every(st=>st.length === 3 && st[2].trim().length > 10)),
+  ok('в разборе три шага, и у каждого свой ответ и ключ',
+     why.every(q=>q.w.length === 3 && q.w.every(st=>st.length === 4 && st[2].trim().length > 10)),
      why.map(q=>q.w.length + ':' + q.w.map(st=>st.length).join(',')));
   ok('заголовки шагов — те же три вопроса во всех задачах',
      why.every(q=>JSON.stringify(q.w.map(st=>st[0])) === JSON.stringify(
@@ -264,6 +264,76 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
   });
   ok('каждая кривая названа своим именем, и оно сходится с AFFECTS',
      naming.length === 0, naming.slice(0, 4));
+
+  /* --- ключ ответа разбора против таблицы --- */
+  /* Разбор отвечает словами, таблица — стрелками, и разойтись они могут
+     молча: поменяли число в условии или поправили перебор — таблица ответила
+     иначе, а текст остался прежним. Поэтому у каждого вопроса есть ключ —
+     тот же ответ стрелками, — и он сверяется с последней строкой таблицы,
+     с тем, что в ней видно после «Показать ответ», а на развилке ещё и
+     с каждым случаем. Клетка случая «·» — разбор о ней молчит. */
+  ok('у каждого вопроса разбора есть ключ ответа',
+     await ev(()=>PROBLEMS.every(q=>q.why.length === 3 && Array.isArray(q.why[0][3]) &&
+       [1,2].every(j=>{ const k = q.why[j][3];
+         const all = x => typeof x === 'string' && /^[↑↓=?]{4}$/.test(x),
+               one = x => typeof x === 'string' && /^[↑↓=?·]{4}$/.test(x);
+         return all(k) || (!!k && all(k.all) && one(k.lo) && one(k.hi)); }))));
+  const keyBad = [], silent = [];
+  const nP = await ev(()=>PROBLEMS.length);
+  for (let i = 0; i < nP; i++){
+    await load(i);
+    await ev(()=>{ if (!revealed) document.getElementById('reveal').click(); }); await wait();
+    const r = await ev(i=>{
+      const q = PROBLEMS[i], G = {up:'↑', down:'↓', same:'=', dunno:'?'};
+      const str = row => row.sr.map(x=>G[x]).join('') + '|' + row.lr.map(x=>G[x]).join('');
+      const rows = sweepCached(), fk = forkCase(), cases = {};
+      if (fk) fk.cases.forEach(c=>{ const cr = caseSweep(c.lim); cases[c.lim.side ? 'hi' : 'lo'] = str(cr[cr.length-1]); });
+      const moved = new Set(); active().forEach(sh=>AFFECTS[sh.key].forEach(c=>moved.add(c)));
+      const tr = [...document.querySelectorAll('#fx tr')];
+      const vis = [...tr[tr.length-1].querySelectorAll('td.v')].map(td=>td.textContent.trim());
+      return {key:q.why.map(w=>w[3]), table:str(rows[rows.length-1]),
+              vis:vis.slice(0,4).join('') + '|' + vis.slice(4).join(''), cases, moved:[...moved].sort()};
+    }, i);
+    const t = 'задача ' + (i+1);
+    const k1 = [...r.key[0]].sort();
+    if (JSON.stringify(k1) !== JSON.stringify(r.moved)) keyBad.push({[t]:'кривые', ключ:k1, AFFECTS:r.moved});
+    const all = j => typeof r.key[j] === 'string' ? r.key[j] : r.key[j].all;
+    const keyAll = all(1) + '|' + all(2);
+    if (keyAll !== r.table) keyBad.push({[t]:'таблица', ключ:keyAll, перебор:r.table});
+    if (keyAll !== r.vis) keyBad.push({[t]:'видимая таблица', ключ:keyAll, видно:r.vis});
+    const perCase = typeof r.key[1] !== 'string';
+    if (perCase !== !!r.cases.lo)
+      keyBad.push({[t]: perCase ? 'ключ по случаям, а диаграмма одна' : 'диаграмм две, а ключ по случаям не разложен'});
+    if (perCase && r.cases.lo) ['lo', 'hi'].forEach(sd=>{
+      const kk = r.key[1][sd] + '|' + r.key[2][sd], pg = r.cases[sd];
+      for (let c = 0; c < kk.length; c++){
+        if (kk[c] === '·'){ silent.push(t + (sd === 'lo' ? ', k < 1, ' : ', k > 1, ') + (c < 4 ? 'кратко ' : 'долго ') + 'ykci'[c < 4 ? c : c - 5]); continue; }
+        if (kk[c] !== pg[c]){ keyBad.push({[t]:'случай ' + (sd === 'lo' ? 'k < 1' : 'k > 1'), ключ:kk, перебор:pg}); break; }
+      }
+    });
+  }
+  ok('ключ ответа разбора совпадает с таблицей и случаями', keyBad.length === 0,
+     keyBad.length ? keyBad.slice(0, 4) : (silent.length ? {разбор_молчит:silent} : undefined));
+  /* «?» в ключе — значит в ответе словами сказано, что определить нельзя,
+     и наоборот: иначе ключ сверяется с таблицей, а текст живёт своей жизнью. */
+  const talk = await ev(()=>{ const bad = [];
+    PROBLEMS.forEach((q, i)=>[1, 2].forEach(j=>{
+      const k = q.why[j][3], all = typeof k === 'string' ? k : k.all;
+      if (all.includes('?') !== /нельзя|не определ/.test(q.why[j][2]))
+        bad.push({задача:i+1, вопрос:j+1, ключ:all, ответ:q.why[j][2]}); }));
+    return bad; });
+  ok('«?» в ключе — ровно там, где ответ говорит «нельзя определить»', talk.length === 0, talk);
+  /* При g > 0 модель считает всё на единицу эффективного труда, а не на
+     человека, и долгосрочный ответ обязан это сказать: его и уносят как
+     вывод, а в шагах слова могут стоять, пока ответ врёт про подушевые.
+     g, не названный условием, тоже может быть больше нуля. */
+  const effBad = await ev(()=>PROBLEMS.map((q, i)=>{
+    const [g0, gfix] = q.base.g;
+    let g1 = g0;
+    q.shocks.forEach(sh=>{ if (sh.key === 'g') g1 = sh.form === 'set' ? sh.value : sh.form === 'add' ? g0 + sh.value : g0 * sh.value; });
+    return (!gfix || g0 > 0 || g1 > 0) && !/на единицу эффективного труда/.test(q.why[2][2]) ? {задача:i+1, g0, g1} : null;
+  }).filter(Boolean));
+  ok('где g может быть больше нуля, долгосрочный ответ говорит «на единицу эффективного труда»', effBad.length === 0, effBad);
 
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
