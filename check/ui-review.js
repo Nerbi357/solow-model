@@ -125,6 +125,13 @@ const overlaps = pads => {
   ok('B1-04: Escape отменяет набранное', (await ev(()=>base.s.v)) === 0.5 && (await box.inputValue()) === '0,500',
      {s: await ev(()=>base.s.v), ячейка: await box.inputValue()});
 
+  // ---- A2-01: подпись единиц под таблицей знает про g до шоков ----
+  const units = async h => { await go(h); return ev(()=>document.getElementById('fxunits').textContent); };
+  const u1 = await units('#b=s:0.2:1,d:0.05:1,n:0.01:1,g:0.02:1,a:0.3:1&k=g:set:0:1');
+  ok('A2-01: g 0,02 → 0 — величины на единицу эффективного труда, а не подушевые', /эффективного труда/.test(u1), u1);
+  const u2 = await units('#b=s:0.2:1,d:0.05:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.3:1');
+  ok('A2-01: g = 0 задана — подушевые', /подушев/.test(u2) && !/эффективного/.test(u2), u2);
+
   // ---- W3-01: полоса у самой границы k = 1 при высокой α ----
   /* Независимый расчёт по формулам модели, без страницы: в ветке k < 1 при
      n = 0,0025 выпуск падает, при n = 0,05 растёт — значит ответ ветки «?». */
@@ -174,7 +181,7 @@ const overlaps = pads => {
      /видна только линия шока «δ/.test(s5) && /остальные/.test(s5), s5);
   for (let i = 0; i < 5; i++){
     await ev(i=>document.querySelector('[data-p="' + i + '"]').click(), i); await p.waitForTimeout(500);
-    ok('W3-04: в задаче ' + (i + 1) + ' заметки о совпавших линиях нет', (await ev(()=>['same1','same2'].every(id=>document.getElementById(id).hidden))));
+    ok('W3-04: в задаче ' + (i + 1) + ' заметки о совпавших линиях нет', (await ev(()=>['same1','same2'].every(id=>{const e=document.getElementById(id); return !e || e.hidden;}))));
   }
 
   // ---- W3-08: ползунок шока называется не так, как исходный ----
