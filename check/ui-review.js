@@ -432,6 +432,22 @@ const overlaps = pads => {
   ok('Р21: δ стало свободным, а ответ прежний — «Ответ от δ не зависит — поэтому ничего не изменилось»',
      h21 === 'Ответ от δ не зависит — поэтому ничего не изменилось', h21);
 
+  // ---- Р6: «Показатели» под ответом ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.3:1');
+  const ro0 = await ev(()=>{ const b = document.getElementById('roblock'); return {hidden: !b || b.hidden,
+    underTable: !!b && !!document.querySelector('.fx-wrap') &&
+      (document.querySelector('.fx-wrap').compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) > 0,
+    inPanel: !!b && !!b.closest('.panel')}; });
+  ok('Р6: «Показатели» стоят под таблицей, а не в панели', ro0.underTable && !ro0.inPanel, ro0);
+  ok('Р6: и закрыты до «Показать ответ»', ro0.hidden, ro0);
+  await reveal();
+  const ro1 = await ev(()=>[...document.querySelectorAll('#ro tr')].map(tr=>tr.textContent.replace(/\s+/g,' ').trim()));
+  const roh = await ev(()=>(document.getElementById('ro-head') || {textContent: ''}).textContent);
+  ok('Р6: рядом с новым значением — старое', /было.*стало/.test(roh) && ro1.some(t=>/^y\* — выпуск\s*\d/.test(t)), {roh, ro1});
+  await go('#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'); await reveal();
+  const ro2 = await ev(()=>[...document.querySelectorAll('#ro-head th')].map(t=>t.textContent.trim()));
+  ok('Р6: на развилке — две колонки, по калибровкам диаграмм', ro2.some(t=>/k < 1/.test(t)) && ro2.some(t=>/k > 1/.test(t)), ro2);
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');

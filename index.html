@@ -497,10 +497,16 @@
   .probs button[aria-pressed="true"]{background:var(--card);border-color:var(--muted);font-weight:700}
   .probs button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 
-  .readout{width:100%;border-collapse:collapse;font-size:13.5px}
-  .readout th,.readout td{padding:4px 0;border-bottom:1px solid var(--rule-2);text-align:left;font-weight:400}
-  .readout td{font-variant-numeric:tabular-nums;text-align:right;width:46%}
-  .readout tr:last-child th,.readout tr:last-child td{border-bottom:none}
+  .roblock{margin:26px 0 0}
+  .roblock h2{font-size:17px;margin:0 0 8px}
+  .ro-wrap{overflow-x:auto}
+  .readout{width:100%;max-width:720px;border-collapse:collapse;font-size:13.5px}
+  .readout th,.readout td{padding:5px 8px 5px 0;border-bottom:1px solid var(--rule-2);text-align:left;font-weight:400}
+  .readout td{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .readout thead th{font-size:12px;font-weight:700;color:var(--muted);text-align:right}
+  .readout thead th.case{text-align:center;color:var(--ink-2)}
+  .readout td.was{color:var(--muted)}
+  .readout tbody tr:last-child th,.readout tbody tr:last-child td{border-bottom:none}
 
 
   @media (max-width:1140px){
@@ -675,6 +681,14 @@
 
       <div class="notes" id="notes"></div>
 
+      <!-- Числа стационаров — часть ответа, поэтому открываются вместе с ним
+           и стоят под таблицей, а не в панели. -->
+      <div class="roblock" id="roblock" hidden>
+        <h2 id="ro-cap">Показатели</h2>
+        <div class="ro-wrap"><table class="readout"><thead id="ro-head"></thead><tbody id="ro"></tbody></table></div>
+        <p class="hintline" id="ro-note" hidden></p>
+      </div>
+
       <div class="pathsblock" id="pathsblock" hidden>
         <div class="fxhead">
           <h2>Как это происходит во времени</h2>
@@ -740,11 +754,6 @@
         </div>
       </div>
 
-      <div class="block">
-        <h3 id="ro-cap">Показатели</h3>
-        <table class="readout"><tbody id="ro"></tbody></table>
-        <p class="hintline" id="ro-note" hidden></p>
-      </div>
 
     </div>
   </div>
@@ -2801,23 +2810,6 @@ function renderNotes(){
 function renderLegend(){ /* легенда рисуется внутри графика, см. drawLegend */ }
 
 function renderReadout(){
-  const pv = dispVals(), act = active(), PF = finalP(pv);
-  const lk0 = lnK(pv), lkSR = lk0 + Math.log(stockMulOf(act)), lk1 = lnK(PF);
-  const ly1 = PF.a * lk1;
-  document.getElementById("ro-cap").textContent =
-    act.length ? "Показатели с учётом шоков" : "Показатели исходного состояния";
-  const rows = [
-    ["k" + sub(0) + "* — исходный стационар", numL(lk0)],
-    ["k′ — скачок после шоков", numL(lkSR)],
-    ["k* — новый стационар",    numL(lk1)],
-    ["y* — выпуск",             numL(ly1)],
-    ["c* — потребление",        numL(Math.log(1 - PF.s) + ly1)],
-    ["i* — инвестиции",         numL(Math.log(PF.s) + ly1)],
-    ["s* — золотое правило",    num(sGold(PF), 3)],
-    ["λ — скорость сходимости",  pct((1 - PF.a) * dep(PF))]
-  ];
-  document.getElementById("ro").innerHTML =
-    rows.map(([k, v]) => "<tr><th>" + k + "</th><td>" + v + "</td></tr>").join("");
   /* Числа считаются по значениям с картинки, а у свободного параметра это
      значение иллюстративное. Об этом надо сказать прямо, иначе непонятно,
      откуда взялось число, которого условие не называло. */
@@ -2827,6 +2819,33 @@ function renderReadout(){
   if (freeRo.length)
     note.innerHTML = "Свободные параметры (" + freeRo.map(k => META[k].sym).join(", ") +
       ") взяты иллюстративными — эти числа показывают картинку, а не ответ.";
+  const act = active(), blk = document.getElementById("roblock");
+  blk.hidden = !revealed || !act.length;
+  if (blk.hidden) return;
+  /* Рядом с новым значением — старое: иначе рост c на 0,4% не проверить.
+     На развилке у каждой диаграммы своя калибровка, и числа считаются
+     по ней: раньше они шли по третьей, которой нет ни на одной картинке. */
+  const fk = forkCase();
+  const cals = fk ? fk.cases.map(c => ({vals: c.vals, text: c.text})) : [{vals: dispVals(), text: null}];
+  const stock = act.some(sh => isStock(sh.key));
+  const cols = cals.map(c => {
+    const P0 = c.vals, PF = finalP(P0), l0 = lnK(P0), l1 = lnK(PF);
+    const one = (P, l) => ({k: numL(l), y: numL(P.a * l), c: numL(Math.log(1 - P.s) + P.a * l),
+                            i: numL(Math.log(P.s) + P.a * l), s: num(sGold(P), 3),
+                            lam: pct((1 - P.a) * dep(P))});
+    return {was: one(P0, l0), now: one(PF, l1), jump: numL(l0 + Math.log(stockMulOf(act)))};
+  });
+  document.getElementById("ro-cap").textContent = "Показатели";
+  document.getElementById("ro-head").innerHTML =
+    (fk ? "<tr><th></th>" + cals.map(c => '<th class="case" colspan="2">' + esc(c.text) + "</th>").join("") + "</tr>" : "") +
+    "<tr><th></th>" + cals.map(() => "<th>было</th><th>стало</th>").join("") + "</tr>";
+  const row = (name, f, onlyNow) => "<tr><th>" + name + "</th>" + cols.map(c =>
+    '<td class="was">' + (onlyNow ? "—" : f(c.was)) + "</td><td>" + (onlyNow ? c.jump : f(c.now)) + "</td>").join("") + "</tr>";
+  document.getElementById("ro").innerHTML =
+    row("k* — стационар", o => o.k) +
+    (stock ? row("k сразу после шоков", null, true) : "") +
+    row("y* — выпуск", o => o.y) + row("c* — потребление", o => o.c) + row("i* — инвестиции", o => o.i) +
+    row("s* — золотое правило", o => o.s) + row("λ — скорость сходимости", o => o.lam);
 }
 
 /* ===================== панель ===================== */
@@ -3474,7 +3493,7 @@ function syncModNote(){
   const el = document.getElementById("modnote");
   if (el) el.hidden = problemIntact();
 }
-function renderHeavy(){ renderFx(); renderNgNote(); renderOutcomes(); renderNotes(); drawPaths(); syncReveal(); syncModNote(); }
+function renderHeavy(){ renderFx(); renderNgNote(); renderOutcomes(); renderNotes(); renderReadout(); drawPaths(); syncReveal(); syncModNote(); }
 function refreshLive(defer){
   clampShocks();
   syncValues();
