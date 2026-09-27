@@ -535,6 +535,23 @@ const overlaps = pads => {
   ok('Р20: наведение мышью подсвечивает точку', await ev(()=>PANE.main.hoverId || null) === hp.id,
      await ev(()=>PANE.main.hoverId || null));
 
+  // ---- Р3: в строках случаев стрелки не мельче ----
+  /* Стрелки читаются формой, а не цветом, и держит это кегль (CLAUDE.md,
+     «Стрелки в таблице читаются формой»): во вложенных строках случаев он
+     тот же, что в строке над ними, — и на широком экране, и в карточках. */
+  const glyphSize = pg => pg.evaluate(()=>{ const par = document.querySelector('#fx tr:not(.case) td.v'),
+    cs = document.querySelector('#fx tr.case td.v');
+    return [getComputedStyle(par).fontSize, cs ? getComputedStyle(cs).fontSize : null]; });
+  await go('#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'); await reveal();
+  const gs1 = await glyphSize(p);
+  ok('Р3: стрелки в строках случаев того же кегля, что в строке над ними', gs1[0] === gs1[1], gs1);
+  await q.goto(BASE + '#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1', {waitUntil:'networkidle'});
+  await q.waitForTimeout(600);
+  await q.evaluate(()=>{ const r = document.getElementById('reveal'); if (r && !r.disabled) r.click(); });
+  await q.waitForTimeout(400);
+  const gs2 = await glyphSize(q);
+  ok('Р3: и во вложенных карточках на телефоне', gs2[0] === gs2[1], gs2);
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
