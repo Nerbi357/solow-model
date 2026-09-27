@@ -348,6 +348,27 @@ const overlaps = pads => {
   }
   ok('Р8: в задачах семинара граница перебора ничего не решает', gbP.length === 0, gbP);
 
+  // ================= фаза 3: таблица и картинка =================
+
+  // ---- Р2: заметка про свободные n и g ----
+  /* s = 0,2 и δ = 0,1 заданы, α 0,3 → 0,5. Со свободными n и g диаграмм две
+     и в итоге сплошные «?»; с n = g = 0 диаграмма одна и всё определено. */
+  await go('#b=s:0.2:1,d:0.1:1,n:0:0,g:0:0,a:0.3:1&k=a:set:0.5:1');
+  const ng1 = await ev(()=>{ const e = document.getElementById('ngnote'); return e && !e.hidden ? e.textContent : null; });
+  ok('Р2: свободные n и g решают ответ — заметка видна и до «Показать ответ»',
+     ng1 === 'n и g сейчас не заданы — перебор проходит все их возможные значения, и от этого зависит ответ. ' +
+            'Если в условии рост населения и технический прогресс равны нулю, нажмите «задано» у n и g и поставьте 0.', ng1);
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=a:set:0.5:1');
+  ok('Р2: n = g = 0 заданы — заметки нет',
+     await ev(()=>{ const e = document.getElementById('ngnote'); return !e || e.hidden; }));
+  await go('#b=s:0.2:1,d:0.1:1,n:0:0,g:0:0,a:0.3:1&k=K:mul:0.8:1');
+  ok('Р2: n и g свободны, но на ответ не влияют — заметки нет',
+     await ev(()=>{ const e = document.getElementById('ngnote'); return !e || e.hidden; }));
+  await go('');
+  ok('Р2: подпись единиц на чистой странице — «подушевые; если g > 0 — на единицу эффективного труда»',
+     /подушевые; если g > 0 — на единицу эффективного труда/.test(await ev(()=>document.getElementById('fxunits').textContent)),
+     await ev(()=>document.getElementById('fxunits').textContent));
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
