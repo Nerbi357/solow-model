@@ -34,7 +34,8 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
     await load(i);
     const r = await ev(()=>{
       const d = pathData(); if (!d) return null;
-      const pv = dispVals(), PF = finalP(pv), kN = kStar(PF);
+      /* траектория — в долях от исходного стационара, и стационар туда же */
+      const pv = dispVals(), PF = finalP(pv), kN = Math.exp(lnK(PF) - lnK(pv));
       const last = d.pts[d.pts.length - 1].v, first = d.pts[0].v;
       const base = d.base0;
       const sg = x => Math.abs(x) < 2e-3 ? '=' : (x > 0 ? '↑' : '↓');
@@ -75,7 +76,7 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
       shocks = [{key: sh[0], form: sh[1], value: clampKey(sh[0], sh[2], sh[1]), on: true, ci: 0}];
       revealed = true; refreshAll();
       const d = pathData(); if (!d) return null;
-      const last = d.pts[d.pts.length - 1].v.k, kN = kStar(finalP(dispVals()));
+      const pv = dispVals(), last = d.pts[d.pts.length - 1].v.k, kN = Math.exp(lnK(finalP(pv)) - lnK(pv));
       return {rel: last / kN, pts: d.pts.length};
     }, {a, sh});
     ok('при ' + name + ' путь доходит до нового стационара',

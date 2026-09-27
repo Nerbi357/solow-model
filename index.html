@@ -799,6 +799,29 @@ const kStar = p => Math.exp(lnK(p));
 const sGold = p => p.a;                        // при Коббе — Дугласе s* = α
 const curveFn = (c, p) =>
   c === "out" ? k => f(k, p) : c === "inv" ? k => p.s * f(k, p) : k => dep(p) * k;
+
+/* ===================== единицы картинки ===================== */
+/* Картинка безразмерная: k на ней — во сколько раз больше исходного
+   стационара, y — во сколько раз больше исходного выпуска, и исходное
+   равновесие стоит в (1; 1), как и в таблице координат. Считается всё через
+   логарифмы. При крайних параметрах сам стационар — e⁻⁸⁶⁹ или e⁷⁶⁰: для
+   компьютера это ноль и бесконечность, картинка и траектории пропадали.
+   В долях от исходного те же числа обычные: e⁻⁸⁶⁹ у старого и нового
+   стационара сокращаются. Шире e^±700 доля не бывает — дальше в числах
+   компьютера только бесконечность, а на картинке такая точка всё равно
+   за полем. */
+const LN_CAP = 700;
+const capExp = l => Math.exp(Math.max(-LN_CAP, Math.min(LN_CAP, l)));
+/* U — исходный набор картинки: от него меряются все доли */
+const unitsOf = P0 => { const lk0 = lnK(P0); return {lk0, ly0: P0.a * lk0}; };
+/* ln(y/y₀) линии c набора P при ln(k/k₀) = lx */
+function lnCurve(U, c, P, lx){
+  const lk = U.lk0 + lx;
+  if (c === "out") return P.a * lk - U.ly0;
+  if (c === "inv") return Math.log(P.s) + P.a * lk - U.ly0;
+  return Math.log(dep(P)) + lk - U.ly0;
+}
+const curveN = (U, c, P) => x => capExp(lnCurve(U, c, P, Math.log(x)));
 /* Подпись линии — то, что её задаёт, а не набор параметров: линию выбытия
    задаёт сумма δ+n+g, и у «n + 0,4» и «g + 0,4» она одна и та же, хотя наборы
    (0,05|0,4|0) и (0,05|0|0,4) разные. Округление — чтобы 0,3 и
@@ -825,6 +848,19 @@ const sgn = d => (!isFinite(d) ? "dunno" : Math.abs(d) < TOL ? "same" : (d > 0 ?
 /* ===================== форматирование ===================== */
 const num = (x, dg = 2) => (!isFinite(x) ? "—" : x.toFixed(dg).replace(".", ","));
 const pct = (x, dg = 1) => (!isFinite(x) ? "—" : (x * 100).toFixed(dg).replace(".", ",") + "%");
+/* Число по его логарифму. Пока оно читается обычной записью — обычная
+   запись; иначе мантисса и степень десяти. Стационар e⁻⁸⁶⁹ для компьютера
+   ноль, а для подписи — вполне число: 1,2·10⁻³⁷⁸. */
+const SUPD = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+const supNum = n => (n < 0 ? "⁻" : "") + String(Math.abs(n)).replace(/\d/g, d => SUPD[d]);
+const numL = (l, dg = 3) => {
+  if (!isFinite(l)) return "—";
+  if (l > Math.log(1e-3) && l < Math.log(1e6)) return num(Math.exp(l), dg);
+  const e = l / Math.LN10;
+  let p = Math.floor(e), m = Math.pow(10, e - p);
+  if (+m.toFixed(2) >= 10){ m /= 10; p++; }
+  return num(m, 2) + "·10" + supNum(p);
+};
 const esc = s => String(s).replace(/[&<>"]/g,
   c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 /* esc + подъём стрелки: везде, где «→» стоит между числами. */
@@ -1430,17 +1466,17 @@ function forkCase(){
     if (!OK(q) || !OK(finalP(q))) continue;
     const st = sideOf(q);
     if (st === null) continue;                 // ровно на границе — ничья точка
-    const k0 = kStar(q);
-    if (!isFinite(k0) || k0 <= 0) continue;
+    const lk0 = lnK(q);                       // в логарифмах: k бывает e⁻⁸⁶⁹
+    if (!isFinite(lk0)) continue;
     /* Счёт складывается из трёх слагаемых: насколько k отстоит от единицы
        (у самого края картинка вырождается), насколько сливаются f(k)
        и s·f(k), и насколько калибровка ушла от иллюстративной. Раньше
        считалось только первое — и перебор спокойно брал s = 0,99, при
        которой f(k) и s·f(k) ложатся одна на другую. */
-    const score = Math.abs(Math.abs(Math.log(k0)) - SIDE_FAR)
+    const score = Math.abs(Math.abs(lk0) - SIDE_FAR)
                 + FORK_W_BLUR * forkBlur(q) + FORK_W_ILL * ill;
-    const kN = kStar(finalP(q));
-    const mv = !isFinite(kN) || kN <= 0 ? 0 : Math.log(kN / k0);
+    const lkN = lnK(finalP(q));
+    const mv = isFinite(lkN) ? lkN - lk0 : 0;
     const dir = Math.abs(mv) < 1e-9 ? "flat" : mv > 0 ? "up" : "down";
     const side = st ? "hi" : "lo", cur = best[side][dir];
     if (!cur || score < cur.score) best[side][dir] = {q, score, seen: Math.abs(mv) >= MOVE_MIN};
@@ -1469,48 +1505,50 @@ function forkCase(){
 
 /* ===================== состояния на картинке ===================== */
 function statesOf(){
-  const pv = dispVals(), act = active(), out = [];
+  const pv = dispVals(), act = active(), out = [], U = unitsOf(pv);
   /* Совпавшие состояния нарочно не схлопываются: иначе «новый стационар»
      молча съедается шоком, который его и задал, и подпись «k₂ = new*»
      никогда не появляется. Склейка живёт на уровне подписей. */
-  const push = st => { if (isFinite(st.k) && st.k > 0) out.push(st); };
-  const k0 = kStar(pv);
-  push({id:"base", label:"исходное", mark:"old", P:pv, k:k0,
+  /* lx — ln(k/k₀), k — сама доля: картинка меряет всё от исходного
+     стационара (см. «единицы картинки») */
+  const push = st => { if (isFinite(st.lx)){ st.k = capExp(st.lx); out.push(st); } };
+  push({id:"base", label:"исходное", mark:"old", P:pv, lx:0,
         color:col("--ink"), weight:1.5, axis:true, solid:true});
   act.forEach((sh, i) => {
     const P = paramsOf(sh);
     push({id:"sh" + sh.ci, label:shockName(sh), mark:"k" + sub(i + 1),
-          P, k: isStock(sh.key) ? k0 * stockMulOf([sh]) : kStar(P),
+          P, lx: isStock(sh.key) ? Math.log(stockMulOf([sh])) : lnK(P) - U.lk0,
           color: colHex(sh.ci), weight:1.1, axis:true});
   });
   if (act.length){
-    const PF = finalP(pv), kS = k0 * stockMulOf(act), kN = kStar(PF);
+    const PF = finalP(pv), lS = Math.log(stockMulOf(act)), lN = lnK(PF) - U.lk0;
     /* Итог всех шоков — это две разные вещи, и путать их нельзя.
        «скачок» — куда экономику забросило сразу: равновесием он не является,
        она из него уходит. «new» — новое равновесие, и это имя принадлежит
        только ему. Каждая подпись появляется, лишь когда есть что подписывать:
        не скакнул запас — нет «скачка», не уехал стационар — нет «new»,
        и в задаче 1 экономика просто возвращается в old. */
-    const jumped = Math.abs(kS / k0 - 1) > 1e-9;
-    const moved  = Math.abs(kN / k0 - 1) > 1e-9;
-    push({id:"short", label:"скачок", mark:"скачок", P:PF, k:kS,
+    const jumped = Math.abs(lS) > 1e-9;
+    const moved  = Math.abs(lN) > 1e-9;
+    push({id:"short", label:"скачок", mark:"скачок", P:PF, lx:lS,
           color:col("--res"), weight:1.2, short:true, axis: jumped});
-    push({id:"final", label:"новое равновесие", mark:"new", P:PF, k:kN,
+    push({id:"final", label:"новое равновесие", mark:"new", P:PF, lx:lN,
           color:col("--res"), weight:1.5, final:true, solid:true, axis: moved});
   }
   return out;
 }
+/* высота линии c состояния st на его перпендикуляре — в долях y₀ */
+const yAt = (U, c, st) => capExp(lnCurve(U, c, st.P, st.lx));
 
 /* Точки, которые имеет смысл читать: на каждом перпендикуляре — пересечения
    с тремя линиями своего состояния. В равновесии s·f(k) и линия выбытия
    сходятся в одну, поэтому там точек две, а не три. */
 function pointList(){
-  const out = [], seen = new Set();
+  const out = [], seen = new Set(), U = unitsOf(dispVals());
   statesOf().forEach(st => {
-    [["out", f(st.k, st.P)], ["inv", st.P.s * f(st.k, st.P)], ["dep", dep(st.P) * st.k]]
+    CURVES.map(c => [c, yAt(U, c, st)])
       .forEach(([kind, y]) => {
         if (!isFinite(y) || y <= 0) return;
-        const key = kind + "|" + st.k.toPrecision(9) + "|" + y.toPrecision(9);
         const pos = st.k.toPrecision(9) + "|" + y.toPrecision(9);
         if (seen.has(pos)) return;
         seen.add(pos);
@@ -1605,7 +1643,7 @@ function drawLegend(ctx, L, T, sts, frameW){
 
 function renderMain(ctx, w, h, capture){
   const {L, R, T, B} = geomOf(w, h);
-  const pv = dispVals(), act = active(), PF = finalP(pv);
+  const pv = dispVals(), act = active(), PF = finalP(pv), U = unitsOf(pv);
   const sts = statesOf(), pts = pointList();
 
   /* что рисуем: чёрное исходное, поверх — только линии, которые шок двигает */
@@ -1621,13 +1659,14 @@ function renderMain(ctx, w, h, capture){
   /* домашняя рамка — по всем значимым точкам */
   const ks = sts.map(s => s.k).filter(v => isFinite(v) && v > 0);
   const span = ks.length ? Math.max(...ks) : 1;
-  const kg = Math.pow(PF.a / dep(PF), 1 / (1 - PF.a));
+  /* golden rule: стационар при s = α, в тех же долях от исходного */
+  const lxg = lnK({...PF, s: PF.a}) - U.lk0, kg = capExp(lxg), yg = capExp(lnCurve(U, "out", PF, lxg));
   const goldFits = isFinite(kg) && kg > 0 && kg < span * 2.6;
   let kTop = span * 1.45;
   if (showGold && goldFits) kTop = Math.max(kTop, kg * 1.12);
   if (!(kTop > 0) || !isFinite(kTop)) kTop = 1;
   let yTop = 1e-12;
-  items.forEach(it => { yTop = Math.max(yTop, curveFn(it.c, it.P)(kTop)); });
+  items.forEach(it => { yTop = Math.max(yTop, curveN(U, it.c, it.P)(kTop)); });
   pts.forEach(q => { yTop = Math.max(yTop, q.y); });
   yTop *= 1.1;
   if (!(yTop > 0) || !isFinite(yTop)) yTop = 1;
@@ -1651,7 +1690,7 @@ function renderMain(ctx, w, h, capture){
   for (let i = 0; i < items.length; i++)
     for (let j = i + 1; j < items.length; j++){
       if (items[i].color !== items[j].color) continue;
-      const c1 = curveFn(items[i].c, items[i].P), c2 = curveFn(items[j].c, items[j].P);
+      const c1 = curveN(U, items[i].c, items[i].P), c2 = curveN(U, items[j].c, items[j].P);
       let mx = 0;
       for (let t = 0; t <= 24; t++){
         const k = fr.k0 + (fr.k1 - fr.k0) * t / 24;
@@ -1676,7 +1715,7 @@ function renderMain(ctx, w, h, capture){
   const cover = items.filter(it => it.kind !== "base"), same = [];
   const closeTo = (a, b) => {
     if (a.c !== b.c) return false;
-    const c1 = curveFn(a.c, a.P), c2 = curveFn(b.c, b.P);
+    const c1 = curveN(U, a.c, a.P), c2 = curveN(U, b.c, b.P);
     let seenAny = false;
     for (let t = 0; t <= 48; t++){
       const k = fr.k0 + (fr.k1 - fr.k0) * t / 48;
@@ -1710,15 +1749,15 @@ function renderMain(ctx, w, h, capture){
   ctx.beginPath(); ctx.rect(L, T - 14, R - L + 16, B - T + 14); ctx.clip();
 
   if (showGold && goldFits && onX(kg)){
-    dashed(ctx, X(kg), B, X(kg), Y(f(kg, PF)), col("--gold"), 1.2, [2, 4]);
+    dashed(ctx, X(kg), B, X(kg), Y(yg), col("--gold"), 1.2, [2, 4]);
     ctx.fillStyle = col("--gold");
-    ctx.beginPath(); ctx.arc(X(kg), Y(f(kg, PF)), 4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(X(kg), Y(yg), 4, 0, 7); ctx.fill();
   }
 
   items.filter(i => i.kind === "base").forEach(i =>
-    curve(ctx, curveFn(i.c, i.P), fr.k0, fr.k1, X, Y, i.color, i.w));
+    curve(ctx, curveN(U, i.c, i.P), fr.k0, fr.k1, X, Y, i.color, i.w));
   items.filter(i => i.kind !== "base").forEach(i =>
-    curve(ctx, curveFn(i.c, i.P), fr.k0, fr.k1, X, Y, i.color, i.w));
+    curve(ctx, curveN(U, i.c, i.P), fr.k0, fr.k1, X, Y, i.color, i.w));
 
   /* Перпендикуляры. У равновесий — old и new* — линия сплошная: это готовые
      состояния, а не промежуточные отметки. */
@@ -1726,7 +1765,7 @@ function renderMain(ctx, w, h, capture){
     /* Тот же флаг, что и у подписи: состояние, совпавшее с исходным, своей
        линии не получает — иначе оно закрашивает чужую поверх. */
     if (!st.axis || !onX(st.k)) return;
-    const top = f(st.k, st.P), yTop = Math.max(Y(top), T - 12);
+    const top = yAt(U, "out", st), yTop = Math.max(Y(top), T - 12);
     if (st.solid){
       ctx.save();
       ctx.strokeStyle = st.color; ctx.lineWidth = st.weight;
@@ -1790,7 +1829,7 @@ function renderMain(ctx, w, h, capture){
   const subOf = i => i.kind === "base" ? "было"
                    : i.kind === "res"  ? "итог всех шоков"
                    : shockName(i.sh);
-  const lab = items.map(i => ({y: Y(curveFn(i.c, i.P)(fr.k1)), t: CURVE_LABEL[i.c],
+  const lab = items.map(i => ({y: Y(curveN(U, i.c, i.P)(fr.k1)), t: CURVE_LABEL[i.c],
                                s: subOf(i), c: i.color, b: i.kind !== "base"}))
                    .filter(l => isFinite(l.y));
   /* На узком экране вторая строка не влезает в правую полосу — там
@@ -1862,7 +1901,7 @@ function renderMain(ctx, w, h, capture){
   const ylab = [];
   [[b0, "old"], [fin, "new"], [fin && fin.axis ? null : jmp, "скачок"]].forEach(([st, low]) => {
     if (!st || !st.axis) return;
-    const yv = f(st.k, st.P);
+    const yv = yAt(U, "out", st);
     if (!onY(yv) || !onX(st.k)) return;
     ylab.push({y: Y(yv), low, c: st.color});
   });
@@ -1990,46 +2029,55 @@ function drawMain(){
    Считается прямым интегрированием Δk = s·f(k) − (δ+n+g)k по схеме Хойна
    с шагом DT. Горизонт берётся от скорости сходимости λ = (1−α)(δ+n+g):
    6/λ и две добавки к нему — почему, сказано в pathData. */
-const PATH_DT = 0.25, PATH_PRE = 0.12;
+const PATH_PRE = 0.12;
 
 function pathData(){
   const pv = dispVals(), act = active();
   if (!act.length) return null;
   const PF = finalP(pv);
   if (!OK(pv) || !OK(PF)) return null;
-  const k0 = kStar(pv), kJ = k0 * stockMulOf(act), kN = kStar(PF);
-  if (!(k0 > 0) || !(kJ > 0) || !(kN > 0)) return null;
+  const lk0 = lnK(pv), lkJ = lk0 + Math.log(stockMulOf(act)), lkN = lnK(PF);
+  if (![lk0, lkJ, lkN].every(isFinite)) return null;
 
-  const lam = (1 - PF.a) * dep(PF);
+  /* В z = (k/k_new)^(1−α) уравнение Δk = s·f(k) − (δ+n+g)·k линейно:
+     z' = λ·(1 − z), λ = (1−α)(δ+n+g), — и решается точно:
+     z(t) = 1 + (z₀ − 1)·e^(−λt). Раньше путь интегрировался схемой Хойна
+     прямо в k, и при крайних параметрах k выходила за пределы чисел
+     компьютера: стационар e⁻⁸⁶⁹ для него ноль, и траектории пропадали.
+     Точное решение считается в логарифмах, ни во что не упирается
+     и приходит в новый стационар само, без ошибки шага. */
+  const a1 = PF.a, lam = (1 - a1) * dep(PF);
+  const lz0 = (1 - a1) * (lkJ - lkN);                     // ln z₀
+  /* ln|z₀ − 1| без переполнения: z₀ бывает e^±500 */
+  const lzm1 = lz0 > 0 ? lz0 + Math.log1p(-Math.exp(-lz0))
+             : lz0 < 0 ? Math.log1p(-Math.exp(lz0)) : -Infinity;
   /* Горизонт обрезать нельзя: при α, близкой к единице, скорость сходимости
-     мала, 6/λ уходит за тысячу, и траектория не доходила до стационара —
-     пунктир «new» оказывался за пределами картинки, а подпись улетала
-     за канвас. Вместо обрезки растёт шаг: λ·dt остаётся тем же, точность
-     схемы Хойна не страдает, а число точек ограничено. */
-  /* 6/λ — это 99,75% пути для z = k^(1−α): она сходится ровно экспоненциально.
-     Но у самой k остаток возводится в степень 1/(1−α), и при α = 0,99 путь
-     обрывался на 15–25% ниже пунктира «new». Отсюда две добавки: ln(1/(1−α))
-     гасит это усиление, а ln|z₀/z* − 1| — дальний старт. Считается в логарифмах:
-     kJ и kN при α около единицы расходятся на десятки порядков. */
-  const zr = (1 - PF.a) * (Math.log(kJ) - Math.log(kN));
-  const gap = Math.abs(Math.expm1(zr));
-  const far = Math.min(40, Math.max(0, Math.log(gap || 1)));   // предохранитель: цикл ниже
-  const span = Math.max(8, (6 + Math.log(1 / (1 - PF.a)) + far) / Math.max(lam, 1e-4));
-  const dt = Math.max(PATH_DT, span / 1600);
-  const at = (k, P) => { const y = f(k, P);
-    return {y, k, c: (1 - P.s) * y, i: P.s * y}; };
-  const base0 = at(k0, pv);
-
-  const pts = [];
-  let k = kJ;
-  for (let t = 0; t <= span + 1e-9; t += dt){
-    pts.push({t, v: at(k, PF)});
-    const g1 = PF.s * f(k, PF) - dep(PF) * k;              // схема Хойна
-    const kp = Math.max(1e-300, k + dt * g1);
-    const g2 = PF.s * f(kp, PF) - dep(PF) * kp;
-    k = Math.max(1e-300, k + dt * (g1 + g2) / 2);
+     мала, и путь не доходил до стационара — пунктир «new» оказывался за полем.
+     Остаток ln(k/k_new) = ln(1 + (z₀−1)e^(−λt))/(1−α) опускается ниже e⁻⁶
+     (0,25%) при λt = 6 + ln(1/(1−α)) + ln|z₀ − 1|: 6/λ — путь самой z,
+     ln(1/(1−α)) гасит степень 1/(1−α), с которой остаток переходит в k,
+     ln|z₀ − 1| — дальний старт. */
+  const far = Math.max(0, lzm1);
+  const span = Math.max(8, (6 + Math.log(1 / (1 - a1)) + far) / lam);
+  /* ln z(t) = ln(e^(−λt)·z₀ + (1 − e^(−λt))) — сумма двух экспонент в логарифмах */
+  const lnZ = t => {
+    if (t <= 0) return lz0;
+    const p = lz0 - lam * t, q = Math.log1p(-Math.exp(-lam * t));
+    const m = Math.max(p, q);
+    return m + Math.log1p(Math.exp(Math.min(p, q) - m));
+  };
+  /* всё — в долях от исходного стационара: base0 = 1 у всех четырёх */
+  const at = lk => { const ly = a1 * lk;
+    return {y: capExp(ly - pv.a * lk0),
+            k: capExp(lk - lk0),
+            c: capExp(Math.log(1 - PF.s) + ly - Math.log(1 - pv.s) - pv.a * lk0),
+            i: capExp(Math.log(PF.s) + ly - Math.log(pv.s) - pv.a * lk0)}; };
+  const N = 480, pts = [];
+  for (let n = 0; n <= N; n++){
+    const t = span * n / N;
+    pts.push({t, v: at(lkN + lnZ(t) / (1 - a1))});
   }
-  return {pts, span, base0, endAt: at(kN, PF), jumpAt: at(kJ, PF), free: freeKeys()};
+  return {pts, span, base0: {y: 1, k: 1, c: 1, i: 1}, endAt: at(lkN), jumpAt: at(lkJ), free: freeKeys()};
 }
 
 function drawPath(cv, key, d){
@@ -2169,13 +2217,9 @@ function drawPaths(){
 
 /* ===================== относительные координаты ===================== */
 /* Картинка безразмерная, поэтому всё читается в долях от исходного стационара:
-   он равен (1; 1), остальное — во сколько раз. */
-function refs(){
-  const pv = dispVals(), k = kStar(pv);
-  const ok = isFinite(k) && k > 0;
-  return {k: ok ? k : 1, y: ok ? f(k, pv) : 1, ok};
-}
-const relOf = q => { const r = refs(); return {k: q.k / r.k, y: q.y / r.y}; };
+   он равен (1; 1), остальное — во сколько раз. Точки уже лежат в этих долях
+   (см. «единицы картинки»), пересчитывать нечего. */
+const relOf = q => ({k: q.k, y: q.y});
 const coordText = q => { const r = relOf(q); return "(" + num(r.k, 2) + "; " + num(r.y, 2) + ")"; };
 
 /* ===================== координаты отмеченных точек ===================== */
@@ -2343,17 +2387,17 @@ function renderLegend(){ /* легенда рисуется внутри гра�
 
 function renderReadout(){
   const pv = dispVals(), act = active(), PF = finalP(pv);
-  const k0 = kStar(pv), kSR = k0 * stockMulOf(act), k1 = kStar(PF);
-  const y1 = f(k1, PF);
+  const lk0 = lnK(pv), lkSR = lk0 + Math.log(stockMulOf(act)), lk1 = lnK(PF);
+  const ly1 = PF.a * lk1;
   document.getElementById("ro-cap").textContent =
     act.length ? "Показатели с учётом шоков" : "Показатели исходного состояния";
   const rows = [
-    ["k" + sub(0) + "* — исходный стационар", num(k0, 3)],
-    ["k′ — скачок после шоков", num(kSR, 3)],
-    ["k* — новый стационар",    num(k1, 3)],
-    ["y* — выпуск",             num(y1, 3)],
-    ["c* — потребление",        num((1 - PF.s) * y1, 3)],
-    ["i* — инвестиции",         num(PF.s * y1, 3)],
+    ["k" + sub(0) + "* — исходный стационар", numL(lk0)],
+    ["k′ — скачок после шоков", numL(lkSR)],
+    ["k* — новый стационар",    numL(lk1)],
+    ["y* — выпуск",             numL(ly1)],
+    ["c* — потребление",        numL(Math.log(1 - PF.s) + ly1)],
+    ["i* — инвестиции",         numL(Math.log(PF.s) + ly1)],
     ["s* — золотое правило",    num(sGold(PF), 3)],
     ["λ — скорость сходимости",  pct((1 - PF.a) * dep(PF))]
   ];

@@ -233,6 +233,26 @@ const overlaps = pads => {
     ok('A5-04: ' + nm + ', 360 px — подпись подстройки не закрывает ни одного кружка', hid.length === 0, hid);
   }
 
+  // ---- Р8: крайние стационары — картинка и траектории в логарифмах ----
+  /* При s = 0,0005, δ = n = g = 0,99 и α = 0,99 стационар k ≈ e⁻⁸⁶⁹, а после
+     «s × 2» — e⁻⁸⁰⁰: для компьютера оба ноль. Картинка теряла все отметки,
+     траектории пропадали, «Показатели» писали 0,000. */
+  await go('#b=s:0.0005:1,d:0.99:1,n:0.99:1,g:0.99:1,a:0.99:1&k=s:mul:2:1');
+  await reveal();
+  const ext = await ev(()=>({
+    marks: statesOf().filter(s=>s.axis).map(s=>s.mark),
+    hits: PANE.main.hits.length,
+    paths: document.querySelectorAll('#pathrows canvas').length,
+    shown: !document.getElementById('pathsblock').hidden,
+    gap: (()=>{ const d = pathData(); if (!d) return null; const l = d.pts[d.pts.length-1].v;
+      return Math.max(...['y','k','c','i'].map(v=>Math.abs(l[v]/d.endAt[v]-1))); })(),
+    ro: document.getElementById('ro').textContent }));
+  ok('Р8: стационар e⁻⁸⁶⁹ — на оси old, k₁ и new', JSON.stringify(ext.marks) === '["old","k₁","new"]', ext.marks);
+  ok('Р8: и все точки на месте', ext.hits >= 4, ext.hits);
+  ok('Р8: и траектории нарисованы и приходят в new', ext.shown && ext.paths === 4 && ext.gap !== null && ext.gap < 0.01,
+     {shown: ext.shown, paths: ext.paths, gap: ext.gap});
+  ok('Р8: «Показатели» пишут число, а не ноль', /10⁻³⁷⁸/.test(ext.ro) && !/0,000/.test(ext.ro), ext.ro);
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
