@@ -202,6 +202,30 @@ const overlaps = pads => {
   ok('B2-01: свайп по графику прокручивает страницу и точку не ставит',
      (await m.evaluate(()=>scrollY)) > y0 && (await m.evaluate(()=>picked.length)) === 1);
 
+  // ---- A5-04: подпись подстройки не закрывает кружки точек на телефоне ----
+  const nar = await b.newContext({viewport:{width:360,height:740}, deviceScaleFactor:3, isMobile:true, hasTouch:true});
+  await nar.addInitScript(() => {
+    window.__adj = [];
+    const ft = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function(t, x, y){
+      if (t === 'k растёт' || t === 'k падает')
+        window.__adj.push({cv: this.canvas.id, x, y, w: this.measureText(t).width});
+      return ft.apply(this, arguments);
+    };
+  });
+  const q = await nar.newPage(); q.on('pageerror', e => errs.push(e.message));
+  for (const [nm, h] of [['K ×2, L ×2, δ → 0,12', '#b=s:0.25:1,d:0.1:1,n:0:1,g:0:1,a:0.4:1&k=L:mul:2:1;K:mul:2:1;d:set:0.12:1'],
+                         ['n 0 → 0,02', '#b=s:0.3:1,d:0.08:1,n:0:1,g:0:1,a:0.3333:1&k=n:set:0.02:1']]){
+    await q.goto(BASE + h, {waitUntil:'networkidle'}); await q.waitForTimeout(600);
+    const hid = await q.evaluate(() => {
+      window.__adj = []; drawMain();
+      const lab = window.__adj.filter(a => a.cv === 'main').pop();
+      if (!lab) return ['подписи нет'];
+      return PANE.main.hits.filter(p => p.x > lab.x - 4 && p.x < lab.x + lab.w + 4 && Math.abs(p.y - lab.y) < 12).map(p => p.id);
+    });
+    ok('A5-04: ' + nm + ', 360 px — подпись подстройки не закрывает ни одного кружка', hid.length === 0, hid);
+  }
+
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');

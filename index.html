@@ -1765,7 +1765,22 @@ function renderMain(ctx, w, h, capture){
     hits.push({id: q.id, x: px, y: py});
   });
   ctx.restore();
-  if (adjLabel) tag(ctx, adjLabel.x, adjLabel.y, adjLabel.label, adjLabel.color, "center", 12);
+  /* Подпись подстройки рисуется после кружков — иначе они её затирали, — но и
+     сама кружок закрывать не должна: на телефоне «k падает» ложилась ровно на
+     новое равновесие, и его кружка не было видно. Задевает точку — поднимается
+     над ней, пока не освободится. */
+  if (adjLabel){
+    ctx.save(); ctx.font = "12px " + FONT();
+    const hw = ctx.measureText(adjLabel.label).width / 2 + 3, hh = 12 * 0.66;
+    ctx.restore();
+    let y = adjLabel.y;
+    for (let pass = 0; pass <= hits.length; pass++){
+      const hit = hits.find(q => Math.abs(q.x - adjLabel.x) < hw + 6 && Math.abs(q.y - y) < hh + 6);
+      if (!hit) break;
+      y = hit.y - hh - 7;
+    }
+    tag(ctx, adjLabel.x, Math.max(T + hh, y), adjLabel.label, adjLabel.color, "center", 12);
+  }
 
   /* подписи линий у правого края */
   /* Подпись называет состояние, а не одну формулу. Раньше у правого края
