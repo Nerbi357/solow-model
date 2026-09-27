@@ -998,14 +998,29 @@ function sweep(limit){
   const acc = Array.from({length: nrows}, () => ({
     sr: VARS.map(() => new Set()), lr: VARS.map(() => new Set())
   }));
-  let seen = 0, tried = 0, coarse = false, seenC = 0, triedC = 0;
-  const anchors = [];
+  let seen = 0, tried = 0, coarse = false, seenC = 0, triedC = 0, cidx = 0;
+  const total = Math.pow(N, free.length);
+  /* узел грубой сетки по номеру: первая свободная ось меняется быстрее всех */
+  const nodeAt = idx => {
+    const pv = dispVals();
+    let r = idx;
+    for (const k of free){
+      const j = r % N; r = (r - j) / N;
+      pv[k] = META[k].min + (META[k].max - META[k].min) * j / (N - 1);
+    }
+    return pv;
+  };
+  /* Номера узлов ветки, а не сами узлы: их бывает до 10⁵, и держать столько
+     объектов ради четырёх опорных стоило трети времени перебора ветки. */
+  const inBranch = limit && free.length > 1 ? new Int32Array(total) : null;
+  let nIn = 0;
   const take = pv => {
     if (limit && sideOf(pv) !== limit.side) return;   // чужая ветка развилки
     tried++; if (coarse) triedC++;
     const r = rowsAt(pv);
     if (!r || r.length !== nrows) return;
-    seen++; if (coarse){ seenC++; if (limit) anchors.push(pv); }
+    seen++;
+    if (coarse){ seenC++; if (inBranch) inBranch[nIn++] = cidx; }
     r.forEach((row, i) => VARS.forEach((_, j) => {
       acc[i].sr[j].add(row.sr[j]);
       acc[i].lr[j].add(row.lr[j]);
@@ -1014,16 +1029,7 @@ function sweep(limit){
 
   /* грубая полная сетка — ловит совместные эффекты нескольких параметров */
   coarse = true;
-  const total = Math.pow(N, free.length);
-  for (let idx = 0; idx < total; idx++){
-    const pv = dispVals();
-    let r = idx;
-    for (const k of free){
-      const j = r % N; r = (r - j) / N;
-      pv[k] = META[k].min + (META[k].max - META[k].min) * j / (N - 1);
-    }
-    take(pv);
-  }
+  for (let idx = 0; idx < total; idx++){ cidx = idx; take(nodeAt(idx)); }
   coarse = false;
 
   /* тонкая пристрелка вдоль каждой свободной оси: грубая сетка проскакивает
@@ -1052,9 +1058,9 @@ function sweep(limit){
      неё не попадала ни в один, и ряд получал уверенную стрелку там, где ответ —
      «?». Чем больше неизвестных, тем увереннее выходил ответ. Поэтому для ветки
      тот же тонкий проход идёт ещё и через узлы грубой сетки, лежащие в ней. */
-  if (limit && anchors.length && free.length > 1){
-    const step = Math.max(1, Math.floor(anchors.length / 4));
-    const picks = anchors.filter((_, i) => i % step === 0).slice(0, 4);
+  if (inBranch && nIn){
+    const step = Math.max(1, Math.floor(nIn / 4)), picks = [];
+    for (let i = 0; i < nIn && picks.length < 4; i += step) picks.push(nodeAt(inBranch[i]));
     const fa = Math.min(fine, 500);            // на телефоне перебор идёт вчетверо дольше
     free.forEach(k => picks.forEach(a => {
       for (let j = 0; j < fa; j++){
@@ -1063,6 +1069,36 @@ function sweep(limit){
         take(pv);
       }
     }));
+  }
+
+  /* Граница k = 1 выписана явно. Возле неё шок по α почти ничего не меняет,
+     и знак задают остальные шоки; дальше от неё перевешивает α. По k эта
+     полоса широкая, а по параметрам тонкая: ln k₀ = (ln s − ln(δ+n+g))/(1−α),
+     и при α около 0,9 она уже любого шага сетки. Так ветка «k < 1» отвечала
+     «y растёт», хотя при n+g от 0,002 до 0,0032 он падает: узлы стояли через
+     0,008, и ни один проход в полосу не попадал. Поэтому каждая свободная
+     из s, δ, n, g решается так, чтобы ln s − ln(δ+n+g) встал на лестницу
+     расстояний от нуля, а остальные свободные берутся из фиксированной
+     выборки — вместе с нижним краем: n = g = 0 условие всех задач. */
+  const sideKeys = free.filter(k => k !== "a");
+  if (act.some(sh => sh.key === "a") && sideKeys.length){
+    const LADDER = [3e-6, 1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 0.1];
+    const signs = limit ? [limit.side ? 1 : -1] : [1, -1];
+    sideKeys.forEach(k => {
+      const others = free.filter(o => o !== k);
+      const grids = others.map(o => [0].concat(spots).map(t =>
+        META[o].min + (META[o].max - META[o].min) * t));
+      cartesian(grids).forEach(combo => {
+        const pv0 = dispVals();
+        others.forEach((o, oi) => { pv0[o] = combo[oi]; });
+        const rest = dep(pv0) - (k === "s" ? 0 : pv0[k]);
+        signs.forEach(sg => LADDER.forEach(t => {
+          const pv = {...pv0};
+          pv[k] = k === "s" ? rest * Math.exp(sg * t) : pv0.s * Math.exp(-sg * t) - rest;
+          if (pv[k] >= META[k].min && pv[k] <= META[k].max) take(pv);
+        }));
+      });
+    });
   }
 
   const pick = st => (seen && st.size === 1) ? [...st][0] : "dunno";
@@ -1627,18 +1663,43 @@ function renderMain(ctx, w, h, capture){
   CUR.apart = apart;
   CUR.tight = isFinite(apart) && apart < TIGHT_PX;
 
-  /* Кривые разных шоков, легшие точно одна на другую: у «n + 0,4» и «g + 0,4»
-     одна и та же δ+n+g, и вторая линия целиком накрывает первую. В легенде
+  /* Цветные линии, легшие одна на другую: у «n + 0,4» и «g + 0,4» одна и та же
+     δ+n+g, и линия, нарисованная позже, целиком накрывает прежнюю. В легенде
      и у правого края два цвета, на картинке один — студент решает, что первый
      шок ничего не нарисовал. Сравнение выше этого не видит: оно смотрит только
-     одноцветные пары. */
-  const shockItems = items.filter(it => it.kind === "shock"), same = [];
-  for (let i = 0; i < shockItems.length; i++)
-    for (let j = i + 1; j < shockItems.length; j++){
-      const a = shockItems[i], b = shockItems[j];
-      if (a.c === b.c && a.sh !== b.sh && sigOf(a.P, a.c) === sigOf(b.P, b.c))
-        same.push({c: a.c, under: a.sh, over: b.sh});
+     одноцветные пары. Считается не точным равенством, а в пикселях, как и там:
+     у «n + 0,400» и «g + 0,401» линии расходятся меньше чем на пиксель, и один
+     шаг ползунка не имеет права убирать заметку, не меняя картинку. Линия,
+     оказавшаяся от другой ближе своей толщины на всём видимом отрезке,
+     закрыта ею; совпавшие линии собираются в группы — три одинаковые линии
+     дают одну фразу, а не три. */
+  const cover = items.filter(it => it.kind !== "base"), same = [];
+  const closeTo = (a, b) => {
+    if (a.c !== b.c) return false;
+    const c1 = curveFn(a.c, a.P), c2 = curveFn(b.c, b.P);
+    let seenAny = false;
+    for (let t = 0; t <= 48; t++){
+      const k = fr.k0 + (fr.k1 - fr.k0) * t / 48;
+      const ya = Y(c1(k)), yb = Y(c2(k));
+      if (!isFinite(ya) || !isFinite(yb)) continue;
+      if (Math.max(ya, yb) < T || Math.min(ya, yb) > B) continue;   // обе вне поля
+      seenAny = true;
+      if (Math.abs(ya - yb) >= b.w) return false;
     }
+    return seenAny;
+  };
+  const grp = cover.map((_, i) => i);
+  const root = i => grp[i] === i ? i : (grp[i] = root(grp[i]));
+  for (let i = 0; i < cover.length; i++)
+    for (let j = i + 1; j < cover.length; j++)
+      if (closeTo(cover[i], cover[j])) grp[root(j)] = root(i);
+  const groups = {};
+  cover.forEach((it, i) => (groups[root(i)] = groups[root(i)] || []).push(it));
+  Object.values(groups).forEach(g => {
+    if (g.length < 2) return;
+    const exact = g.every(it => sigOf(it.P, it.c) === sigOf(g[0].P, g[0].c));
+    same.push({c: g[0].c, items: g, exact});
+  });
   CUR.same = same;
 
   axes(ctx, L, B, R, T, home);
@@ -1830,12 +1891,23 @@ function paintOn(id, vals, capture){
   }
   const twin = document.getElementById(id === "main" ? "same1" : "same2");
   if (twin){
-    const pairs = PANE[id].same || [];
-    twin.hidden = !pairs.length;
-    twin.innerHTML = pairs.map(q => "Шоки «" + escArr(shockName(q.under)) + "» и «" +
-      escArr(shockName(q.over)) + "» дают одну и ту же линию " + CURVE_LABEL[q.c] +
-      ": вторая нарисована точно поверх первой, поэтому первую не видно.").join(" ");
+    const groups = PANE[id].same || [];
+    twin.hidden = !groups.length;
+    twin.innerHTML = groups.map(sameText).join(" ");
   }
+}
+/* Линия, нарисованная последней, видна; остальные лежат под ней. */
+function sameText(q){
+  const who = it => it.kind === "res" ? "итог всех шоков"
+                                      : "шок «" + escArr(shockName(it.sh)) + "»";
+  const whose = it => it.kind === "res" ? "итога" : "шока «" + escArr(shockName(it.sh)) + "»";
+  const names = q.items.map(who);
+  const list = names.slice(0, -1).join(", ") + " и " + names[names.length - 1];
+  const top = q.items[q.items.length - 1];
+  return list.charAt(0).toUpperCase() + list.slice(1) + " дают " +
+    (q.exact ? "одну и ту же линию " : "почти одну и ту же линию ") + CURVE_LABEL[q.c] +
+    ": видна только линия " + whose(top) + ", " +
+    (q.items.length > 2 ? "остальные лежат" : "другая лежит") + " под ней.";
 }
 
 let forkWas = false;
@@ -1846,7 +1918,10 @@ function drawMain(){
   const cv = document.getElementById("main"), lead = document.getElementById("forklead");
 
   const cv2 = document.getElementById("main2");
-  const ALT = "Диаграмма накопления. Щелчок по точке показывает её координаты.";
+  /* Подсказка про клавиатуру — часть имени обеих диаграмм. Раньше она стояла
+     только в разметке, и первая же отрисовка её затирала. */
+  const KEYS = " С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки.";
+  const ALT = "Диаграмма накопления. Щелчок по точке показывает её координаты." + KEYS;
   /* Развилка появилась или исчезла — калибровка сменилась целиком,
      и старое окно зума в единицах k больше ничего не значит. */
   if (!!fk !== forkWas){ zoomReset(); pickPane = "main"; forkWas = !!fk; }
@@ -1862,7 +1937,7 @@ function drawMain(){
     cv2.dataset.h = 420;
     /* Подписи случаев видит и тот, кто читает страницу экранным диктором */
     cv.setAttribute("aria-label", ALT + " Случай " + fk.cases[0].text + ".");
-    cv2.setAttribute("aria-label", "Та же диаграмма, случай " + fk.cases[1].text + ". С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки.");
+    cv2.setAttribute("aria-label", "Та же диаграмма, случай " + fk.cases[1].text + "." + KEYS);
     cap1.hidden = false; box2.hidden = false;
     cap1.textContent = fk.cases[0].text; cap1.dataset.n = "1";
     cap2.textContent = fk.cases[1].text;  cap2.dataset.n = "2";
@@ -1899,7 +1974,7 @@ function drawMain(){
 
    Считается прямым интегрированием Δk = s·f(k) − (δ+n+g)k по схеме Хойна
    с шагом DT. Горизонт берётся от скорости сходимости λ = (1−α)(δ+n+g):
-   за 6/λ проходит 99,75% пути, дальше картинка стоит на месте. */
+   6/λ и две добавки к нему — почему, сказано в pathData. */
 const PATH_DT = 0.25, PATH_PRE = 0.12;
 
 function pathData(){
@@ -2307,6 +2382,9 @@ function paramRow(key, value, idp, live, fixed, fromVal, form){
             ' → новое» называет и начало, и конец, поэтому исходное значение задано"' : "") +
     '>' + (fixed ? "задано" : "свободно") + "</button>";
   const gl = form ? FORM[form].glyph : "→";
+  /* Имя для экранного диктора: у исходного s и у шока по s ползунки разные,
+     и называться одинаково «s — ползунок» они не могут. */
+  const said = form ? "Шок по " + m.sym + ", " + FORM[form].word : m.sym + ", исходное значение";
   return '<div class="prow" style="--live:' + live + '">' +
     '<div class="prow-top">' +
       (form ? "" : '<span class="sym">' + m.sym + '</span><span class="nm">' + m.name + "</span>") +
@@ -2317,12 +2395,12 @@ function paramRow(key, value, idp, live, fixed, fromVal, form){
       '<input class="numbox' + (fixed === false ? " free" : "") + '" id="n' + id +
         '" data-num="' + key + '" data-scope="' + idp + '" inputmode="decimal" value="' +
         num(value, dig) + '"' + (fixed === false ? " disabled" : "") +
-        ' aria-label="' + m.sym + ' — значение числом">' +
+        ' aria-label="' + said + ' — числом">' +
       pin +
     "</div>" +
     '<input type="range" id="' + id + '" data-rng="' + key + '" data-scope="' + idp +
       '" min="' + slo + '" max="' + hi + '" step="' + m.step + '" value="' + value + '"' +
-      ' aria-label="' + m.sym + ' — ползунок"' +
+      ' aria-label="' + said + ' — ползунок"' +
       (fixed === false ? " disabled" : "") + ">" +
     "</div>";
 }
@@ -2854,7 +2932,7 @@ function syncValues(){
       r.min = gridLo(lo, META[key].step, hi); r.max = hi;   // сетка, а не отрезок — см. gridLo
     }
     if (r && document.activeElement !== r) r.value = val;
-    if (n && document.activeElement !== n){ n.value = num(val, dig); n.classList.remove("bad"); }
+    if (n && document.activeElement !== n){ n.value = num(val, dig); markBad(n, false); }
   };
   PKEYS.forEach(k => put("b-", k, base[k].v));
   shocks.forEach((sh, i) => put("k" + i + "-", sh.key, sh.value, sh.form));
@@ -2905,10 +2983,21 @@ function refreshAll(){
 /* ===================== события ===================== */
 const panel = document.querySelector(".panel");
 
+/* Ячейка с отклонённым вводом: красная рамка, и набранное остаётся на месте,
+   чтобы было видно, что именно не принято. Раньше подсветку снимал уход
+   с ячейки в том же такте, до отрисовки, и отказ проходил молча: «10%»
+   просто превращалось обратно в «0,500». Возвращает прежнее число Escape,
+   правка ячейки или любое следующее обновление панели. */
+const markBad = (el, bad) => {
+  el.classList.toggle("bad", bad);
+  if (bad){ el.setAttribute("aria-invalid", "true"); el.title = "Не число — значение не принято"; }
+  else { el.removeAttribute("aria-invalid"); el.removeAttribute("title"); }
+};
 function applyValue(scope, key, raw, fromBox){
   let v = fromBox ? parseRu(raw) : parseFloat(raw);
   const boxEl = document.getElementById("n" + scope + key);
-  if (!isFinite(v)){ if (boxEl) boxEl.classList.add("bad"); return false; }
+  if (!isFinite(v)){ if (boxEl) markBad(boxEl, true); return false; }
+  if (boxEl) markBad(boxEl, false);
   if (scope === "b-"){ base[key].v = clampKey(key, v); return true; }
   const i = parseInt(scope.slice(1), 10);
   if (!shocks[i]) return false;
@@ -2926,22 +3015,27 @@ panel.addEventListener("change", e => {
   if (el.dataset.num === undefined || el.dataset.esc) return;
   if (applyValue(el.dataset.scope, el.dataset.num, el.value, true)) refreshLive();
 });
-panel.addEventListener("focusout", e => {
+panel.addEventListener("input", e => {
   const el = e.target;
-  if (el.dataset.num === undefined || !el.classList.contains("bad")) return;
-  el.classList.remove("bad"); syncValues();
-}, true);
+  if (el.dataset.num !== undefined && el.classList.contains("bad")) markBad(el, false);
+});
 panel.addEventListener("keydown", e => {
   const el = e.target;
   if (el.dataset.num === undefined) return;
-  if (e.key === "Enter"){ e.preventDefault(); el.blur(); }
+  /* Enter с тем, что числом не читается, ячейку не покидает: она краснеет,
+     набранное выделено — исправить можно сразу, не щёлкая в неё снова. */
+  if (e.key === "Enter"){
+    e.preventDefault();
+    if (!isFinite(parseRu(el.value))){ markBad(el, true); el.select(); return; }
+    el.blur();
+  }
   /* Escape — отмена: набранное не применяется, в ячейку возвращается прежнее
      значение. Раньше текст оставался в поле и молча применялся, как только
      студент щёлкал мимо: опечатка становилась заданным числом. */
   else if (e.key === "Escape"){
     e.preventDefault();
     el.dataset.esc = "1"; el.blur(); delete el.dataset.esc;
-    el.classList.remove("bad"); syncValues();
+    markBad(el, false); syncValues();
   }
 });
 

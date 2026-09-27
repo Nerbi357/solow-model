@@ -125,6 +125,63 @@ const overlaps = pads => {
   ok('B1-04: Escape отменяет набранное', (await ev(()=>base.s.v)) === 0.5 && (await box.inputValue()) === '0,500',
      {s: await ev(()=>base.s.v), ячейка: await box.inputValue()});
 
+  // ---- W3-01: полоса у самой границы k = 1 при высокой α ----
+  /* Независимый расчёт по формулам модели, без страницы: в ветке k < 1 при
+     n = 0,0025 выпуск падает, при n = 0,05 растёт — значит ответ ветки «?». */
+  const yStar = (s, d, a) => Math.pow(s / d, a / (1 - a));
+  const w1 = [0.0025, 0.05].map(n => Math.sign(yStar(0.1, 0.098 + n + 0.02, 0.35) - yStar(0.1, 0.098 + n, 0.9)));
+  ok('W3-01: сама полоса существует (y падает и растёт внутри ветки k < 1)', w1[0] < 0 && w1[1] > 0, w1);
+  for (const [nm, h, ci, per, col] of [
+      ['W3-01: n и g свободны, α = 0,9, ветка k < 1, долго y', '#b=s:0.1:1,d:0.098:1,n:0:0,g:0:0,a:0.9:1&k=a:set:0.35:1;g:add:0.02:1', 0, 'lr', 0],
+      ['W3-01: s, n и α свободны, ветка k > 1, долго c', '#b=s:0.148:0,d:0.129:1,n:0:0,g:0:1,a:0.678:0&k=a:set:0.173:1;s:add:0.01:1', 1, 'lr', 2]]){
+    await go(h);
+    const v = await ev(([ci, per, col])=>{const fk=forkCase(); const rows=caseSweep(fk.cases[ci].lim); return rows[rows.length-1][per][col];}, [ci, per, col]);
+    ok(nm + ' — «?», а не уверенная стрелка', v === 'dunno', v);
+  }
+
+  // ---- W3-02: подсказка про клавиатуру остаётся в имени диаграммы ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.3:1');
+  const al1 = await ev(()=>document.getElementById('main').getAttribute('aria-label'));
+  ok('W3-02: у диаграммы без развилки в имени есть подсказка про клавиатуру', /С клавиатуры/.test(al1), al1);
+  await go('#b=s:0.2:0,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=a:set:0.6:1');
+  const al2 = await ev(()=>['main','main2'].map(id=>document.getElementById(id).getAttribute('aria-label')));
+  ok('W3-02: на развилке — у обеих диаграмм', al2.every(a => /С клавиатуры/.test(a)), al2);
+
+  // ---- W3-03: отказ принять число виден — ячейка краснеет и держит набранное ----
+  await go('#b=s:0.5:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1');
+  const bx = p.locator('#nb-s');
+  const cell = () => ev(()=>{const e=document.getElementById('nb-s');
+    return {bad: e.classList.contains('bad'), val: e.value, s: base.s.v, inv: e.getAttribute('aria-invalid')};});
+  await bx.click(); await bx.fill('10%'); await bx.press('Enter');
+  await ev(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+  const c1 = await cell();
+  ok('W3-03: «10%» + Enter — ячейка красная, набранное на месте, значение прежнее',
+     c1.bad && c1.val === '10%' && c1.s === 0.5 && c1.inv === 'true', c1);
+  await p.mouse.click(700, 40); await p.waitForTimeout(250);
+  const c2 = await cell();
+  ok('W3-03: и после ухода с ячейки отказ виден', c2.bad && c2.val === '10%' && c2.s === 0.5, c2);
+  await bx.click(); await bx.press('Escape'); await p.waitForTimeout(200);
+  const c3 = await cell();
+  ok('W3-03: Escape возвращает прежнее число и снимает подсветку', !c3.bad && c3.val === '0,500' && c3.inv === null, c3);
+
+  // ---- W3-04, W3-05: почти совпавшие линии; три совпавшие — одной фразой ----
+  await go('#b=s:0.3:1,d:0.05:1,n:0:1,g:0:1,a:0.5:1&k=n:add:0.4:1;g:add:0.401:1');
+  const s4 = await same();
+  ok('W3-04: n + 0,400 и g + 0,401 расходятся меньше чем на пиксель — заметка есть', !!s4 && /почти/.test(s4), s4);
+  await go('#b=s:0.3:1,d:0.05:1,n:0:1,g:0:1,a:0.5:1&k=n:add:0.1:1;g:add:0.1:1;d:add:0.1:1');
+  const s5 = await same();
+  ok('W3-05: три одинаковые линии — одна фраза, и видна последняя', !!s5 && (s5.match(/дают/g) || []).length === 1 &&
+     /видна только линия шока «δ/.test(s5) && /остальные/.test(s5), s5);
+  for (let i = 0; i < 5; i++){
+    await ev(i=>document.querySelector('[data-p="' + i + '"]').click(), i); await p.waitForTimeout(500);
+    ok('W3-04: в задаче ' + (i + 1) + ' заметки о совпавших линиях нет', (await ev(()=>['same1','same2'].every(id=>document.getElementById(id).hidden))));
+  }
+
+  // ---- W3-08: ползунок шока называется не так, как исходный ----
+  await go('#b=s:0.2:1,d:0.1:1,n:0:1,g:0:1,a:0.3:1&k=s:add:0.05:1');
+  const nm8 = await ev(()=>['b-s','k0-s','nb-s','nk0-s'].map(id=>document.getElementById(id).getAttribute('aria-label')));
+  ok('W3-08: у исходного s и шока по s разные имена', nm8[0] !== nm8[1] && nm8[2] !== nm8[3] && /Шок по s/.test(nm8[1]), nm8);
+
   // ---- телефон: B2-01 (касание точки), A9-01 (заглушка таблицы) ----
   const mob = await b.newContext({viewport:{width:393,height:851}, deviceScaleFactor:2.75, isMobile:true, hasTouch:true});
   const m = await mob.newPage(); m.on('pageerror', e => errs.push(e.message));
