@@ -709,10 +709,49 @@ const overlaps = pads => {
   await m.goto(BASE, {waitUntil:'networkidle'}); await m.waitForTimeout(400);
   const kph = await m.evaluate(async ()=>{ const b = document.querySelector('.toprow > [data-kn="0"]');
     if (!b) return null; b.click(); await new Promise(r=>setTimeout(r, 250));
-    const r = document.getElementById('kons').getBoundingClientRect();
-    return {w: r.width, h: r.height, vw: innerWidth, vh: innerHeight, x: r.left, y: r.top}; });
+    const d = document.getElementById('kons'), r = d.getBoundingClientRect();
+    const out = {w: r.width, h: r.height, vw: innerWidth, vh: innerHeight, x: r.left, y: r.top};
+    d.close(); return out; });
   ok('Р11: на телефоне «Конспект» во весь экран', !!kph && kph.w >= kph.vw - 1 && kph.h >= kph.vh - 1 && kph.x <= 0.5 && kph.y <= 0.5, kph);
 
+  // ---- W4-01: какое значение нарисовано — одно и то же число везде ----
+  const H5 = '#p=4&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1';
+  await go(H5); await reveal();
+  const w401 = await ev(()=>{
+    const fk = forkCase(), f3 = v => v.toFixed(3).replace('.', ',');
+    const d = fk.cases.map(c => f3(c.vals.d));
+    const drawnLi = [...document.querySelectorAll('#ol1 li')].find(li => /нарисован/.test(li.textContent));
+    return {d, cap: [1, 2].map(i => document.getElementById('cap' + i).textContent),
+            li: drawnLi ? drawnLi.textContent : null,
+            ro: (document.getElementById('ro-note') || {textContent: ''}).textContent};
+  });
+  ok('W4-01: подпись случая называет, при каком δ он нарисован',
+     w401.cap[0].indexOf('δ = ' + w401.d[0]) >= 0 && w401.cap[1].indexOf('δ = ' + w401.d[1]) >= 0, w401);
+  ok('W4-01: у исхода «(нарисован)» — нарисованное значение, а не середина области',
+     !!w401.li && w401.li.indexOf('δ = ' + w401.d[0]) >= 0, w401.li);
+  ok('W4-01: «Показатели» на развилке называют калибровку каждой диаграммы',
+     w401.ro.indexOf('δ = ' + w401.d[0]) >= 0 && w401.ro.indexOf('δ = ' + w401.d[1]) >= 0, w401.ro);
+  await go('#p=1&b=s:0.1:1,d:0.1:1,n:0:1,g:0:1,a:0.3333333333333333:0&k=s:set:0.2:1;d:set:0.12:1'); await reveal();
+  const w401b = await ev(()=>{ const li = [...document.querySelectorAll('#ol1 li')].find(li => /нарисован/.test(li.textContent));
+    return li ? li.textContent : null; });
+  ok('W4-01: и на одиночной диаграмме — α = 0,333, при котором она нарисована', !!w401b && /α = 0,333/.test(w401b), w401b);
+
+  // ---- W4-02, W4-14: слипшиеся линии названы, и приблизить можно пальцем ----
+  const H6 = '#p=5&b=s:0.2:0,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1';
+  await m.goto(BASE + H6, {waitUntil:'networkidle'}); await m.waitForTimeout(700);
+  const t0 = await m.evaluate(()=>{ const e = document.getElementById('tight1'), b = e && e.querySelector('button');
+    return {vis: !!e && !e.hidden, txt: e ? e.textContent.replace(/\s+/g, ' ') : '', btn: !!b && !b.hidden}; });
+  ok('W4-14: заметка называет, какие линии слиплись, без «рамки»',
+     t0.vis && /(кривая выпуска|кривая инвестиций|линия выбытия)/i.test(t0.txt) && !/рамк/.test(t0.txt), t0.txt.slice(0, 160));
+  let t1 = {tapped: false};
+  if (t0.btn){
+    await m.evaluate(()=>document.getElementById('tight1').scrollIntoView({block:'center'})); await m.waitForTimeout(200);
+    await m.tap('#tight1 button'); await m.waitForTimeout(500);
+    t1 = await m.evaluate(()=>({tapped: true, view: !!PANE.main.view, apart: PANE.main.apart,
+      vis: !document.getElementById('tight1').hidden}));
+  }
+  ok('W4-02: на телефоне кнопка приближает слипшиеся линии — они расходятся, и заметка уходит',
+     t0.btn && t1.tapped && t1.view && t1.apart >= 16 && !t1.vis, {t0, t1});
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');

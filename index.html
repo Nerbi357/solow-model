@@ -196,8 +196,10 @@
   }
   .forkcap{
     margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--ink-2);
-    display:flex;align-items:center;gap:9px;
+    display:flex;align-items:center;gap:9px;flex-wrap:wrap;
   }
+  /* при каком значении нарисован случай: ползунок показывает не его */
+  .forkcap .capv{font-weight:400;color:var(--muted)}
   .forkcap::before{
     content:attr(data-n);flex:0 0 auto;width:22px;height:22px;border-radius:50%;
     background:var(--ink-2);color:var(--paper);font-size:12px;font-weight:700;
@@ -722,7 +724,7 @@
       <canvas id="main" data-h="620" tabindex="0"
               aria-label="Диаграмма накопления. Щелчок по точке показывает её координаты. С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки."></canvas>
       <p class="kinote" id="kinote1" hidden></p>
-      <p class="tight" id="tight1" hidden></p><p class="tight" id="same1" hidden></p>
+      <p class="tight far" id="tight1" hidden><span></span> <button class="btn ghost" data-tight="main">Приблизить</button></p><p class="tight" id="same1" hidden></p>
       <p class="tight far" id="farnote1" hidden><span></span> <button class="btn ghost" data-far="main"></button></p>
       <div class="outs" id="ol1" hidden></div>
       <div id="fork2" hidden>
@@ -731,7 +733,7 @@
         <canvas id="main2" data-h="620" tabindex="0"
                 aria-label="Та же диаграмма для второго случая. С клавиатуры: стрелки ходят по точкам, Enter отмечает, Escape снимает отметки."></canvas>
         <p class="kinote" id="kinote2" hidden></p>
-        <p class="tight" id="tight2" hidden></p><p class="tight" id="same2" hidden></p>
+        <p class="tight far" id="tight2" hidden><span></span> <button class="btn ghost" data-tight="main2">Приблизить</button></p><p class="tight" id="same2" hidden></p>
         <p class="tight far" id="farnote2" hidden><span></span> <button class="btn ghost" data-far="main2"></button></p>
         <div class="outs" id="ol2" hidden></div>
       </div>
@@ -1153,6 +1155,12 @@ const numV = (x, dg = 3) => {
   const d = Math.min(9, Math.max(dg, Math.ceil(-Math.log10(Math.abs(x))) + 1));
   return num(x, d).replace(new RegExp("(,\\d{" + dg + "}\\d*?)0+$"), "$1");
 };
+/* Пример значения — не граница, поэтому круглится: 0,434, 0,0008. */
+const exNum = v => v >= 0.01 ? num(v, 3) : numV(+v.toPrecision(2));
+/* Свободные параметры, которые диаграмма случая взяла не такими, как ползунок. */
+const caseDrawn = vals => freeKeys()
+  .filter(k => base[k].def !== undefined && Math.abs(vals[k] - base[k].def) > 1e-12 * Math.max(1, Math.abs(base[k].def)))
+  .map(k => META[k].sym + " = " + exNum(vals[k])).join(", ");
 /* Число по его логарифму. Пока оно читается обычной записью — обычная
    запись; иначе мантисса и степень десяти. Стационар e⁻⁸⁶⁹ для компьютера
    ноль, а для подписи — вполне число: 1,2·10⁻³⁷⁸. */
@@ -2238,7 +2246,7 @@ function renderMain(ctx, w, h, capture){
      Значит про это надо сказать словами и дать приблизить. Считается
      по тем же кривым, которые сейчас рисуются, и в тех же пикселях:
      приблизили — линии разошлись, и заметка уходит сама. */
-  let apart = Infinity;
+  let apart = Infinity, pair = null;
   for (let i = 0; i < items.length; i++)
     for (let j = i + 1; j < items.length; j++){
       if (items[i].color !== items[j].color) continue;
@@ -2249,10 +2257,34 @@ function renderMain(ctx, w, h, capture){
         const a = Y(c1(k)), b = Y(c2(k));
         if (isFinite(a) && isFinite(b)) mx = Math.max(mx, Math.abs(a - b));
       }
-      apart = Math.min(apart, mx);
+      if (mx < apart){ apart = mx; pair = [items[i], items[j]]; }
     }
   CUR.apart = apart;
   CUR.tight = isFinite(apart) && apart < TIGHT_PX;
+  /* Куда приближать слипшуюся пару. Колеса и перетаскивания на телефоне нет,
+     поэтому у заметки своя кнопка. По высоте — полоса, где лежат обе линии,
+     по ширине — вся видимая k: у инвестиций и выбытия у самой оси этого
+     хватает, линии расходятся во столько раз, во сколько сжата высота.
+     Если пара и так занимает почти всю высоту (f и s·f при s у единицы),
+     окно сужается вокруг места, где линии расходятся сильнее всего. */
+  CUR.tightPair = null; CUR.tightView = null;
+  if (CUR.tight && pair){
+    const c1 = curveN(U, pair[0].c, pair[0].P), c2 = curveN(U, pair[1].c, pair[1].P);
+    let top = 0, bestK = fr.k1, bestD = -1;
+    for (let t = 0; t <= 48; t++){
+      const k = fr.k0 + (fr.k1 - fr.k0) * t / 48, a = c1(k), b = c2(k);
+      if (!isFinite(a) || !isFinite(b)) continue;
+      top = Math.max(top, a, b);
+      if (Math.abs(a - b) > bestD){ bestD = Math.abs(a - b); bestK = k; }
+    }
+    if (top > 0 && top < 0.6 * (fr.y1 - fr.y0) + fr.y0)
+      CUR.tightView = {k0: fr.k0, k1: fr.k1, y0: 0, y1: top * 1.25};
+    else if (bestD > 0){
+      const a = c1(bestK), b = c2(bestK), lo = Math.min(a, b), hi = Math.max(a, b), wk = (fr.k1 - fr.k0) * 0.15;
+      CUR.tightView = {k0: Math.max(0, bestK - wk), k1: bestK + wk, y0: Math.max(0, lo - bestD), y1: hi + bestD};
+    }
+    CUR.tightPair = pair.map(it => ({c: it.c, kind: it.kind, sh: it.sh}));
+  }
 
   /* Цветные линии, легшие одна на другую: у «n + 0,4» и «g + 0,4» одна и та же
      δ+n+g, и линия, нарисованная позже, целиком накрывает прежнюю. В легенде
@@ -2519,9 +2551,19 @@ function renderMain(ctx, w, h, capture){
 }
 
 const TIGHT_PX = 16;
-const TIGHT_NOTE = "Две линии почти легли друг на друга и читаются как одна " +
-  "с зазором внутри. Развести их рамкой нельзя — расстояние между ними задаёт " +
-  "сама модель. Приблизьте колесом или перетащите картинку.";
+/* Какие две линии слиплись — словами: «две линии» не говорило, какие. */
+const CURVE_WORD = {out: "кривая выпуска", inv: "кривая инвестиций", dep: "линия выбытия"};
+function tightText(pr){
+  const whose = pr[0].kind === "base" ? "исходного состояния"
+              : pr[0].kind === "res" ? "итога всех шоков"
+              : "шока «" + escArr(shockName(pr[0].sh)) + "»";
+  const names = pr.map(q => CURVE_WORD[q.c]);
+  const what = names[0] === names[1] ? "Две линии «" + names[0] + "»" : names[0].charAt(0).toUpperCase() +
+    names[0].slice(1) + " и " + names[1];
+  return what + " " + whose + " почти легли друг на друга и читаются как одна линия " +
+    "с зазором внутри. Расстояние между ними задаёт сама модель, и при общем масштабе " +
+    "их не развести; кнопка приближает полосу, где они лежат.";
+}
 
 function paintOn(id, vals, capture){
   const cv = document.getElementById(id);
@@ -2546,8 +2588,13 @@ function paintOn(id, vals, capture){
   }
   const note = document.getElementById(id === "main" ? "tight1" : "tight2");
   if (note){
-    note.hidden = !PANE[id].tight;
-    if (PANE[id].tight) note.textContent = TIGHT_NOTE;
+    const P = PANE[id];
+    note.hidden = !P.tight;
+    if (P.tight){
+      note.querySelector("span").innerHTML = P.tightPair ? tightText(P.tightPair)
+        : "Две линии почти легли друг на друга и читаются как одна с зазором внутри.";
+      note.querySelector("button").hidden = !P.tightView;
+    }
   }
   const twin = document.getElementById(id === "main" ? "same1" : "same2");
   if (twin){
@@ -2599,8 +2646,13 @@ function drawMain(){
     cv.setAttribute("aria-label", ALT + " Случай " + fk.cases[0].text + ".");
     cv2.setAttribute("aria-label", "Та же диаграмма, случай " + fk.cases[1].text + "." + KEYS);
     cap1.hidden = false; box2.hidden = false;
-    cap1.textContent = fk.cases[0].text; cap1.dataset.n = "1";
-    cap2.textContent = fk.cases[1].text;  cap2.dataset.n = "2";
+    /* Ползунок свободного параметра показывает иллюстративное значение,
+       а диаграмма случая нарисована при своём — об этом и подпись. */
+    [cap1, cap2].forEach((cap, i) => {
+      const t = caseDrawn(fk.cases[i].vals);
+      cap.innerHTML = esc(fk.cases[i].text) + (t ? ' <span class="capv">— нарисовано при ' + t + "</span>" : "");
+      cap.dataset.n = String(i + 1);
+    });
     lead.hidden = false;
     /* Направление берётся из самого шока: в задаче 6 α падает, и фраза
        «рост α поворачивает кривую…» описывала бы не её. Сторону от k = 1 решает
@@ -3085,13 +3137,14 @@ function renderOutcomes(){
     if (!revealed) return;
     const dr = rowsAt(pn.vals), dsig = dr ? dr[dr.length - 1].lr.join(",") : "";
     outs.sort((a, b) => a.at[free[0]] - b.at[free[0]]);
-    /* пример — не граница, поэтому круглится: 0,200, 0,0008 */
-    const ex = v => v >= 0.01 ? num(v, 3) : numV(+v.toPrecision(2));
+    /* У нарисованного исхода пример — то самое значение, при котором
+       нарисована картинка: иначе рядом с «(нарисован)» стояло число из
+       середины области, а картинка была при другом. */
     ol.innerHTML = "<b>Все исходы" + (fk ? " в случае " + esc(fk.cases[n].text) : "") +
-      " — долгосрочно:</b><ul>" + outs.map(o => "<li>" +
-        VARS.map((v, j) => v + " " + FX[o.lr[j]].gl).join(", ") + " — например, при " +
-        free.map(k => META[k].sym + " = " + ex(o.at[k])).join(", ") +
-        (o.sig === dsig ? " <i>(нарисован)</i>" : "") + "</li>").join("") + "</ul>";
+      " — долгосрочно:</b><ul>" + outs.map(o => { const at = o.sig === dsig ? pn.vals : o.at;
+        return "<li>" + VARS.map((v, j) => v + " " + FX[o.lr[j]].gl).join(", ") + " — например, при " +
+          free.map(k => META[k].sym + " = " + exNum(at[k])).join(", ") +
+          (o.sig === dsig ? " <i>(нарисован)</i>" : "") + "</li>"; }).join("") + "</ul>";
   });
 }
 
@@ -3156,9 +3209,12 @@ function renderReadout(){
   const freeRo = freeKeys();
   const note = document.getElementById("ro-note");
   note.hidden = !freeRo.length;
+  const fkRo = forkCase();
   if (freeRo.length)
     note.innerHTML = "Свободные параметры (" + freeRo.map(k => META[k].sym).join(", ") +
-      ") взяты иллюстративными — эти числа показывают картинку, а не ответ.";
+      ") взяты иллюстративными — эти числа показывают картинку, а не ответ." +
+      (fkRo ? " На развилке у каждой диаграммы своя калибровка: " + fkRo.cases.map(c => {
+        const t = caseDrawn(c.vals); return esc(c.text) + (t ? " — " + t : " — как на ползунке"); }).join("; ") + "." : "");
   const act = active(), blk = document.getElementById("roblock");
   blk.hidden = !revealed || !act.length;
   if (blk.hidden) return;
@@ -4347,6 +4403,10 @@ PANES.forEach(bindPane);
 document.querySelectorAll("[data-far]").forEach(b => b.addEventListener("click", () => {
   const P = PANE[b.dataset.far];
   if (P.far){ P.view = {...P.far.view}; drawMain(); }
+}));
+document.querySelectorAll("[data-tight]").forEach(b => b.addEventListener("click", () => {
+  const P = PANE[b.dataset.tight];
+  if (P.tightView){ P.view = {...P.tightView}; drawMain(); }
 }));
 
 document.getElementById("clearpts").addEventListener("click", () => {
