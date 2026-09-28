@@ -691,7 +691,8 @@ const overlaps = pads => {
     if (!r.btn) noBtn.push(i + 1);
     r.out.forEach(x => unlinked.push({задача: i + 1, ...x}));
   }
-  ok('Р11: в начале каждого разбора — кнопка «Конспект»', noBtn.length === 0, noBtn);
+  /* кнопку «Конспект» в начале разбора автор убрал: она дублировала кнопку у гайда */
+  ok('Р11: в начале разбора лишней кнопки «Конспект» нет', noBtn.length === PN4, noBtn);
   ok('Р11: первое упоминание термина в разборе — ссылка на свой пункт', unlinked.length === 0, unlinked.slice(0, 5));
   if (kb.dlg){
     await ev(()=>document.querySelector('[data-p="0"]').click()); await p.waitForTimeout(350);

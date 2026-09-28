@@ -165,8 +165,6 @@
   }
   .kref:hover{text-decoration-style:solid;text-decoration-color:var(--ink)}
   .kref:focus-visible{outline:2px solid var(--ink);outline-offset:1px;border-radius:2px}
-  .solution .kons-at{margin:12px 0 0;font-size:13px;color:var(--muted)}
-  .solution .kons-at .btn{margin-right:6px}
 
   .work{display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:34px}
   .plots{min-width:0}
@@ -265,7 +263,7 @@
   .fx-wrap{overflow-x:auto}
   .fx{border-collapse:collapse;font-size:14px;width:auto;max-width:980px;min-width:620px}
   .fxhead{display:flex;align-items:center;justify-content:space-between;gap:14px;
-    flex-wrap:wrap;margin:0 0 10px}
+    flex-wrap:wrap;margin:18px 0 10px}
   .fxhead h2{margin:0;font-size:17px;font-weight:700}
   .pathsblock{margin:26px 0 30px}
   .pathgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -783,20 +781,20 @@
 
       <div class="notes" id="notes"></div>
 
-      <!-- Числа стационаров — часть ответа, поэтому открываются вместе с ним
-           и стоят под таблицей, а не в панели. -->
-      <div class="roblock" id="roblock" hidden>
-        <h2 id="ro-cap">Показатели</h2>
-        <div class="ro-wrap"><table class="readout"><thead id="ro-head"></thead><tbody id="ro"></tbody></table></div>
-        <p class="hintline" id="ro-note" hidden></p>
-      </div>
-
       <div class="pathsblock" id="pathsblock" hidden>
         <div class="fxhead">
           <h2>Как это происходит во времени</h2>
         </div>
         <div id="pathrows"></div>
         <p class="pathnote" id="pathnote"></p>
+      </div>
+
+      <!-- Числа стационаров — часть ответа, поэтому открываются вместе с ним
+           и стоят под таблицей и траекториями, а не в панели. -->
+      <div class="roblock" id="roblock" hidden>
+        <h2 id="ro-cap">Показатели</h2>
+        <div class="ro-wrap"><table class="readout"><thead id="ro-head"></thead><tbody id="ro"></tbody></table></div>
+        <p class="hintline" id="ro-note" hidden></p>
       </div>
 
     </div>
@@ -2190,11 +2188,8 @@ function legendItems(sts){
   });
   if (sts.some(x => x.final && x.axis)) it.push({c: col("--res"), t: "новое равновесие", w: 3});
   if (sts.some(x => x.short && x.axis))
-    it.push({c: col("--res"), t: "скачок — куда попали сразу", w: 2, dash: true});
+    it.push({c: col("--res"), t: "скачок — сразу после всех шоков", w: 2, dash: true});
   if (showGold) it.push({c: col("--gold"), t: "golden rule", w: 2.4, dot: true});
-  if (sts.some(x => /^k/.test(x.mark) && x.axis))
-    it.push({note: true, t: "kᵢ — где оказалась бы экономика с одним шоком i: у K и L — сразу, " +
-                            "у остальных — в новом стационаре"});
   return it;
 }
 
@@ -4020,9 +4015,6 @@ function renderProblems(){
   el.innerHTML = "<h3>" + esc(q.title) + "</h3>" +
     '<p class="ask">' + q.ask + "</p>" +
     "<details><summary>Показать разбор</summary>" +
-      '<p class="kons-at"><button type="button" class="btn ghost small" data-kn="0" ' +
-        'aria-haspopup="dialog">Конспект</button>определения, на которые ссылается разбор; ' +
-        "подчёркнутое слово открывает свой пункт.</p>" +
       '<ol class="why">' + q.why.map(
         st => "<li><b>" + st[0] + "</b>" +
               whySteps([].concat(st[1])) +
