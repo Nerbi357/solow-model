@@ -62,7 +62,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
      rng.filter(r=>['d','a'].includes(r.k)).every(r=>r.min===(r.k==='a'?0.005:0.001) && r.max===(r.k==='a'?0.999:0.999999)), rng);
   const box = async (id,v) => { await ev(([id,v])=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('change',{bubbles:true}));},[id,v]); await p.waitForTimeout(260); };
   // Граница — соглашение, и она не имеет права решать ответ: 0,01 у s
-  // в задаче 5 в одиночку решало знак. Граница модели и граница ползунка —
+  // в задаче про n и α в одиночку решало знак. Граница модели и граница ползунка —
   // две разные вещи: ползунок стоит на сетке своего шага, а до 0,000001
   // значение доводится числом в ячейке.
   ok('s: ползунок начинается с кратного шагу 0,001',
@@ -164,9 +164,10 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   const EXPECT = {
     0: {rows:['↓↓↓↓====','↓↓↓↓====','↓↓↓↓===='], free:['s','d','a']},
     1: {rows:['==↓↑↑↑?↑','====↓↓↓↓','==↓↑↑↑?↑'], free:['a']},
-    2: {rows:['↑↑↑↑====','====↓↓↓↓','↑↑↑↑↓↓↓↓'], free:['s','d','a']},
-    3: {rows:['==↓↑↑↑↑↑','?=??????','?=??????'], free:['d']},
-    4: {rows:['====↓↓↓↓','?=??????','?=??????'], free:['s']}
+    2: {rows:['==↓↑↑↑?↑','====↓↓↓↓','==↓↑↓↓↓?'], free:['a']},
+    3: {rows:['↑↑↑↑====','====↓↓↓↓','↑↑↑↑↓↓↓↓'], free:['s','d','a']},
+    4: {rows:['==↓↑↑↑↑↑','?=??????','?=??????'], free:['d']},
+    5: {rows:['====↓↓↓↓','?=??????','?=??????'], free:['s']}
   };
 
   for (const [i, exp] of Object.entries(EXPECT)){
@@ -183,7 +184,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   /* Пороги убраны: при нескольких свободных параметрах число было верно
      только для одной случайной калибровки, а выглядело как ответ. */
   ok('под таблицей нет выдуманных порогов', !/растёт при|падает при/.test(notes), notes.slice(0,160));
-  await loadP(3); await show();
+  await loadP(4); await show();
   const n3 = await ev(()=>document.getElementById('notes').textContent.replace(/\s+/g,' '));
   ok('и в задаче со сплошными «?» их тоже нет', n3.trim() === '', n3.slice(0,160));
 
@@ -306,7 +307,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
 
   /* На развилке диаграмм две, и в файл обязаны попасть обе: раньше PNG
      звал renderMain один раз и без калибровки случая. */
-  await loadP(3);
+  await loadP(4);
   const dl2 = p.waitForEvent('download', {timeout:9000});
   await p.locator('#png').click();
   const d2 = await dl2;
@@ -376,9 +377,12 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
      return got && open && shut;
   })());
 
+  /* видимые — значит и не внутри свёрнутого <details>: у его содержимого
+     offsetParent есть, а сфокусировать его нельзя, пока блок закрыт */
   ok('все контролы доступны с клавиатуры', await ev(()=>
      [...document.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled])')]
-       .filter(el=>!el.hidden && el.offsetParent!==null && !el.disabled)
+       .filter(el=>!el.hidden && el.offsetParent!==null && !el.disabled &&
+                   (el.checkVisibility ? el.checkVisibility() : true))
        .every(el=>{el.focus();return document.activeElement===el;})));
   ok('canvas учитывает devicePixelRatio', await ev(()=>{
      const c=document.getElementById('main');
@@ -386,7 +390,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
   ok('внешних запросов нет', net.length===0, net);
   ok('ошибок в консоли нет', errs.length===0, errs);
 
-  await loadP(3); await show();
+  await loadP(4); await show();
   await b.close();
 
   const fails = R.filter(r=>r[0]==='FAIL');

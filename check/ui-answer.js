@@ -122,7 +122,7 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
   ok('сменили форму — условие всё ещё есть', (await sol()) !== null, await ev(()=>probIdx));
   await ev(()=>{ document.querySelector('[data-del="0"]').click(); }); await wait(450);
   ok('убрали шок — условие исчезло', (await sol()) === null, await ev(()=>probIdx));
-  await load(2);
+  await load(3);
   await ev(()=>{ document.getElementById('addsel').value='n'; document.getElementById('add').click(); });
   await wait(450);
   ok('добавили свой шок — условие исчезло', (await sol()) === null, await ev(()=>probIdx));
@@ -202,7 +202,7 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
 
   /* Параметр, помеченный в base как заданный, обязан быть назван в условии.
      Иначе перебор считает его известным, разбор на него ссылается, а студент
-     этого числа в задаче не видит — ровно так δ = 0,05 в задаче 5 полгода
+     этого числа в задаче не видит — ровно так δ = 0,05 в задаче про n и α полгода
      работала как данность, которой в условии не было. */
   const untold = await ev(()=>{
     const bad = [];
@@ -271,14 +271,15 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
      иначе, а текст остался прежним. Поэтому у каждого вопроса есть ключ —
      тот же ответ стрелками, — и он сверяется с последней строкой таблицы,
      с тем, что в ней видно после «Показать ответ», а на развилке ещё и
-     с каждым случаем. Клетка случая «·» — разбор о ней молчит. */
-  ok('у каждого вопроса разбора есть ключ ответа',
+     с каждым случаем. Молчать о клетке случая разбор не имеет права:
+     раньше «·» пропускала c справа в задаче про s и α, и студент ставил
+     там «?», хотя ответ определён. */
+  ok('у каждого вопроса разбора есть ключ ответа, и в случаях он полный',
      await ev(()=>PROBLEMS.every(q=>q.why.length === 3 && Array.isArray(q.why[0][3]) &&
        [1,2].every(j=>{ const k = q.why[j][3];
-         const all = x => typeof x === 'string' && /^[↑↓=?]{4}$/.test(x),
-               one = x => typeof x === 'string' && /^[↑↓=?·]{4}$/.test(x);
-         return all(k) || (!!k && all(k.all) && one(k.lo) && one(k.hi)); }))));
-  const keyBad = [], silent = [];
+         const all = x => typeof x === 'string' && /^[↑↓=?]{4}$/.test(x);
+         return all(k) || (!!k && all(k.all) && all(k.lo) && all(k.hi)); }))));
+  const keyBad = [];
   const nP = await ev(()=>PROBLEMS.length);
   for (let i = 0; i < nP; i++){
     await load(i);
@@ -310,7 +311,6 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
     if (perCase && r.cases.lo) ['lo', 'hi'].forEach(sd=>{
       const kk = r.key[1][sd] + '|' + r.key[2][sd], pg = r.cases[sd];
       for (let c = 0; c < kk.length; c++){
-        if (kk[c] === '·'){ silent.push(t + (sd === 'lo' ? ', k < 1, ' : ', k > 1, ') + (c < 4 ? 'кратко ' : 'долго ') + 'ykci'[c < 4 ? c : c - 5]); continue; }
         if (kk[c] !== pg[c]){ keyBad.push({[t]:'случай ' + (sd === 'lo' ? 'k < 1' : 'k > 1'), ключ:kk, перебор:pg}); break; }
         if (!r.visCases || kk[c] !== r.visCases[sd][c]){
           keyBad.push({[t]:'строка случая ' + (sd === 'lo' ? 'k < 1' : 'k > 1') + ' в таблице', ключ:kk,
@@ -318,8 +318,7 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
       }
     });
   }
-  ok('ключ ответа разбора совпадает с таблицей и случаями', keyBad.length === 0,
-     keyBad.length ? keyBad.slice(0, 4) : (silent.length ? {разбор_молчит:silent} : undefined));
+  ok('ключ ответа разбора совпадает с таблицей и случаями', keyBad.length === 0, keyBad.slice(0, 4));
   /* «?» в ключе — значит в ответе словами сказано, что определить нельзя,
      и наоборот: иначе ключ сверяется с таблицей, а текст живёт своей жизнью. */
   const talk = await ev(()=>{ const bad = [];

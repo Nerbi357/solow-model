@@ -66,7 +66,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
      (await legend()).some(s => s === 'новое равновесие'), await legend());
 
   /* ---- 2.i: живы обе точки, и «new» по-прежнему одна ---- */
-  await load(2);
+  await load(3);
   const m2 = await marks();
   ok('2.i — есть и скачок, и новое равновесие',
      m2.indexOf('скачок') >= 0 && m2.indexOf('new') >= 0, m2);
@@ -108,11 +108,11 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
     const f = forkCase();
     return {key: f && f.key, two: !document.getElementById('fork2').hidden};
   }); };
-  for (const i of [0, 1, 2]){
+  for (const i of [0, 1, 2, 3]){
     const f = await fork(i);
     ok('задача ' + (i+1) + ': α не меняется — развилки нет', f.key === null && !f.two, f);
   }
-  for (const i of [3, 4]){
+  for (const i of [4, 5]){
     const f = await fork(i);
     ok('задача ' + (i+1) + ': α меняется при свободном параметре — две диаграммы',
        f.key !== null && f.two, f);
@@ -157,7 +157,7 @@ const R = []; const ok = (n, c, x) => R.push([c ? 'PASS' : 'FAIL', n, x === unde
 
   /* display в классе перебивал атрибут hidden, и подпись случая оставалась
      висеть после того, как шоки убрали. */
-  await load(3);
+  await load(4);
   while (await ev(()=>!!document.querySelector('[data-del]'))){
     await ev(()=>document.querySelector('[data-del]').click());
     await p.waitForTimeout(300);

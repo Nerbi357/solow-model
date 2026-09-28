@@ -66,9 +66,9 @@ const overlaps = pads => {
   // ---- K4, A7-01: текст над развилкой ----
   await go('#b=s:0.2:0,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1');
   const lead5 = await ev(()=>document.getElementById('forklead').textContent);
-  ok('K4: α падает — текст говорит о падении α', /падение α/.test(lead5) && !/рост α/.test(lead5), lead5.slice(60, 170));
+  ok('K4: α падает — текст говорит о падении α', /падение α/i.test(lead5) && !/рост α/i.test(lead5), lead5.slice(60, 170));
   await go('#b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
-  ok('K4: α растёт — текст говорит о росте α', /рост α/.test(await ev(()=>document.getElementById('forklead').textContent)));
+  ok('K4: α растёт — текст говорит о росте α', /рост α/i.test(await ev(()=>document.getElementById('forklead').textContent)));
   await go('#b=s:0.5:0,d:0.1:0,n:0:0,g:0:0,a:0.3:0&k=a:set:0.6:1');
   const leadAll = await ev(()=>document.getElementById('forklead').textContent);
   ok('A7-01: названы все свободные из s, δ, n, g, а не первый', /s, δ, n и g/.test(leadAll), leadAll.slice(150, 260));
@@ -95,7 +95,7 @@ const overlaps = pads => {
 
   // ---- A8-01, A6-03: подписи уровней не наезжают ----
   for (const [nm, h] of [['траектории при α → 0,95', '#b=s:0.3:1,d:0.05:1,n:0:1,g:0:1,a:0.5:1&k=a:set:0.95:1'],
-                         ['задача 4, ось y', '#b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'],
+                         ['задача 5, ось y', '#b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'],
                          ['близкие y_old и y_new', '#b=s:0.25:1,d:0.08:1,n:0:1,g:0:1,a:0.35:1&k=s:add:0.001:1;d:add:0.0005:1;K:mul:1.01:1']]){
     await go(h); await reveal();
     await ev(()=>{window.__pads = []; drawMain(); if (typeof drawPaths === 'function') drawPaths();});
@@ -179,7 +179,7 @@ const overlaps = pads => {
   const s5 = await same();
   ok('W3-05: три одинаковые линии — одна фраза, и видна последняя', !!s5 && (s5.match(/дают/g) || []).length === 1 &&
      /видна только линия шока «δ/.test(s5) && /остальные/.test(s5), s5);
-  for (let i = 0; i < 5; i++){
+  for (let i = 0; i < await ev(()=>PROBLEMS.length); i++){
     await ev(i=>document.querySelector('[data-p="' + i + '"]').click(), i); await p.waitForTimeout(500);
     ok('W3-04: в задаче ' + (i + 1) + ' заметки о совпавших линиях нет', (await ev(()=>['same1','same2'].every(id=>{const e=document.getElementById(id); return !e || e.hidden;}))));
   }
@@ -370,9 +370,9 @@ const overlaps = pads => {
      await ev(()=>document.getElementById('fxunits').textContent));
 
   // ---- Р3: строки случаев в таблице ----
-  /* Задача 4: у строки α и у «итого» ответ по случаям разный — под ними
+  /* Задача 5: у строки α и у «итого» ответ по случаям разный — под ними
      вложенные строки «k < 1» и «k > 1»; у строки s одинаковый — вложенных нет. */
-  await go('#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
+  await go('#p=4&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
   const cr0 = await ev(()=>[...document.querySelectorAll('#fx tr')].map(tr => (tr.classList.contains('case') ? '  ' : '') +
     tr.querySelector('th').textContent.trim() + ' ' + [...tr.querySelectorAll('td.v')].map(t=>t.textContent.trim()).join('')));
   ok('Р3: под строкой α и под «итого» — строки случаев, под строкой s — нет',
@@ -386,21 +386,21 @@ const overlaps = pads => {
          out.push(r.sr.concat(r.lr).map(x=>G[x]).join('')); })); return out; })), cr1);
 
   // ---- Р3: траектории — «сразу · потом», а не общий «?» ----
-  /* Задача 5, случай k < 1: сразу y, c, i растут, потом не определено. */
-  await go('#p=4&b=s:0.2:0,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1'); await reveal();
+  /* Задача 6, случай k < 1: сразу y, c, i растут, потом не определено. */
+  await go('#p=5&b=s:0.2:0,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1'); await reveal();
   const pq = await ev(()=>[...document.querySelectorAll('#pathrows .pathq')].map(e=>e.textContent.replace(/\s+/g,' ').trim()));
-  ok('Р3: в траектории задачи 5 при k < 1 — «сразу ↑ · потом ?» у y, c и i',
+  ok('Р3: в траектории задачи 6 при k < 1 — «сразу ↑ · потом ?» у y, c и i',
      ['y','c','i'].every(v => pq.some(t => t.startsWith(v) && /сразу ↑ · потом \?/.test(t))), pq);
 
   // ---- Р4: один из возможных исходов ----
-  await go('#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
+  await go('#p=4&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
   const oc0 = await ev(()=>{ const c = document.getElementById('oc1'), l = document.getElementById('ol1');
     return {cap: c && !c.hidden ? c.textContent : null, list: !l || l.hidden}; });
   ok('Р4: над диаграммой «k < 1» — «один из возможных исходов»', /[Оо]дин из возможных исходов/.test(oc0.cap || ''), oc0);
   ok('Р4: а список исходов — только вместе с ответом', oc0.cap !== null && oc0.list === true, oc0);
   await reveal();
   const ol = await ev(()=>[...document.querySelectorAll('#ol1 li')].map(li=>li.textContent.replace(/\s+/g,' ').trim()));
-  ok('Р4: исходов в случае k < 1 задачи 4 — четыре, у каждого пример δ, нарисованный помечен',
+  ok('Р4: исходов в случае k < 1 задачи 5 — четыре, у каждого пример δ, нарисованный помечен',
      ol.length === 4 && ol.every(t=>/δ = /.test(t)) && ol.filter(t=>/нарисован/.test(t)).length === 1, ol);
 
   // ---- Р5: шок «→ новое» до исходного значения ----
@@ -444,7 +444,7 @@ const overlaps = pads => {
   const ro1 = await ev(()=>[...document.querySelectorAll('#ro tr')].map(tr=>tr.textContent.replace(/\s+/g,' ').trim()));
   const roh = await ev(()=>(document.getElementById('ro-head') || {textContent: ''}).textContent);
   ok('Р6: рядом с новым значением — старое', /было.*стало/.test(roh) && ro1.some(t=>/^y\* — выпуск\s*\d/.test(t)), {roh, ro1});
-  await go('#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'); await reveal();
+  await go('#p=4&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'); await reveal();
   const ro2 = await ev(()=>[...document.querySelectorAll('#ro-head th')].map(t=>t.textContent.trim()));
   ok('Р6: на развилке — две колонки, по калибровкам диаграмм', ro2.some(t=>/k < 1/.test(t)) && ro2.some(t=>/k > 1/.test(t)), ro2);
 
@@ -542,15 +542,176 @@ const overlaps = pads => {
   const glyphSize = pg => pg.evaluate(()=>{ const par = document.querySelector('#fx tr:not(.case) td.v'),
     cs = document.querySelector('#fx tr.case td.v');
     return [getComputedStyle(par).fontSize, cs ? getComputedStyle(cs).fontSize : null]; });
-  await go('#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'); await reveal();
+  await go('#p=4&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'); await reveal();
   const gs1 = await glyphSize(p);
   ok('Р3: стрелки в строках случаев того же кегля, что в строке над ними', gs1[0] === gs1[1], gs1);
-  await q.goto(BASE + '#p=3&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1', {waitUntil:'networkidle'});
+  await q.goto(BASE + '#p=4&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1', {waitUntil:'networkidle'});
   await q.waitForTimeout(600);
   await q.evaluate(()=>{ const r = document.getElementById('reveal'); if (r && !r.disabled) r.click(); });
   await q.waitForTimeout(400);
   const gs2 = await glyphSize(q);
   ok('Р3: и во вложенных карточках на телефоне', gs2[0] === gs2[1], gs2);
+
+  // ======================= фаза 4: разборы и «Конспект» =======================
+  const GL = {up:'↑', down:'↓', same:'=', dunno:'?'};
+  const lastLR = async h => { await go(h);
+    return ev(G=>{ const r = sweepCached(); return r[r.length-1].lr.map(x=>G[x]).join(''); }, GL); };
+  const PN4 = await ev(()=>PROBLEMS.length);
+  /* весь текст разборов и условий — для проверок на слова */
+  const allText = await ev(()=>PROBLEMS.map(q => [q.ask].concat(q.why.map(w => [].concat(w[1]).join(' ') + ' ' + w[2]))
+    .join(' ').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&#8722;/g, '−').replace(/&#8594;/g, '→')
+    .replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/\s+/g, ' ')));
+  const byTitle = async re => ev(src => PROBLEMS.findIndex(q => new RegExp(src).test(q.title)), re.source);
+
+  // ---- Р12: порядок задач и новая задача 3 ----
+  const titles = await ev(()=>PROBLEMS.map(q=>q.title));
+  ok('Р12: шесть задач от простой к сложной', JSON.stringify(titles) === JSON.stringify([
+    'Задача 1. K вниз, L вверх', 'Задача 2. s вверх, δ вверх', 'Задача 3. s вверх, δ вверх',
+    'Задача 4. K вверх, g вверх', 'Задача 5. s вверх, α вверх', 'Задача 6. n вверх, α вниз']), titles);
+  const sub3 = await ev(()=>{ const b = document.querySelector('#probs [data-p="2"] small'); return b ? b.textContent : ''; });
+  ok('Р12: задача 3 — s 0,20 → 0,22 и δ 0,05 → 0,06', /s\s*0,20*\s*→\s*0,220*/.test(sub3) && /δ\s*0,050*\s*→\s*0,060*/.test(sub3), sub3);
+  ok('Р12: гайд знает, что задач шесть', await ev(()=>/шесть задач/.test(document.getElementById('guide').textContent)));
+  const i3 = await byTitle(/^Задача 3\. s вверх, δ вверх$/);
+  ok('Р12: задача 3 — порог по α назван, и модель с ним согласна',
+     i3 === 2 && /0,52/.test(allText[2]) &&
+     (await lastLR('#b=s:0.2:1,d:0.05:1,n:0:1,g:0:1,a:0.5:1&k=s:set:0.22:1;d:set:0.06:1')) === '↓↓↓↑' &&
+     (await lastLR('#b=s:0.2:1,d:0.05:1,n:0:1,g:0:1,a:0.55:1&k=s:set:0.22:1;d:set:0.06:1')) === '↓↓↓↓', allText[2] && allText[2].slice(0, 80));
+  ok('Р12: задача 3 показывает, почему пункты ошибаются', /пункт/.test(allText[2] || '') && /0,005·k₀/.test(allText[2] || ''));
+
+  // ---- Р11: мелкие правки разборов ----
+  const banned = [];
+  allText.forEach((t, i) => [/за период/, /рубл/, /переносит вес/, /неправдоподобн/, /α — снизилась/].forEach(re => {
+    if (re.test(t)) banned.push({задача: i + 1, фраза: t.match(new RegExp('.{0,30}' + re.source + '.{0,20}'))[0]}); }));
+  ok('Р11: нет «за период», «рубля на работника», «переносит вес», «неправдоподобна», «α — снизилась»', banned.length === 0, banned);
+  const midCalc = await ev(()=>{ const bad = [];
+    PROBLEMS.forEach((q, i) => q.why.forEach((st, j) => [].concat(st[1]).forEach((t, k) => {
+      const n = (t.match(/<code class="calc">/g) || []).length;
+      const tail = n ? t.slice(t.lastIndexOf('</code>') + 7).replace(/<[^>]+>/g, '').trim() : '';
+      if (n > 1 || tail) bad.push((i + 1) + '.' + (j + 1) + '.' + (k + 1)); })));
+    return bad; });
+  ok('Р11: выкладка стоит в конце своего шага, одна на шаг', midCalc.length === 0, midCalc);
+  ok('Р11: 1 − 0,64 = 0,36 выведено', /1 − 0,64 = 0,36/.test(allText[0]));
+  ok('Р11: строка δ краткосрочно объяснена в задачах 2 и 3',
+     /строк\S* δ/i.test(allText[1]) && /строк\S* δ/i.test(allText[2] || ''));
+  ok('Р11: задача 2 — i = s·y, выросли оба множителя', /оба множителя/.test(allText[1]));
+  ok('Р11: задача 2 — потребление при α = 0,18 падает, при α = 0,20 растёт, и модель согласна',
+     /0,18/.test(allText[1]) && /0,20/.test(allText[1]) &&
+     (await lastLR('#b=s:0.1:1,d:0.1:1,n:0:1,g:0:1,a:0.18:1&k=s:set:0.2:1;d:set:0.12:1')) === '↑↑↓↑' &&
+     (await lastLR('#b=s:0.1:1,d:0.1:1,n:0:1,g:0:1,a:0.2:1&k=s:set:0.2:1;d:set:0.12:1')) === '↑↑↑↑');
+  const i4 = await byTitle(/K вверх, g вверх/);
+  const sub4 = await ev(i=>{ const b = document.querySelector('#probs [data-p="' + i + '"] small'); return b ? b.textContent : ''; }, i4);
+  ok('Р11: шок по g записан одинаково — в подписи, в карточке и в разборе',
+     /g\s*0,0+\s*→\s*0,050*/.test(sub4) && /g: 0 → 0,05/.test(allText[i4] || ''), sub4);
+  ok('Р11: задача с g — почему хватает разности и весь путь точки',
+     /разност/i.test(allText[i4] || '') && /1,1·k₀/.test(allText[i4] || '') && /мимо/.test(allText[i4] || ''));
+
+  // ---- Р9, Р10: задача про s и α ----
+  const i5 = await byTitle(/s вверх, α вверх/), tx5 = allText[i5] || '';
+  ok('Р10: строка s — потребление +1,6% при любой δ, справа — не меньше +2,6%', /1,6%/.test(tx5) && /2,6%/.test(tx5));
+  ok('Р9: пороги слева названы, и модель с ними согласна',
+     /0,76/.test(tx5) && /0,32/.test(tx5) && /0,253/.test(tx5) &&
+     /маловероятн\S*, но условие (её )?не исключает — учитываем/.test(tx5) &&
+     (await lastLR('#b=s:0.2:1,d:0.25:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1')) === '↑↑↑↑' &&
+     (await lastLR('#b=s:0.2:1,d:0.257:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1')) === '↑↑↓↑' &&
+     (await lastLR('#b=s:0.2:1,d:0.33:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1')) === '↓↑↓↑' &&
+     (await lastLR('#b=s:0.2:1,d:0.77:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1')) === '↓↓↓↓' &&
+     (await lastLR('#b=s:0.2:1,d:0.199:1,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1')) === '↑↑↑↑');
+
+  // ---- Р13: задача про n и α ----
+  const i6 = await byTitle(/n вверх, α вниз/), tx6 = allText[i6] || '';
+  ok('Р13: три исхода слева — пороги 0,09% и 1,22%, и модель с ними согласна',
+     /0,09%/.test(tx6) && /1,22%/.test(tx6) && /маловероятн\S*, но условие (её )?не исключает — учитываем/.test(tx6) &&
+     (await lastLR('#b=s:0.0008:1,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1')) === '↑↑↑↑' &&
+     (await lastLR('#b=s:0.001:1,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1')) === '↑↓↑↑' &&
+     (await lastLR('#b=s:0.012:1,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1')) === '↑↓↑↑' &&
+     (await lastLR('#b=s:0.0125:1,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1')) === '↓↓↓↓');
+  ok('Р13: ответ вопроса 3 называет три исхода', await ev(i=>{ const q = PROBLEMS[i]; return !!q && /1,22%/.test(q.why[2][2]) && /0,09%/.test(q.why[2][2]); }, i6));
+
+  // ---- формулировка про α (вариант В) ----
+  ok('РВ: в разборах с α кривая выпуска поворачивается вокруг (1; 1), а единица — не экономический порог',
+     [tx5, tx6].every(t => /поворачивается вокруг точки \(1; 1\)/.test(t) && /не экономический порог/.test(t)));
+  await go('#b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
+  const leadA = await ev(()=>document.getElementById('forklead').textContent);
+  await go('#b=s:0.2:0,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1');
+  const leadB = await ev(()=>document.getElementById('forklead').textContent);
+  ok('РВ: над развилкой — «поворачивает кривую выпуска» в нужную сторону',
+     /Рост α поворачивает кривую выпуска вокруг точки k = 1: правее выпуск растёт, левее падает/.test(leadA) &&
+     /Падение α поворачивает кривую выпуска вокруг точки k = 1: правее выпуск падает, левее растёт/.test(leadB), [leadA.slice(0, 160), leadB.slice(0, 160)]);
+
+  // ---- Р11: «Конспект» ----
+  await go('');
+  const kb = await ev(()=>{ const b = document.querySelector('.toprow > [data-kn="0"]'), g = document.getElementById('guide');
+    return {btn: !!b && !!g && b.parentElement === g.parentElement, dlg: !!document.getElementById('kons')}; });
+  ok('Р11: кнопка «Конспект» стоит рядом с гайдом', kb.btn && kb.dlg, kb);
+  if (kb.btn && kb.dlg){
+    await p.click('.toprow > [data-kn="0"]'); await p.waitForTimeout(250);
+    const k1 = await ev(()=>{ const d = document.getElementById('kons');
+      return {open: d.open, modal: d.matches(':modal'), items: d.querySelectorAll('.kn > li').length,
+              fig: !!d.querySelector('figure svg'), focus: d.contains(document.activeElement)}; });
+    ok('Р11: «Конспект» открывается поверх страницы — двенадцать пунктов и схема',
+       k1.open && k1.modal && k1.items === 12 && k1.fig && k1.focus, k1);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+    ok('Р11: Escape закрывает, фокус возвращается на кнопку', await ev(()=>!document.getElementById('kons').open &&
+       document.activeElement === document.querySelector('.toprow > [data-kn="0"]')));
+    await p.click('.toprow > [data-kn="0"]'); await p.waitForTimeout(200);
+    await p.click('#kons-x'); await p.waitForTimeout(200);
+    ok('Р11: крестик закрывает', await ev(()=>!document.getElementById('kons').open));
+    const kt = await ev(()=>document.getElementById('kons').textContent.replace(/\s+/g, ' '));
+    ok('Р11: замкнутой формулы стационара в «Конспекте» нет',
+       !/1\s*\/\s*\(\s*1\s*[−-]\s*α\s*\)/.test(kt) && !/k\*\s*=\s*\(/.test(kt) && !/переносит вес/.test(kt));
+    ok('Р11: формулировка про α в «Конспекте» — та же, с примером на числах',
+       /поворачивается вокруг точки \(1; 1\)/.test(kt) && /1,52/.test(kt) && /1,62/.test(kt) && /0,66/.test(kt) && /0,62/.test(kt));
+  } else ['открывается', 'Escape', 'крестик', 'формула', 'формулировка'].forEach(n => ok('Р11: «Конспект» — ' + n, false, 'окна нет'));
+
+  /* в начале каждого разбора — кнопка, первое упоминание термина — ссылка на свой пункт */
+  const TERMS = [[/капиталовооружённост/i, 1], [/крив\S* выпуска/i, 2], [/крив\S* инвестиций/i, 3], [/выбыти/i, 4],
+                 [/Δk/, 5], [/стационар/i, 6], [/краткосрочн/i, 7], [/долгосрочн/i, 7], [/золот/i, 11],
+                 [/единиц\S* эффективного труда/i, 12]].map(([re, n]) => [re.source, re.flags, n]);
+  const noBtn = [], unlinked = [];
+  for (let i = 0; i < PN4; i++){
+    await ev(i=>document.querySelector('[data-p="' + i + '"]').click(), i); await p.waitForTimeout(350);
+    const r = await ev(T => {
+      const d = document.querySelector('#solution details'); if (d) d.open = true;
+      const at = d && d.querySelector('summary + .kons-at [data-kn="0"]');
+      const out = [];
+      const steps = [...document.querySelectorAll('#solution .why .mini > li')];
+      T.forEach(([src, fl, n]) => {
+        const re = new RegExp(src, fl);
+        for (const li of steps){
+          const w = document.createTreeWalker(li, NodeFilter.SHOW_TEXT);
+          let node, hit = null;
+          while ((node = w.nextNode())) if (re.test(node.textContent)){ hit = node; break; }
+          if (hit){ const a = hit.parentElement.closest('.kref');
+            if (!a || +a.dataset.kn !== n) out.push({термин: src, шаг: li.textContent.slice(0, 60), ссылка: a && a.dataset.kn});
+            break; }
+        }
+      });
+      return {btn: !!at, out};
+    }, TERMS);
+    if (!r.btn) noBtn.push(i + 1);
+    r.out.forEach(x => unlinked.push({задача: i + 1, ...x}));
+  }
+  ok('Р11: в начале каждого разбора — кнопка «Конспект»', noBtn.length === 0, noBtn);
+  ok('Р11: первое упоминание термина в разборе — ссылка на свой пункт', unlinked.length === 0, unlinked.slice(0, 5));
+  if (kb.dlg){
+    await ev(()=>document.querySelector('[data-p="0"]').click()); await p.waitForTimeout(350);
+    await ev(()=>{ document.querySelector('#solution details').open = true; });
+    const ln = p.locator('#solution .kref[data-kn="6"]').first();
+    await ln.scrollIntoViewIfNeeded(); await ln.click(); await p.waitForTimeout(300);
+    const hit6 = await ev(()=>{ const d = document.getElementById('kons'), li = document.getElementById('kn-6');
+      const dr = d.getBoundingClientRect(), lr = li.getBoundingClientRect();
+      return {open: d.open, hit: li.classList.contains('kn-hit'), seen: lr.top >= dr.top && lr.top < dr.bottom - 40,
+              hash: location.hash.indexOf('kn-') < 0}; });
+    ok('Р11: ссылка из разбора открывает свой пункт и не трогает ссылку страницы', Object.values(hit6).every(Boolean), hit6);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+  }
+  /* на телефоне — во весь экран */
+  await m.goto(BASE, {waitUntil:'networkidle'}); await m.waitForTimeout(400);
+  const kph = await m.evaluate(async ()=>{ const b = document.querySelector('.toprow > [data-kn="0"]');
+    if (!b) return null; b.click(); await new Promise(r=>setTimeout(r, 250));
+    const r = document.getElementById('kons').getBoundingClientRect();
+    return {w: r.width, h: r.height, vw: innerWidth, vh: innerHeight, x: r.left, y: r.top}; });
+  ok('Р11: на телефоне «Конспект» во весь экран', !!kph && kph.w >= kph.vw - 1 && kph.h >= kph.vh - 1 && kph.x <= 0.5 && kph.y <= 0.5, kph);
 
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
