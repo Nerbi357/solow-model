@@ -392,16 +392,11 @@ const overlaps = pads => {
   ok('Р3: в траектории задачи 6 при k < 1 — «сразу ↑ · потом ?» у y, c и i',
      ['y','c','i'].every(v => pq.some(t => t.startsWith(v) && /сразу ↑ · потом \?/.test(t))), pq);
 
-  // ---- Р4: один из возможных исходов ----
-  await go('#p=4&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1');
-  const oc0 = await ev(()=>{ const c = document.getElementById('oc1'), l = document.getElementById('ol1');
-    return {cap: c && !c.hidden ? c.textContent : null, list: !l || l.hidden}; });
-  ok('Р4: над диаграммой «k < 1» — «один из возможных исходов»', /[Оо]дин из возможных исходов/.test(oc0.cap || ''), oc0);
-  ok('Р4: а список исходов — только вместе с ответом', oc0.cap !== null && oc0.list === true, oc0);
-  await reveal();
-  const ol = await ev(()=>[...document.querySelectorAll('#ol1 li')].map(li=>li.textContent.replace(/\s+/g,' ').trim()));
-  ok('Р4: исходов в случае k < 1 задачи 5 — четыре, у каждого пример δ, нарисованный помечен',
-     ol.length === 4 && ol.every(t=>/δ = /.test(t)) && ol.filter(t=>/нарисован/.test(t)).length === 1, ol);
+  // ---- Р4: подпись «один из возможных исходов» и список исходов автор убрал ----
+  /* Почему «?», объясняет разбор, а над и под диаграммой это только сбивало. */
+  await go('#p=4&b=s:0.2:1,d:0.1:0,n:0:1,g:0:1,a:0.3:1&k=s:set:0.22:1;a:set:0.35:1'); await reveal();
+  ok('Р4: над диаграммой нет «один из возможных исходов», под ней — списка исходов',
+     await ev(()=>!/возможных исходов|Все исходы/.test(document.querySelector('.work').textContent)));
 
   // ---- Р5: шок «→ новое» до исходного значения ----
   await go('');
@@ -594,8 +589,9 @@ const overlaps = pads => {
   ok('Р11: строка δ краткосрочно объяснена в задачах 2 и 3',
      /строк\S* δ/i.test(allText[1]) && /строк\S* δ/i.test(allText[2] || ''));
   ok('Р11: задача 2 — i = s·y, выросли оба множителя', /оба множителя/.test(allText[1]));
-  ok('Р11: задача 2 — потребление при α = 0,18 падает, при α = 0,20 растёт, и модель согласна',
-     /0,18/.test(allText[1]) && /0,20/.test(allText[1]) &&
+  /* Порог у «?» разбор называет справочно, без вывода: главное — какие силы спорят. */
+  ok('Р11: задача 2 — порог потребления α ≈ 0,187 назван, и модель по обе стороны согласна',
+     /0,187/.test(allText[1]) && /Однако мы не можем точно сказать/.test(allText[1]) &&
      (await lastLR('#b=s:0.1:1,d:0.1:1,n:0:1,g:0:1,a:0.18:1&k=s:set:0.2:1;d:set:0.12:1')) === '↑↑↓↑' &&
      (await lastLR('#b=s:0.1:1,d:0.1:1,n:0:1,g:0:1,a:0.2:1&k=s:set:0.2:1;d:set:0.12:1')) === '↑↑↑↑');
   const i4 = await byTitle(/K вверх, g вверх/);
@@ -721,21 +717,13 @@ const overlaps = pads => {
   const w401 = await ev(()=>{
     const fk = forkCase(), f3 = v => v.toFixed(3).replace('.', ',');
     const d = fk.cases.map(c => f3(c.vals.d));
-    const drawnLi = [...document.querySelectorAll('#ol1 li')].find(li => /нарисован/.test(li.textContent));
     return {d, cap: [1, 2].map(i => document.getElementById('cap' + i).textContent),
-            li: drawnLi ? drawnLi.textContent : null,
             ro: (document.getElementById('ro-note') || {textContent: ''}).textContent};
   });
   ok('W4-01: подпись случая называет, при каком δ он нарисован',
      w401.cap[0].indexOf('δ = ' + w401.d[0]) >= 0 && w401.cap[1].indexOf('δ = ' + w401.d[1]) >= 0, w401);
-  ok('W4-01: у исхода «(нарисован)» — нарисованное значение, а не середина области',
-     !!w401.li && w401.li.indexOf('δ = ' + w401.d[0]) >= 0, w401.li);
   ok('W4-01: «Показатели» на развилке называют калибровку каждой диаграммы',
      w401.ro.indexOf('δ = ' + w401.d[0]) >= 0 && w401.ro.indexOf('δ = ' + w401.d[1]) >= 0, w401.ro);
-  await go('#p=1&b=s:0.1:1,d:0.1:1,n:0:1,g:0:1,a:0.3333333333333333:0&k=s:set:0.2:1;d:set:0.12:1'); await reveal();
-  const w401b = await ev(()=>{ const li = [...document.querySelectorAll('#ol1 li')].find(li => /нарисован/.test(li.textContent));
-    return li ? li.textContent : null; });
-  ok('W4-01: и на одиночной диаграмме — α = 0,333, при котором она нарисована', !!w401b && /α = 0,333/.test(w401b), w401b);
 
   // ---- W4-02, W4-14: слипшиеся линии названы, и приблизить можно пальцем ----
   const H6 = '#p=5&b=s:0.2:0,d:0.05:1,n:0:1,g:0:1,a:0.4:1&k=n:set:0.02:1;a:set:0.35:1';
@@ -757,14 +745,14 @@ const overlaps = pads => {
   const txt4 = await ev(()=>PROBLEMS.map(q => [q.ask].concat(q.why.map(w => [].concat(w[1]).join(' ') + ' ' + w[2]))
     .join(' ').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&#8722;/g, '−').replace(/&#8594;/g, '→')
     .replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/\s+/g, ' ')));
-  ok('W4-06: в задаче 2 граница α ≈ 0,187 выведена, и модель с ней согласна',
-     /0,187/.test(txt4[1]) && /ln 1,875/.test(txt4[1]) &&
+  ok('W4-06: в задаче 2 граница α ≈ 0,187 названа справочно, и модель с ней согласна',
+     /0,187/.test(txt4[1]) &&
      (await lastLR('#b=s:0.1:1,d:0.1:1,n:0:1,g:0:1,a:0.185:1&k=s:set:0.2:1;d:set:0.12:1')) === '↑↑↓↑' &&
      (await lastLR('#b=s:0.1:1,d:0.1:1,n:0:1,g:0:1,a:0.19:1&k=s:set:0.2:1;d:set:0.12:1')) === '↑↑↑↑');
   ok('W4-03: разбор выводит строку δ и строку s, а не берёт их из закрытой таблицы',
      !txt4.some(t => /таблица краткосрочно даёт|Строка δ в таблице краткосрочно|Строка s таблицы долгосрочно даёт/.test(t)));
-  ok('W4-08, W4-09: в задаче про s и α промежуточные шаги цепочки и порога выписаны',
-     /1,1 · k₀0,70 = knew0,65/.test(txt4[4]) && /k₀0,05 < 1,1−0,35/.test(txt4[4]) && /0,98324/.test(txt4[4]), txt4[4].match(/.{0,40}k₀0,70.{0,40}/));
+  ok('W4-08: в задаче про s и α промежуточные шаги цепочки выписаны (пороги слева — справочно)',
+     /1,1 · k₀0,70 = knew0,65/.test(txt4[4]), txt4[4].match(/.{0,40}k₀0,70.{0,40}/));
   const kt4 = await ev(()=>{ const d = document.getElementById('kons'); return d ? d.textContent.replace(/\s+/g, ' ') : ''; });
   ok('W4-04: «Конспект» — скачок бывает и от s и α, и что такое kᵢ',
      /прыгают и от s и α/.test(kt4) && /у K и L — сразу, у остальных — в новом стационаре/.test(kt4));
