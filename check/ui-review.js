@@ -774,6 +774,26 @@ const overlaps = pads => {
   ok('W4-12, W4-13: временные и постоянные, Кобб — Дуглас, доля капитала — чего',
      /«временными»/.test(kt4) && /Кобба — Дугласа/.test(kt4) && /достаётся владельцам капитала/.test(kt4));
   ok('W4-15: в задаче 1 сказано, что 25% — это скачок L, а не n', /это не n/.test(txt4[0]));
+  // ---- повтор аудита A1: A1b-01…04, A1-07 ----
+  const caseRow = async (h, side) => { await go(h);
+    return ev(sd => { const r = caseSweep({side: sd}); const G = {up:'↑', down:'↓', same:'=', dunno:'?'};
+      const x = r[r.length - 1]; return x.sr.map(v => G[v]).join('') + '|' + x.lr.map(v => G[v]).join(''); }, side); };
+  const a01 = await caseRow('#b=s:0.15:1,d:0.03:1,n:0.3:0,g:0.05:1,a:0.98:0&k=a:add:-0.979999:1;L:mul:0.05:1', true);
+  ok('A1b-01: лестница у k = 1 берёт опоры из отрезка, суженного шоком — ветка «k > 1» не выдумывает «↓»',
+     /^\?.\?\?/.test(a01), a01);
+  await go('#b=s:0.999999:1,d:0.05:1,n:0:1,g:0:1,a:0.5:1&k=s:set:0.000001:1');
+  const a02 = await ev(()=>{ const r = sweepCached(); return r[r.length - 1].lr[2]; });
+  ok('A1b-02: s 0,999999 → 0,000001 при α = 0,5 — потребление «=», как велит модель', a02 === 'same', a02);
+  await go('#b=s:0.08:1,d:0.1:0,n:0:0,g:0:0,a:0.9:1&k=K:mul:1.5:1;a:set:0.7:1');
+  const a03 = await ev(()=>forkCase().cases.map(c => +lnK(c.vals).toFixed(2)));
+  ok('A1b-03: представитель ветки — читаемая точка (k₀ около 3), а не угол диапазона',
+     a03.every(l => Math.abs(l) < Math.log(1000)), a03);
+  const a04 = await caseRow('#b=s:0.3:0,d:0.1:0,n:0.03:1,g:0:1,a:0.7:1&k=a:set:0.000001:1;L:mul:0.05:1', true);
+  ok('A1b-04: ступени лестницы вплотную к полосе SIDE_EPS — смена знака у самой k = 1 видна', /^\?.\?\?/.test(a04), a04);
+  await go('#b=s:0.02:1,d:0.05:1,n:0:1,g:0:1,a:0.3:1&k=s:mul:49.5:1');
+  const a07 = await ev(()=>document.querySelector('[data-touch="0"]').textContent);
+  ok('A1-07: подрезанный множитель из ссылки назван честно — ход ×0,05…×3, а не «за границы»',
+     /от ×0,05 до ×3/.test(a07) && !/за границы/.test(a07), a07);
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');

@@ -1337,6 +1337,11 @@ function shockName(sh){
      r₀ = ln s₀ − ln(δ₀+n₀+g₀);   y = α·ln k,  c = ln(1−s) + y,  i = ln s + y.
    Единственная неточность на входе — сам r₀: разность двух логарифмов,
    её ошибка nr идёт в допуск тех слагаемых, где r₀ стоит множителем. */
+/* Ошибка самого входа: десятичное 0,999999 в двоичной записи неточно, и в
+   ln(1 − s) эта неточность растёт как 1/(1 − s). При s = 0,999999 она
+   2,9·10⁻¹¹ — больше любого округления, и обмен s ↔ 1 − s при α = 0,5,
+   где потребление в стационаре ровно прежнее, выходил «↓» вместо «=» (A1b-02). */
+const EPS_IN = 4 * Number.EPSILON;
 function compare(P0, P1, m){
   const a0 = P0.a, a1 = P1.a, da = a1 - a0, b0 = 1 - a0, b1 = 1 - a1;
   const ls0 = Math.log(P0.s), lD0 = Math.log(dep(P0)), r0 = ls0 - lD0;
@@ -1344,6 +1349,9 @@ function compare(P0, P1, m){
   const l0 = r0 / b0;
   const dls = lnRatio(P1.s, P0.s), dlD = lnRatio(dep(P1), dep(P0));
   const dl1s = lnRatio(1 - P1.s, 1 - P0.s), lm = Math.log(m);
+  /* s не менялась — одна и та же неточность стоит в обоих логарифмах
+     и гасится сама: шуметь нечему */
+  const n1s = P1.s === P0.s ? 0 : EPS_IN * (P0.s / (1 - P0.s) + P1.s / (1 - P1.s));
   const adls = Math.abs(dls), adl1s = Math.abs(dl1s);
   /* кратко: k сдвинул только запас, y — запас и α: a₁·ln m + Δα·ln k₀ */
   const yA = a1 * lm, yB = da * l0;
@@ -1355,9 +1363,9 @@ function compare(P0, P1, m){
   const yL = a1 * kL + yB, myL = a1 * mkL + Math.abs(yB), nyL = a1 * nkL + nyS;
   return {
     sr: [sgnOf(yS, myS, nyS), sgnOf(lm, Math.abs(lm), 0),
-         sgnOf(dl1s + yS, adl1s + myS, nyS), sgnOf(dls + yS, adls + myS, nyS)],
+         sgnOf(dl1s + yS, adl1s + myS, nyS + n1s), sgnOf(dls + yS, adls + myS, nyS)],
     lr: [sgnOf(yL, myL, nyL), sgnOf(kL, mkL, nkL),
-         sgnOf(dl1s + yL, adl1s + myL, nyL), sgnOf(dls + yL, adls + myL, nyL)]
+         sgnOf(dl1s + yL, adl1s + myL, nyL + n1s), sgnOf(dls + yL, adls + myL, nyL)]
   };
 }
 
@@ -1544,12 +1552,25 @@ function sweep(limit){
      выборки — вместе с нижним краем: n = g = 0 условие всех задач. */
   const sideKeys = free.filter(k => k !== "a");
   if (act.some(sh => sh.key === "a") && sideKeys.length){
-    const LADDER = [3e-6, 1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 0.1];
+    /* Первые ступени — вплотную к полосе SIDE_EPS: между ней и 3·10⁻⁶ знак
+       успевал поменяться, а при α₀ = 0,999 эта щель по ln k в тысячу раз
+       шире, чем по r (A1b-04). */
+    const LADDER = [1.1e-6, 1.5e-6, 2e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 0.1];
     const signs = limit ? [limit.side ? 1 : -1] : [1, -1];
     sideKeys.forEach(k => {
       const others = free.filter(o => o !== k);
-      const grids = others.map(o => [0].concat(spots).map(t =>
-        META[o].min + (META[o].max - META[o].min) * t));
+      /* Остальные — из отрезка, который им оставил шок, а не из META: после
+         «α − 0,98» α не бывает меньше 0,98, и опоры 10⁻⁶, 0,12, 0,5 и 0,88
+         все недопустимы — лестница не давала ни одной точки, и ветка
+         «k > 1» отвечала «↓» там, где при k₀ = 1,4 k растёт (A1b-01). */
+      const grids = others.map(o => {
+        const [lo, hi] = eff[o], m = META[o], v = [0].concat(spots, 1).map(t => lo + (hi - lo) * t);
+        /* прежние опоры по META остаются: полоса у k = 1 бывает и у самого
+           верха суженного отрезка, и там, куда попадала старая сетка */
+        if (lo !== m.min || hi !== m.max)
+          [0].concat(spots).forEach(t => { const x = m.min + (m.max - m.min) * t;
+            if (x >= lo && x <= hi && !v.some(y => Math.abs(y - x) < 1e-12)) v.push(x); });
+        return v; });
       cartesian(grids).forEach(combo => {
         const pv0 = dispVals();
         others.forEach((o, oi) => { pv0[o] = combo[oi]; });
@@ -1946,7 +1967,15 @@ const FORK_W_BLUR = 0.30, FORK_W_ILL = 0.25;
    в другую сторону незачем, а выдать почти неподвижный стационар
    за «уехал влево» — прямой обман. */
 const FORK_SPLIT = 0.9, MOVE_MIN = Math.log(1.10);
+/* forkCase зовут с десяток мест за одну перерисовку, а ответ зависит только
+   от заданных значений, иллюстративных у свободных и от шоков. */
+let forkMemo = {key: null, val: null};
 function forkCase(){
+  const key = sweepKey() + "|" + PKEYS.map(k => dispVals()[k]).join(",");
+  if (forkMemo.key !== key) forkMemo = {key, val: forkCaseRaw()};
+  return forkMemo.val;
+}
+function forkCaseRaw(){
   if (!active().some(sh => sh.key === "a")) return null;
   const free = freeKeys();
   if (!free.length) return null;
@@ -2006,6 +2035,27 @@ function forkCase(){
       });
     });
   }
+  /* Узлов сетки на сторону бывает мало: при трёх свободных их 13 на ось,
+     и сторона «k > 1» оказывалась одним угловым узлом с k₀ = e¹¹³ — новые
+     f(k) и s·f(k) ложились на ось, хотя на той же стороне есть калибровка
+     с k₀ около 3 (A1b-03). Поэтому каждая свободная из s, δ, n, g ещё
+     и решается так, чтобы k₀ встал ровно на SIDE_FAR по обе стороны;
+     остальные — из своих отрезков, вместе с иллюстративным значением. */
+  free.filter(k => k !== "a").forEach(k => {
+    const others = free.filter(o => o !== k);
+    const anch = others.map(o => { const [lo, hi] = effRange(o);
+      return [lo, lo + (hi - lo) * 0.02, (lo + hi) / 2, hi, pv[o]]; });
+    cartesian(anch).forEach(combo => {
+      const q0 = {...pv};
+      others.forEach((o, oi) => { q0[o] = combo[oi]; });
+      const rest = dep(q0) - (k === "s" ? 0 : q0[k]), t = SIDE_FAR * (1 - q0.a);
+      [1, -1].forEach(sg => {
+        const q = {...q0};
+        q[k] = k === "s" ? rest * Math.exp(sg * t) : q0.s * Math.exp(-sg * t) - rest;
+        if (q[k] >= META[k].min && q[k] <= META[k].max) consider(q);
+      });
+    });
+  });
   /* Пара выбирается совместно: за разошедшиеся стационары даётся скидка
      FORK_SPLIT, но она лишь скидка — если развести можно только ценой
      нечитаемой картинки, победит читаемая. */
@@ -3351,9 +3401,20 @@ function touchText(sh){
     (sh.on && !bites(sh) ? ". Сейчас значение такое, что шок ничего не меняет" : "") +
     (sh.cut !== undefined
       ? ". Значение из ссылки (" + (sh.form === "add" ? (sh.cut < 0 ? "−" : "+") + numV(Math.abs(sh.cut), 3)
-                                  : sh.form === "mul" ? "×" + numV(sh.cut, 2) : numV(sh.cut, 3)) +
-        ") выводило " + META[sh.key].sym + " за границы — оно подрезано"
+                                  : sh.form === "mul" ? "×" + numV(sh.cut, 2) : numV(sh.cut, 3)) + ")" +
+        cutWhy(sh) + " — оно подрезано"
       : "");
+}
+/* Почему подрезано значение из ссылки. У «×» кроме границ модели есть ещё
+   и ход самого множителя, от ×0,05 до ×3: «s × 49,5» при s = 0,02 даёт
+   допустимые 0,99, и «выводило за границы» было бы неправдой (A1-07). */
+function cutWhy(sh){
+  if (sh.form === "mul"){
+    const to = isStock(sh.key) ? null : drawnV(sh.key) * sh.cut;
+    if (to === null || (to >= META[sh.key].min && to <= META[sh.key].max))
+      return " не помещается в ход множителя, от ×0,05 до ×3,";
+  }
+  return " выводило " + META[sh.key].sym + " за границы";
 }
 
 function renderShocks(){
