@@ -377,6 +377,9 @@
   .solution .why .mini > li:last-child{margin-bottom:0}
   .solution .why .mini > li::marker{color:var(--muted);font-weight:700;font-size:.92em}
   .solution .why .mini .calc{margin-top:6px}
+  /* подзаголовок блока шагов: длинный вопрос делится на части, нумерация сквозная */
+  .solution .why .subq{margin:14px 0 0;padding-top:8px;border-top:1px solid var(--rule);font-weight:700;color:var(--ink)}
+  .solution .why .subq + .mini{margin-top:4px}
   .solution .why .ans{
     margin:7px 0 0;padding:7px 11px;background:var(--card);color:var(--ink);
     border-radius:6px;border-left:3px solid var(--ink-2);
@@ -719,8 +722,8 @@
         двойной щелчок возвращает масштаб. Кружки на линиях — пересечения: щёлкните по кружку,
         и появятся его координаты; отметьте второй — увидите разницу между ними. Картинка
         безразмерная, поэтому всё считается в долях от исходного стационара: он равен (1;&nbsp;1). Это
-        не точка k&nbsp;=&nbsp;1, вокруг которой поворачивается кривая выпуска при шоке по α
-        (<a class="kref" href="#kn-10" data-kn="10">«Конспект», п. 10</a>).</div>
+        не точка k&nbsp;=&nbsp;1, вокруг которой поворачивается кривая выпуска при шоке по α:
+        она отмечена на оси серой подписью «k&nbsp;=&nbsp;1» (<a class="kref" href="#kn-10" data-kn="10">«Конспект», п. 10</a>).</div>
       <p class="forkcap" id="cap1" hidden></p>
       <p class="oc" id="oc1" hidden></p>
       <canvas id="main" data-h="620" tabindex="0"
@@ -978,7 +981,8 @@
           потому что 1 в любой степени равна 1. Правее единицы кривая поднимается, левее опускается.
           Единица здесь — не экономический порог, а свойство записи f(k) = k<sup>α</sup>. Не путайте её
           с точкой (1; 1) на диаграмме страницы: там оси отсчитываются от старого стационара, и (1; 1) —
-          это old, а точка поворота k = 1 не отмечена.</p>
+          это old, а точка поворота отмечена на оси серой подписью «k = 1» (если она за краем
+          рамки — «k = 1 →»).</p>
         <code class="calc">k = 4:&nbsp; 4<sup>0,30</sup> ≈ 1,52 <span class="arr">→</span> 4<sup>0,35</sup> ≈ 1,62, выше<br>k = 0,25:&nbsp; 0,25<sup>0,30</sup> ≈ 0,66 <span class="arr">→</span> 0,25<sup>0,35</sup> ≈ 0,62, ниже</code>
         <p>Падение α эту зависимость ослабляет, и кривая поворачивается в обратную сторону: правее
           единицы опускается, левее поднимается.</p>
@@ -1768,12 +1772,12 @@ function tag(ctx, x, y, text, color, align, size, bold){
   ctx.fillStyle = "rgba(255,255,255,.9)";
   ctx.fillRect(x0 - pad, y - sz*.66, w + pad*2, sz*1.32);
   ctx.fillStyle = inkOf(color);
-  if (text.indexOf("→") < 0){ ctx.fillText(text, x0, y); ctx.restore(); return; }
+  if (!/[→←]/.test(text)){ ctx.fillText(text, x0, y); ctx.restore(); return; }
   const lift = arrowLift(ctx, sz);
   let cx = x0;
-  text.split(/(→)/).forEach(part => {
+  text.split(/([→←])/).forEach(part => {
     if (!part) return;
-    ctx.fillText(part, cx, part === "→" ? y - lift : y);
+    ctx.fillText(part, cx, part === "→" || part === "←" ? y - lift : y);
     cx += ctx.measureText(part).width;
   });
   ctx.restore();
@@ -2194,7 +2198,7 @@ function legendItems(sts){
   return it;
 }
 
-function drawLegend(ctx, L, T, sts, frameW){
+function drawLegend(ctx, L, T, sts, frameW, place){
   const it = legendItems(sts);
   /* На телефоне легенда прежнего кегля занимала две трети картинки и
      закрывала сами кривые. Она нужна именно там (в узкой правой полосе
@@ -2227,7 +2231,13 @@ function drawLegend(ctx, L, T, sts, frameW){
   const main = it.filter(i => !i.note);
   const bw = PAD * 2 + Math.max(SW + GAP + tw, lines.length ? noteW : 0),
         bh = PAD * 2 + main.length * LH - (LH - SZ) + (lines.length ? 6 + lines.length * NL : 0);
-  const x = L + 14, y = T + 10;
+  /* Место легенды — там, где она ничего не закрывает. Раньше она стояла
+     всегда слева сверху, и на телефоне в задаче 6 под ней пряталась точка
+     нового равновесия на f(k). Кандидаты — углы и середина верха; выигрывает
+     тот, что накрывает меньше точек, потом меньше линий; при равенстве —
+     прежний левый верхний. */
+  const {x, y} = place ? place(bw, bh) : {x: L + 14, y: T + 10};
+  CUR.legend = {x, y, w: bw, h: bh};
   ctx.fillStyle = "rgba(255,255,255,.93)";
   ctx.strokeStyle = col("--rule"); ctx.lineWidth = 1;
   ctx.beginPath(); ctx.rect(x, y, bw, bh); ctx.fill(); ctx.stroke();
@@ -2400,6 +2410,21 @@ function renderMain(ctx, w, h, capture){
     ctx.beginPath(); ctx.arc(X(kg), Y(yg), 4, 0, 7); ctx.fill();
   }
 
+  /* Точка k = 1, вокруг которой шок по α поворачивает кривую выпуска. Картинка
+     считается в долях от old, поэтому k = 1 стоит не в единице оси, а там,
+     где k / k_old = 1 / k_old, — и без отметки её было не найти: (1; 1)
+     на диаграмме — это old, а не точка поворота. Серым пунктиром до f(k):
+     обе кривые выпуска проходят через неё. Цвет — не шоковый, это свойство
+     записи f(k) = k^α, а не чей-то сдвиг. */
+  const aBites = act.some(sh => sh.key === "a");
+  const k1u = Math.exp(-U.lk0), y1u = Math.exp(-U.ly0);
+  const pivot = aBites && isFinite(k1u) && k1u > 0 && onX(k1u) ? {x: X(k1u), y: Y(y1u)} : null;
+  /* За краем рамки точка поворота не пропадает молча: у края оси стоит
+     «k = 1 →» (или «← k = 1»), — в случае «k < 1» она обычно правее рамки. */
+  const pivotOff = aBites && isFinite(k1u) && k1u > 0 && !pivot ? (k1u > fr.k1 ? 1 : -1) : 0;
+  CUR.pivot = pivot ? {k: k1u, x: pivot.x} : pivotOff ? {k: k1u, off: pivotOff} : null;
+  if (pivot) dashed(ctx, pivot.x, B, pivot.x, Math.max(pivot.y, T - 12), col("--muted"), 1, [1.5, 3.5]);
+
   items.filter(i => i.kind === "base").forEach(i =>
     curve(ctx, curveN(U, i.c, i.P), fr.k0, fr.k1, X, Y, i.color, i.w));
   items.filter(i => i.kind !== "base").forEach(i =>
@@ -2545,11 +2570,18 @@ function renderMain(ctx, w, h, capture){
     const half = subWidth(ctx, "k", "golden rule") / 2;
     axisLabels.push({gold: true, x: X(kg), x0: X(kg) - half, x1: X(kg) + half});
   }
+  const PIV = [{t: pivotOff > 0 ? "k = 1 →" : pivotOff < 0 ? "← k = 1" : "k = 1", c: col("--muted")}];
+  if (pivot || pivotOff){
+    const half = partsWidth(ctx, PIV, false) / 2;
+    const px = pivot ? pivot.x : pivotOff > 0 ? R - 4 - half : L + 4 + half;
+    axisLabels.push({pivot: true, x: px, x0: px - half, x1: px + half});
+  }
   /* Три строки помещаются в нижнюю полосу только с шагом 14: при 17 третья
      уезжала за нижний край канваса. */
   placeLabels(axisLabels, {x0: R + 12, x1: R + 34}).forEach(it => {
     const y = B + 16 + it.row * 14;
     if (it.gold) tagSub(ctx, it.x, y, "k", "golden rule", col("--gold"));
+    else if (it.pivot) tag(ctx, it.x, y, PIV[0].t, PIV[0].c, "center", 13);
     else tagParts(ctx, it.x, y, it.mark.parts, it.mark.b);
   });
 
@@ -2608,7 +2640,44 @@ function renderMain(ctx, w, h, capture){
                view: {k0: 0, k1, y0: 0, y1: (y1 > 0 && isFinite(y1) ? y1 : 1) * 1.1}};
   }
 
-  drawLegend(ctx, L, T, sts, R - L);
+  /* Цена места легенды: точка под ней стоит дороже любой линии, линия —
+     дороже перпендикуляра. Линии берутся теми же, что нарисованы. */
+  const lines = items.map(it => curveN(U, it.c, it.P));
+  const avoid = hits.map(q => ({x: q.x, y: q.y}));
+  if (adjLabel){
+    avoid.push({x: adjLabel.x, y: adjLabel.y});
+    /* и сами стрелки подстройки над осью */
+    const xa = X(sh0.k), xb = X(f0.k);
+    for (let t = 0; t <= 8; t++) avoid.push({x: xa + (xb - xa) * t / 8, y: B - 12});
+  }
+  if (pivot) avoid.push(pivot);
+  const cost = (x, y, w, h) => {
+    const inside = (px, py, m) => px > x - m && px < x + w + m && py > y - m && py < y + h + m;
+    let c = 0;
+    avoid.forEach(q => { if (inside(q.x, q.y, 7)) c += 1000; });
+    lines.forEach(f => { for (let t = 0; t <= 120; t++){
+      const k = fr.k0 + (fr.k1 - fr.k0) * t / 120, py = Y(f(k));
+      if (isFinite(py) && inside(X(k), py, 2)) c += 10; } });
+    sts.forEach(st => { if (st.axis && onX(st.k) && X(st.k) > x && X(st.k) < x + w &&
+                              Y(yAt(U, "out", st)) < y + h) c += 3; });
+    return c;
+  };
+  /* Левый верхний угол — привычное место, и легенда остаётся там, пока
+     не закрывает ни одной точки. Иначе место ищется по сетке с шагом 6 px:
+     на телефоне легенда занимает полкартинки, и в задаче 6 каждый из четырёх
+     углов задевал точку. Добавка за удаление от угла — чтобы при равной
+     цене легенда не уезжала без нужды. */
+  const place = (w, h) => {
+    if (cost(L + 14, T + 10, w, h) < 1000) return {x: L + 14, y: T + 10};
+    let best = null;
+    for (let y = T + 10; y <= B - 12 - h; y += 6)
+      for (let x = L + 14; x <= R - 8 - w; x += 6){
+        const c = cost(x, y, w, h) + ((x - L - 14) + (y - T - 10)) * 0.01;
+        if (!best || c < best.c) best = {x, y, c};
+      }
+    return best || {x: L + 14, y: T + 10};
+  };
+  drawLegend(ctx, L, T, sts, R - L, place);
   if (capture) CUR.hits = hits;
 }
 
@@ -3488,6 +3557,10 @@ function renderShocks(){
 /* Ссылка на пункт «Конспекта»: определение живёт в одном месте, а разбор
    ведёт к нему с первого упоминания термина. */
 const kref = (n, t) => '<a class="kref" href="#kn-' + n + '" data-kn="' + n + '">' + t + "</a>";
+/* Подзаголовок внутри шагов: длинный вопрос делится на блоки, нумерация
+   шагов при этом сквозная. Метка — HTML-комментарий, в тексте её не видно. */
+const SUB = t => "<!--sub-->" + t;
+const isSub = t => typeof t === "string" && t.startsWith("<!--sub-->");
 const CALC = t => '<code class="calc">' + t + "</code>";
 const ARW = '<span class="arr">&#8594;</span>';
 const SP = "&nbsp;&nbsp;&nbsp;&nbsp; ";
@@ -3748,7 +3821,8 @@ const PROBLEMS = [
               [kref(7, "Долгосрочно") + " экономика приходит в новый стационар. До шока она стояла в старом: там инвестиции равнялись выбытию." +
                  CALC("0,20·k₀<sup>0,30</sup> = δ·k₀"),
                "Шоков два, и оба бьют по кривой инвестиций: s — множителем, α — показателем. Линию выбытия не трогает ни один. Разберём каждый " + kref(9, "в старой точке k₀") + ": выбытие там прежнее, <b>значит вся перемена — со стороны инвестиций</b>.",
-               "<b>Рост s в одиночку.</b> Норма сбережений — множитель перед f(k), а f(k₀) при неподвижной α то же самое число." +
+               SUB("Рост s в одиночку"),
+               "Норма сбережений — множитель перед f(k), а f(k₀) при неподвижной α то же самое число." +
                  CALC("0,22·f(k₀) / (0,20·f(k₀)) = 0,22 / 0,20 = 1,1"),
                "Инвестиции в старой точке <b>выросли в 1,1 раза</b> — при любой k₀. <b>Этот шок тянет стационар вправо.</b>",
                "Прежде чем складывать шоки, посмотрим, что рост s в одиночку делает с потреблением, — это строка s таблицы. Поделим равенство нового стационара на равенство старого: δ и α те же, 0,22 / 0,20 = 1,1." +
@@ -3757,13 +3831,13 @@ const PROBLEMS = [
                  CALC("y<sub>new</sub> / y₀ = (k<sub>new</sub> / k₀)<sup>0,30</sup> = 1,1<sup>0,30/0,70</sup> ≈ 1,042"),
                "Потребление — доля 1−s от выпуска: доля упала в 0,78 / 0,80 = 0,975 раза, выпуск вырос в 1,042 раза. <b>Потребление выросло на 1,6% при любой δ</b>: δ в это отношение не входит. Так и должно быть, пока s ниже α — ниже " + kref(11, "золотого правила") + ". В общем ответе этот рост спорит с ростом α." +
                  CALC("c<sub>new</sub> / c₀ = 0,975 · 1,042 ≈ 1,016"),
-               "<b>Рост α в одиночку.</b> Норму сбережений он не трогает, меняет саму f." +
+               SUB("Рост α в одиночку"),
+               "Рост α норму сбережений не трогает, меняет саму f." +
                  CALC("k₀<sup>0,35</sup> / k₀<sup>0,30</sup> = k₀<sup>0,05</sup>"),
                "Множитель больше единицы при k₀&nbsp;&gt;&nbsp;1 и меньше при k₀&nbsp;&lt;&nbsp;1. <b>Этот шок тянет стационар прочь от единицы:</b> справа от неё — вправо, слева — влево.",
-               "<b>Вместе</b> инвестиции в старой точке умножаются на 1,1·k₀<sup>0,05</sup>, выбытие — на 1." +
+               SUB("Оба шока вместе"),
+               "Инвестиции в старой точке умножаются на 1,1·k₀<sup>0,05</sup>, выбытие — на 1." +
                  CALC("инвестиции × 1,1·k₀<sup>0,05</sup>" + SP + "выбытие × 1"),
-               "<b>Справа от единицы</b> оба множителя больше 1 — <b>стационар уезжает вправо</b>.",
-               "<b>Слева от единицы</b> они спорят: 1,1·k₀<sup>0,05</sup> больше единицы, пока k₀ больше 0,149, — тогда стационар всё равно уезжает вправо; при k₀ меньше 0,149 — влево.",
                "Насколько далеко уедет стационар, покажет цепочка из равенств стационара. До и после шока δ та же." +
                  CALC("0,20·k₀<sup>0,30</sup> = δ·k₀" + SP + "0,22·k<sub>new</sub><sup>0,35</sup> = δ·k<sub>new</sub>"),
                "Делим второе на первое, δ сокращается." +
@@ -3772,14 +3846,19 @@ const PROBLEMS = [
                  CALC("1,1 · k₀<sup>0,70</sup> = k<sub>new</sub><sup>0,65</sup>"),
                "Поделим обе части на k₀<sup>0,65</sup>." +
                  CALC("(k<sub>new</sub> / k₀)<sup>0,65</sup> = 1,1 · k₀<sup>0,05</sup>"),
-               "<b>Справа от единицы</b> k₀<sup>0,05</sup> больше 1, поэтому k выросла больше чем в 1,158 раза." +
-                 CALC("(k<sub>new</sub> / k₀)<sup>0,65</sup> &gt; 1,1 " + ARW + " k<sub>new</sub> / k₀ &gt; 1,1<sup>1/0,65</sup> ≈ 1,158"),
                "Выпуск и потребление удобно считать через то же равенство: в стационаре s·y = δ·k, значит y = δ·k / s, а δ та же." +
                  CALC("y<sub>new</sub> / y₀ = (0,20 / 0,22) · k<sub>new</sub> / k₀ ≈ 0,909 · k<sub>new</sub> / k₀" + SP + "c<sub>new</sub> / c₀ = (0,78 / 0,80) · y<sub>new</sub> / y₀ = 0,975 · 0,909 · k<sub>new</sub> / k₀ ≈ 0,886 · k<sub>new</sub> / k₀"),
-               "<b>Справа</b> k выросла больше чем в 1,158 раза, поэтому <b>y растёт, и потребление растёт тоже — минимум на 2,6%</b>." +
+               "Инвестиции в стационаре равны выбытию, i = δ·k, а δ та же — <b>инвестиции идут за k</b>: куда k, туда и i.",
+               SUB("Справа от единицы: k₀ &gt; 1"),
+               "Оба множителя больше 1 — <b>стационар уезжает вправо</b>.",
+               "k₀<sup>0,05</sup> больше 1, поэтому k выросла больше чем в 1,158 раза." +
+                 CALC("(k<sub>new</sub> / k₀)<sup>0,65</sup> &gt; 1,1 " + ARW + " k<sub>new</sub> / k₀ &gt; 1,1<sup>1/0,65</sup> ≈ 1,158"),
+               "Подставим это в отношения для y и c: <b>y растёт, и потребление растёт тоже — минимум на 2,6%</b>." +
                  CALC("c<sub>new</sub> / c₀ &gt; 0,886 · 1,158 ≈ 1,026"),
-               "Инвестиции в стационаре равны выбытию, i = δ·k, а δ та же — <b>инвестиции идут за k</b>: справа растут.",
-               "<b>Слева от единицы</b> всё решает δ: чем она больше, тем меньше k₀. Из равенства до шока k₀<sup>0,70</sup> = 0,20 / δ, и граница k₀ = 0,149 — это δ ≈ 0,76." +
+               "Инвестиции идут за k — растут тоже. <b>Справа растут все четыре.</b>",
+               SUB("Слева от единицы: k₀ &lt; 1"),
+               "Множители спорят: 1,1·k₀<sup>0,05</sup> больше единицы, пока k₀ больше 0,149, — тогда стационар всё равно уезжает вправо; при k₀ меньше 0,149 — влево.",
+               "Всё решает δ: чем она больше, тем меньше k₀. Из равенства до шока k₀<sup>0,70</sup> = 0,20 / δ, и граница k₀ = 0,149 — это δ ≈ 0,76." +
                  CALC("δ = 0,20 / 0,149<sup>0,70</sup> ≈ 0,76"),
                "<b>k и i падают, только если δ больше 0,76</b> — если за год изнашивается больше трёх четвертей капитала. Это маловероятно, но условие не исключает — учитываем.",
                "Так же находятся пороги для y и c. y падает, если k выросла меньше чем в 1,1 раза." +
@@ -3912,6 +3991,22 @@ function problemChanges(q){
   }).join('<span class="sep">·</span>');
 }
 
+/* Шаги вопроса — нумерованный список. Подзаголовок SUB(…) открывает новый
+   блок: в задаче 5 долгосрочный вопрос шёл двадцатью пятью шагами подряд,
+   и где кончается «справа» и начинается «слева», приходилось искать.
+   Нумерация сквозная (start), чтобы номер шага не зависел от блока. */
+function whySteps(list){
+  const out = []; let n = 0, grp = [];
+  const flush = () => { if (grp.length) out.push('<ol class="mini"' + (n > grp.length ? ' start="' +
+    (n - grp.length + 1) + '"' : "") + ">" + grp.map(t => "<li>" + t + "</li>").join("") + "</ol>"); grp = []; };
+  list.forEach(t => {
+    if (isSub(t)){ flush(); out.push('<p class="subq">' + t.slice(10) + "</p>"); return; }
+    n++; grp.push(t);
+  });
+  flush();
+  return out.join("");
+}
+
 function renderProblems(){
   document.getElementById("probs").innerHTML = PROBLEMS.map((q, i) =>
     '<button data-p="' + i + '" aria-pressed="' + (i === probIdx) + '">' + esc(q.title) +
@@ -3930,9 +4025,7 @@ function renderProblems(){
         "подчёркнутое слово открывает свой пункт.</p>" +
       '<ol class="why">' + q.why.map(
         st => "<li><b>" + st[0] + "</b>" +
-              '<ol class="mini">' +
-                [].concat(st[1]).map(t => "<li>" + t + "</li>").join("") +
-              "</ol>" +
+              whySteps([].concat(st[1])) +
               '<p class="ans"><b>Ответ.</b> ' + st[2] + "</p></li>").join("") + "</ol>" +
       (q.src ? '<p class="src">' + esc(q.src) + "</p>" : "") +
     "</details>" +

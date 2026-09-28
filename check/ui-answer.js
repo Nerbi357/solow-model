@@ -179,12 +179,14 @@ const R = []; const ok = (n,c,x) => R.push([c?'PASS':'FAIL', n, x===undefined?''
      await ev(()=>{ const d = document.querySelector('.solution details');
                     if (d) d.open = true;
                     const q = [...document.querySelectorAll('.why > li')];
+                    /* длинный вопрос делится подзаголовками на несколько
+                       списков — шаги считаются по всем */
                     return q.length === 3 && q.every(li => {
-                      const ol = li.querySelector('ol.mini');
-                      return ol && getComputedStyle(ol).listStyleType === 'decimal' &&
-                             ol.children.length >= 3; }); }),
+                      const ol = [...li.querySelectorAll('ol.mini')];
+                      return ol.length && ol.every(o => getComputedStyle(o).listStyleType === 'decimal') &&
+                             li.querySelectorAll('ol.mini > li').length >= 3; }); }),
      await ev(()=>[...document.querySelectorAll('.why > li')]
-       .map(li=>(li.querySelector('ol.mini')||{children:[]}).children.length)));
+       .map(li=>li.querySelectorAll('ol.mini > li').length)));
   const stepBad = await ev(()=>{
     const bad = [];
     PROBLEMS.forEach((q, i) => q.why.forEach((w, j) => {

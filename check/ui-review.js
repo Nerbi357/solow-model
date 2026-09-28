@@ -794,6 +794,52 @@ const overlaps = pads => {
   const a07 = await ev(()=>document.querySelector('[data-touch="0"]').textContent);
   ok('A1-07: подрезанный множитель из ссылки назван честно — ход ×0,05…×3, а не «за границы»',
      /от ×0,05 до ×3/.test(a07) && !/за границы/.test(a07), a07);
+  // ---- предложения W4, принятые автором: легенда, k = 1, блоки задачи 5 ----
+  /* Легенда не закрывает точек: на телефоне в задаче 6 под ней пряталось
+     новое равновесие на f(k). Точки — те, что нарисованы (HITS). */
+  await m.goto(BASE, {waitUntil:'networkidle'}); await m.waitForTimeout(500);
+  const legBad = [];
+  for (const pi of [4, 5]){
+    await m.evaluate(i => document.querySelector('[data-p="' + i + '"]').click(), pi); await m.waitForTimeout(500);
+    legBad.push(...await m.evaluate(pi => ['main', 'main2'].filter(id => !document.getElementById(id).hidden).map(id => {
+      const L = PANE[id].legend;
+      if (!L) return {задача: pi + 1, id, беда: 'места легенды нет'};
+      const under = (PANE[id].hits || []).filter(q => q.x > L.x - 4 && q.x < L.x + L.w + 4 && q.y > L.y - 4 && q.y < L.y + L.h + 4);
+      return under.length ? {задача: pi + 1, id, под_легендой: under.map(q => q.id)} : null;
+    }).filter(Boolean), pi));
+  }
+  ok('W4: на телефоне легенда не закрывает точек в задачах 5 и 6', legBad.length === 0, legBad);
+  const loadP = async i => { await go(''); await ev(i => document.querySelector('[data-p="' + i + '"]').click(), i); await p.waitForTimeout(500); };
+  await loadP(0);
+  const legHome = await ev(()=>{ const L = PANE.main.legend, g = geom(); return L ? {dx: L.x - g.L, dy: L.y - g.T} : null; });
+  ok('W4: где точкам ничего не грозит, легенда стоит в левом верхнем углу', !!legHome && legHome.dx === 14 && legHome.dy === 10, legHome);
+  /* Точка поворота k = 1 отмечена на оси: картинка в долях от old, и (1; 1)
+     на ней — это old, а не точка поворота. */
+  await loadP(4);
+  const piv = await ev(()=>{ const fk = forkCase(); return {
+    lo: PANE.main.pivot, hi: PANE.main2.pivot, kHi: fk.cases ? Math.exp(-lnK(fk.cases[1].vals)) : null,
+    kLo: fk.cases ? Math.exp(-lnK(fk.cases[0].vals)) : null}; });
+  ok('W4: в задаче 5 на диаграмме «k > 1» отмечена k = 1 — там, где k / k_old = 1 / k_old',
+     !!piv.hi && isFinite(piv.hi.x) && Math.abs(piv.hi.k / piv.kHi - 1) < 1e-9, piv);
+  ok('W4: на диаграмме «k < 1» точка поворота за рамкой — у края оси «k = 1 →»',
+     !!piv.lo && piv.lo.off === 1 && Math.abs(piv.lo.k / piv.kLo - 1) < 1e-9, piv.lo);
+  await loadP(1);
+  ok('W4: без шока по α отметки k = 1 нет', await ev(()=>PANE.main.pivot === null));
+  /* Долгий вопрос задачи 5 разбит на блоки: где кончается «справа»
+     и начинается «слева», больше не надо искать среди двадцати пяти шагов. */
+  await loadP(4);
+  const blk = await ev(()=>{
+    const d = document.querySelector('#solution details'); if (d) d.open = true;
+    const li = document.querySelectorAll('#solution .why > li')[2];
+    const heads = [...li.querySelectorAll('.subq')].map(e => e.textContent);
+    const part = re => { const h = [...li.querySelectorAll('.subq')].find(e => re.test(e.textContent));
+      const ol = h && h.nextElementSibling; return ol && ol.matches('ol.mini') ? ol.textContent : null; };
+    let n = 0; const starts = [...li.querySelectorAll('ol.mini')].map(ol => { const st = ol.start === (n + 1); n += ol.children.length; return st; });
+    return {heads, right: part(/Справа/), left: part(/Слева/), starts, n};
+  });
+  ok('W4: долгосрочный вопрос задачи 5 разбит на блоки «справа» и «слева», нумерация сквозная',
+     !!blk.right && !!blk.left && !/слева/i.test(blk.right) && !/справа/i.test(blk.left) &&
+     blk.starts.length >= 3 && blk.starts.every(Boolean), {heads: blk.heads, starts: blk.starts, n: blk.n});
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
