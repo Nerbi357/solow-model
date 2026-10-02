@@ -830,21 +830,31 @@ const overlaps = pads => {
      !!piv.lo && piv.lo.off === 1 && Math.abs(piv.lo.k / piv.kLo - 1) < 1e-9, piv.lo);
   await loadP(1);
   ok('W4: без шока по α отметки k = 1 нет', await ev(()=>PANE.main.pivot === null));
-  /* Долгий вопрос задачи 5 разбит на блоки: где кончается «справа»
-     и начинается «слева», больше не надо искать среди двадцати пяти шагов. */
-  await loadP(4);
-  const blk = await ev(()=>{
-    const d = document.querySelector('#solution details'); if (d) d.open = true;
-    const li = document.querySelectorAll('#solution .why > li')[2];
-    const heads = [...li.querySelectorAll('.subq')].map(e => e.textContent);
-    const part = re => { const h = [...li.querySelectorAll('.subq')].find(e => re.test(e.textContent));
-      const ol = h && h.nextElementSibling; return ol && ol.matches('ol.mini') ? ol.textContent : null; };
-    let n = 0; const starts = [...li.querySelectorAll('ol.mini')].map(ol => { const st = ol.start === (n + 1); n += ol.children.length; return st; });
-    return {heads, right: part(/Справа/), left: part(/Слева/), starts, n};
-  });
-  ok('W4: долгосрочный вопрос задачи 5 разбит на блоки «справа» и «слева», нумерация сквозная',
-     !!blk.right && !!blk.left && !/слева/i.test(blk.right) && !/справа/i.test(blk.left) &&
-     blk.starts.length >= 3 && blk.starts.every(Boolean), {heads: blk.heads, starts: blk.starts, n: blk.n});
+  /* В задачах с α вопросы 2 и 3 идут частями: сначала общее для обоих
+     случаев, потом случай k < 1, случай k > 1 и вывод, который их объединяет.
+     Подзаголовки второго уровня (SUB2) живут только внутри общей части. */
+  const PARTS = ['Общее для обоих случаев', 'Случай k < 1', 'Случай k > 1', 'Вывод: объединяем случаи'];
+  const blk = [];
+  for (const pi of [4, 5]){
+    await loadP(pi);
+    blk.push(...await ev(P => {
+      const d = document.querySelector('#solution details'); if (d) d.open = true;
+      return [1, 2].map(j => {
+        const li = document.querySelectorAll('#solution .why > li')[j];
+        const heads = [...li.querySelectorAll('.subq:not(.sub2)')].map(e => e.textContent.trim());
+        const kids = [...li.children];
+        const firstMain = kids.findIndex(e => e.matches('.subq:not(.sub2)'));
+        const sub2Inside = [...li.querySelectorAll('.subq.sub2')].every(e => {
+          const prev = kids.slice(0, kids.indexOf(e)).filter(x => x.matches('.subq:not(.sub2)'));
+          return prev.length === 1;                          // только внутри «Общего»
+        });
+        let n = 0; const starts = [...li.querySelectorAll('ol.mini')].map(ol => { const st = ol.start === (n + 1); n += ol.children.length; return st; });
+        return {q: j + 1, heads, ok: JSON.stringify(heads) === JSON.stringify(P) && firstMain === 1 && sub2Inside && starts.every(Boolean)};
+      });
+    }, PARTS));
+  }
+  ok('V5: в задачах 5 и 6 вопросы 2 и 3 — общее, случай k < 1, случай k > 1, вывод; нумерация сквозная',
+     blk.length === 4 && blk.every(x => x.ok), blk.filter(x => !x.ok));
   ok('ошибок на странице нет', errs.length === 0, errs);
   await b.close();
   const fails = R.filter(x=>x[0]==='FAIL');
